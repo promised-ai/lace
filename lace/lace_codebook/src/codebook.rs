@@ -14,6 +14,9 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
+#[cfg(feature = "experimental")]
+use lace_stats::experimental::dp_discrete::StickBreaking;
+
 /// A structure that enforces unique IDs and row names.
 ///
 /// # Notes
@@ -503,6 +506,12 @@ pub enum ColType {
         /// updated during inference.
         prior: Option<Gamma>,
     },
+    #[cfg(feature = "experimental")]
+    /// Index type
+    Index {
+        hyper: Option<Gamma>,
+        prior: Option<StickBreaking>,
+    },
 }
 
 impl ColType {
@@ -533,6 +542,8 @@ impl ColType {
             ColType::Continuous { prior, .. } => prior.is_some(),
             ColType::Categorical { prior, .. } => prior.is_some(),
             ColType::Count { prior, .. } => prior.is_some(),
+            #[cfg(feature = "experimental")]
+            ColType::Index { prior, .. } => prior.is_some(),
         }
     }
 }

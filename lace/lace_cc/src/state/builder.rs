@@ -230,6 +230,20 @@ fn gen_feature<R: rand::Rng>(
             let col = Column::new(id, data, prior, hyper);
             ColModel::Categorical(col)
         }
+        #[cfg(feature = "experimental")]
+        ColType::Index { .. } => {
+            use lace_stats::experimental::dp_discrete::StickBreaking;
+
+            let hyper = Gamma::default();
+            let prior = StickBreaking::default();
+            let cat = Categorical::uniform(10);
+            let data = {
+                let xs: Vec<usize> = cat.sample(n_rows, rng);
+                SparseContainer::from(xs)
+            };
+            let col = Column::new(id, data, prior, hyper);
+            ColModel::Index(col)
+        }
     }
 }
 

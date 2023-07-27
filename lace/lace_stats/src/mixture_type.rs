@@ -1,5 +1,8 @@
 use std::convert::From;
 
+#[cfg(feature = "experimental")]
+use crate::experimental::dp_discrete::DpDiscrete;
+
 use crate::rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
 use crate::rv::traits::Entropy;
 use crate::MixtureJsd;
@@ -12,11 +15,13 @@ pub enum MixtureType {
     Gaussian(Mixture<Gaussian>),
     Categorical(Mixture<Categorical>),
     Poisson(Mixture<Poisson>),
+    #[cfg(feature = "experimental")]
+    Index(Mixture<DpDiscrete>),
 }
 
 macro_rules! mt_combine_arm {
-    ($variant: ident, $mixtures: ident) => {{
-        let mixtures: Vec<Mixture<$variant>> = $mixtures
+    ($variant: ident, $component: ident, $mixtures: ident) => {{
+        let mixtures: Vec<Mixture<$component>> = $mixtures
             .drain(..)
             .map(|mt| match mt {
                 MixtureType::$variant(inner) => inner,
@@ -26,6 +31,9 @@ macro_rules! mt_combine_arm {
         let combined = Mixture::combine(mixtures);
         MixtureType::$variant(combined)
     }};
+    ($variant: ident, $mixtures: ident) => {
+        mt_combine_arm!($variant, $variant, $mixtures)
+    };
 }
 
 impl MixtureType {
@@ -56,6 +64,8 @@ impl MixtureType {
             MixtureType::Categorical(mm) => mm.k(),
             MixtureType::Gaussian(mm) => mm.k(),
             MixtureType::Poisson(mm) => mm.k(),
+            #[cfg(feature = "experimental")]
+            MixtureType::Index(mm) => mm.k(),
         }
     }
 
@@ -73,15 +83,19 @@ impl MixtureType {
             }
             MixtureType::Gaussian(..) => mt_combine_arm!(Gaussian, mixtures),
             MixtureType::Poisson(..) => mt_combine_arm!(Poisson, mixtures),
+            #[cfg(feature = "experimental")]
+            MixtureType::Index(..) => {
+                mt_combine_arm!(Index, DpDiscrete, mixtures)
+            }
         }
     }
 }
 
 macro_rules! impl_from {
-    ($fx: ident) => {
+    ($variant: ident, $fx: ident) => {
         impl From<Mixture<$fx>> for MixtureType {
             fn from(mm: Mixture<$fx>) -> MixtureType {
-                MixtureType::$fx(mm)
+                MixtureType::$variant(mm)
             }
         }
 
@@ -89,11 +103,14 @@ macro_rules! impl_from {
         impl From<MixtureType> for Mixture<$fx> {
             fn from(mt: MixtureType) -> Mixture<$fx> {
                 match mt {
-                    MixtureType::$fx(mm) => mm,
+                    MixtureType::$variant(mm) => mm,
                     _ => panic!("Invalid inner type for conversion"),
                 }
             }
         }
+    };
+    ($fx: ident) => {
+        impl_from!($fx, $fx);
     };
 }
 
@@ -104,6 +121,8 @@ impl Entropy for MixtureType {
             MixtureType::Gaussian(mm) => mm.entropy(),
             MixtureType::Categorical(mm) => mm.entropy(),
             MixtureType::Poisson(mm) => mm.entropy(),
+            #[cfg(feature = "experimental")]
+            MixtureType::Index(_) => unimplemented!(),
         }
     }
 }
@@ -112,6 +131,7 @@ impl_from!(Gaussian);
 impl_from!(Categorical);
 impl_from!(Poisson);
 impl_from!(Bernoulli);
+impl_from!(Index, DpDiscrete);
 
 impl<Fx> MixtureJsd for Mixture<Fx>
 where
@@ -136,6 +156,8 @@ impl MixtureJsd for MixtureType {
             MixtureType::Gaussian(mm) => mm.mixture_jsd(),
             MixtureType::Categorical(mm) => mm.mixture_jsd(),
             MixtureType::Poisson(mm) => mm.mixture_jsd(),
+            #[cfg(feature = "experimental")]
+            MixtureType::Index(_) => unimplemented!(),
         }
     }
 }

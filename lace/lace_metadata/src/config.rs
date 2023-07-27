@@ -36,4 +36,6 @@ impl Default for SerializedType {
 pub struct FileConfig {
     pub metadata_version: i32,
     pub serialized_type: SerializedType,
+    #[serde(default)]
+    pub experimental: bool,
 }

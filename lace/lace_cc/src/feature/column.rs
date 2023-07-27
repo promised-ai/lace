@@ -29,6 +29,9 @@ use crate::traits::{
 };
 use lace_data::Datum;
 
+#[cfg(feature = "experimental")]
+use lace_stats::experimental::dp_discrete::{DpDiscrete, StickBreaking};
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
 /// A partitioned columns of data
@@ -62,6 +65,8 @@ pub enum ColModel {
     Count(Column<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(super::mnar::MissingNotAtRandom),
     Latent(super::latent::Latent),
+    #[cfg(feature = "experimental")]
+    Index(Column<usize, DpDiscrete, StickBreaking, Gamma>),
 }
 
 impl ColModel {
@@ -88,6 +93,8 @@ impl ColModel {
             }
             ColModel::Latent(Latent { column, .. }) => column.impute_bounds(),
             ColModel::Categorical(_) => None,
+            #[cfg(feature = "experimental")]
+            ColModel::Index(_) => None,
         }
     }
 
@@ -106,6 +113,8 @@ impl ColModel {
                 Self::Count(_) => FType::Count,
                 _ => panic!("Cannot have mnar of mnar column"),
             },
+            #[cfg(feature = "experimental")]
+            Self::Index(_) => FType::Index,
         }
     }
 }
@@ -671,6 +680,8 @@ impl QmcEntropy for ColModel {
             ColModel::Count(_) => 1,
             ColModel::MissingNotAtRandom(cm) => cm.fx.us_needed(),
             ColModel::Latent(Latent { column, .. }) => column.us_needed(),
+            #[cfg(feature = "experimental")]
+            ColModel::Index(_) => 1,
         }
     }
 
@@ -686,6 +697,12 @@ impl QmcEntropy for ColModel {
             ColModel::Count(cm) => {
                 let (a, b) = cm.quad_bounds();
                 b - a
+            }
+            #[cfg(feature = "experimental")]
+            ColModel::Index(cm) => {
+                let k = cm.components()[0].fx.k() as f64;
+                let m = cm.components()[0].fx.m() as f64;
+                k + m
             }
         }
     }
@@ -714,6 +731,12 @@ impl QmcEntropy for ColModel {
                 let k: f64 = cm.components()[0].fx.k() as f64;
                 let x = (us.next().unwrap() * k) as u8;
                 Datum::Categorical(Category::U8(x))
+            }
+            #[cfg(feature = "experimental")]
+            ColModel::Index(cm) => {
+                let km: f64 = cm.components()[0].fx.len() as f64;
+                let ix = (us.next().unwrap() * km) as usize;
+                Datum::Index(ix)
             }
         }
     }

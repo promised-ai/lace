@@ -7,6 +7,8 @@ use lace_cc::state::{State, StateDiagnostics};
 use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
 use lace_cc::view::View;
 use lace_data::{FeatureData, SparseContainer};
+#[cfg(feature = "experimental")]
+use lace_stats::experimental::dp_discrete::{DpDiscrete, StickBreaking};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -143,6 +145,11 @@ impl From<DatalessStateAndDiagnostics> for EmptyState {
                                     assignment: dl_view.asgn.asgn.clone(),
                                 })
                             }
+                            #[cfg(feature = "experimental")]
+                            DatalessColModel::Index(cm) => {
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
+                                ColModel::Index(ecm.0)
+                            }
                         };
                         (id, cm)
                     })
@@ -201,6 +208,8 @@ pub enum DatalessColModel {
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(DatalessMissingNotAtRandom),
     Latent(DatalessLatent),
+    #[cfg(feature = "experimental")]
+    Index(DatalessColumn<usize, DpDiscrete, StickBreaking, Gamma>),
 }
 
 impl From<ColModel> for DatalessColModel {
@@ -226,6 +235,8 @@ impl From<ColModel> for DatalessColModel {
                     column: Box::new((*latent.column).into()),
                 })
             }
+            #[cfg(feature = "experimental")]
+            ColModel::Index(col) => DatalessColModel::Index(col.into()),
         }
     }
 }
@@ -244,6 +255,11 @@ impl From<DatalessColModel> for ColModel {
             DatalessColModel::Categorical(cm) => {
                 let empty_col: EmptyColumn<_, _, _, _> = cm.into();
                 Self::Categorical(empty_col.0)
+            }
+            #[cfg(feature = "experimental")]
+            DatalessColModel::Index(cm) => {
+                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
+                Self::Index(empty_col.0)
             }
             _ => unimplemented!(),
         }
@@ -309,6 +325,8 @@ col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 col2dataless!(u32, Poisson, Gamma, PgHyper);
 col2dataless!(bool, Bernoulli, Beta, ());
+#[cfg(feature = "experimental")]
+col2dataless!(usize, DpDiscrete, StickBreaking, Gamma);
 
 struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
 where
@@ -347,6 +365,8 @@ dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 dataless2col!(u32, Poisson, Gamma, PgHyper);
 dataless2col!(bool, Bernoulli, Beta, ());
+#[cfg(feature = "experimental")]
+dataless2col!(usize, DpDiscrete, StickBreaking, Gamma);
 
 impl_metadata_version!(Metadata, METADATA_VERSION);
 impl_metadata_version!(Codebook, METADATA_VERSION);

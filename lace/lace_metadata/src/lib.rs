@@ -167,6 +167,10 @@ pub fn save_metadata<P: AsRef<Path>>(
         let file_config = FileConfig {
             metadata_version: latest::METADATA_VERSION,
             serialized_type: ser_type,
+            #[cfg(feature = "experimental")]
+            experimental: true,
+            #[cfg(not(feature = "experimental"))]
+            experimental: false,
         };
         utils::save_file_config(path, &file_config)?;
     }

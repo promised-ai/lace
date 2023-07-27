@@ -10,8 +10,9 @@
 )]
 mod cdf;
 mod chi_square;
-// pub mod dist;
 mod entropy;
+#[cfg(feature = "experimental")]
+pub mod experimental;
 pub mod integrate;
 mod ks;
 pub mod mat;

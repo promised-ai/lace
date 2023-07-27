@@ -13,6 +13,8 @@ pub enum Datum {
     Categorical(Category),
     Count(u32),
     Missing,
+    #[cfg(feature = "experimental")]
+    Index(usize),
 }
 
 /// Describes an error converting from a Datum to another type
@@ -33,6 +35,10 @@ pub enum DatumConversionError {
     /// Cannot convert Missing into a value of any type
     #[error("cannot convert Missing into a value of any type")]
     CannotConvertMissing,
+    /// Tried to convert Index into a type other than usize
+    #[cfg(feature = "experimental")]
+    #[error("tried to convert Index into a type other than usize")]
+    InvalidTypeRequestedFromIndex,
 }
 
 fn hash_float<H: std::hash::Hasher>(float: f64, state: &mut H) {
@@ -50,6 +56,8 @@ impl Hash for Datum {
             Self::Categorical(x) => x.hash(state),
             Self::Count(x) => x.hash(state),
             Self::Missing => hash_float(std::f64::NAN, state),
+            #[cfg(feature = "experimental")]
+            Self::Index(x) => x.hash(state),
         }
     }
 }
@@ -83,6 +91,8 @@ impl PartialEq for Datum {
             Self::Categorical(x) => datum_peq!(x, other, Categorical),
             Self::Count(x) => datum_peq!(x, other, Count),
             Self::Missing => matches!(other, Self::Missing),
+            #[cfg(feature = "experimental")]
+            Self::Index(x) => datum_peq!(x, other, Index),
         }
     }
 }
@@ -112,6 +122,7 @@ impl TryFrom<Datum> for u8 {
         match datum {
             Datum::Categorical(Category::U8(x)) => Ok(x),
             Datum::Categorical(Category::Bool(x)) => Ok(x as u8),
+            #[cfg(feature = "experimental")]
             Datum::Missing => Err(DatumConversionError::CannotConvertMissing),
             _ => Err(DatumConversionError::InvalidTypeRequestedFromCategorical),
         }
@@ -134,6 +145,13 @@ impl_try_from_datum!(
     u32,
     Datum::Count,
     DatumConversionError::InvalidTypeRequestedFromCount
+);
+
+#[cfg(feature = "experimental")]
+impl_try_from_datum!(
+    usize,
+    Datum::Index,
+    DatumConversionError::InvalidTypeRequestedFromIndex
 );
 
 // XXX: What happens when we add vector types? Error?
@@ -162,6 +180,8 @@ impl Datum {
             Datum::Categorical(Category::String(_)) => None,
             Datum::Count(x) => Some(f64::from(*x)),
             Datum::Missing => None,
+            #[cfg(feature = "experimental")]
+            Datum::Index(x) => None,
         }
     }
 
@@ -187,6 +207,8 @@ impl Datum {
             Datum::Categorical(Category::String(_)) => None,
             Datum::Count(..) => None,
             Datum::Missing => None,
+            #[cfg(feature = "experimental")]
+            Datum::Index(x) => None,
         }
     }
 
@@ -213,6 +235,12 @@ impl Datum {
     /// Returns `true` if the `Datum` is missing
     pub fn is_missing(&self) -> bool {
         matches!(self, Datum::Missing)
+    }
+
+    /// Returns `true` if the `Datum` is Index type
+    #[cfg(feature = "experimental")]
+    pub fn is_index(&self) -> bool {
+        matches!(self, Datum::Index(_))
     }
 }
 

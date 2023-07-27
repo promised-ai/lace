@@ -12,6 +12,8 @@ pub enum FType {
     Continuous,
     Categorical,
     Count,
+    #[cfg(feature = "experimental")]
+    Index,
 }
 
 impl std::fmt::Display for FType {
@@ -21,6 +23,8 @@ impl std::fmt::Display for FType {
             Self::Continuous => write!(f, "Continuous"),
             Self::Categorical => write!(f, "Categorical"),
             Self::Count => write!(f, "Count"),
+            #[cfg(feature = "experimental")]
+            Self::Index => write!(f, "Index"),
         }
     }
 }
@@ -64,6 +68,8 @@ impl TryFrom<&Datum> for FType {
             Datum::Continuous(_) => Ok(FType::Continuous),
             Datum::Count(_) => Ok(FType::Count),
             Datum::Missing => Err(()),
+            #[cfg(feature = "experimental")]
+            Datum::Index(_) => Ok(FType::Index),
         }
     }
 }
@@ -74,6 +80,8 @@ impl FType {
             ColType::Continuous { .. } => FType::Continuous,
             ColType::Categorical { .. } => FType::Categorical,
             ColType::Count { .. } => FType::Count,
+            #[cfg(feature = "experimental")]
+            ColType::Index { .. } => FType::Index,
         }
     }
 
@@ -87,6 +95,11 @@ impl FType {
 
     pub fn is_count(self) -> bool {
         matches!(self, FType::Count)
+    }
+
+    #[cfg(feature = "experimental")]
+    pub fn is_index(self) -> bool {
+        matches!(self, FType::Index)
     }
 
     /// Return a tuple

@@ -28,7 +28,11 @@ itertools = "0.10"
 indicatif = "0.17.0"
 
 [features]
-experimental = []
+experimental = [
+    "lace_stats/experimental", 
+    "lace_data/experimental",
+    "lace_codebook/experimental"
+]
 
 [dev-dependencies]
 approx = "0.5.1"

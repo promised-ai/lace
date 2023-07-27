@@ -69,8 +69,13 @@ flate2 = "1.0.23"
 polars = { version = "0.30", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
 
 [features]
-experimental = ["lace_cc/experimental"]
 latent = []
+experimental = [
+    "lace_stats/experimental",
+    "lace_data/experimental",
+    "lace_cc/experimental",
+    "lace_metadata/experimental",
+]
 
 [dev-dependencies]
 approx = "0.5.1"

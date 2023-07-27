@@ -2,6 +2,8 @@
 use enum_dispatch::enum_dispatch;
 use lace_data::FeatureData;
 use lace_data::{Datum, SparseContainer};
+#[cfg(feature = "experimental")]
+use lace_stats::experimental::dp_discrete::{DpDiscrete, StickBreaking};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;

@@ -5,12 +5,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum SummaryStatistics {
-    #[serde(rename = "binary")]
     Binary {
         n: usize,
         pos: usize,
     },
-    #[serde(rename = "continuous")]
     Continuous {
         min: f64,
         max: f64,
@@ -18,13 +16,11 @@ pub enum SummaryStatistics {
         median: f64,
         variance: f64,
     },
-    #[serde(rename = "categorical")]
     Categorical {
         min: u8,
         max: u8,
         mode: Vec<u8>,
     },
-    #[serde(rename = "count")]
     Count {
         min: u32,
         max: u32,
@@ -50,6 +46,8 @@ pub enum FeatureData {
     Binary(SparseContainer<bool>),
     /// Latent (invisible) data with rng seed
     Latent { seed: u64, len: usize },
+    #[cfg(feature = "experimental")]
+    Index(SparseContainer<usize>),
 }
 
 impl FeatureData {
@@ -60,6 +58,8 @@ impl FeatureData {
             Self::Categorical(xs) => xs.len(),
             Self::Count(xs) => xs.len(),
             Self::Latent { len, .. } => *len,
+            #[cfg(feature = "experimental")]
+            Self::Index(xs) => xs.len(),
         }
     }
 
@@ -75,6 +75,8 @@ impl FeatureData {
             Self::Categorical(xs) => xs.is_present(ix),
             Self::Count(xs) => xs.is_present(ix),
             Self::Latent { .. } => true,
+            #[cfg(feature = "experimental")]
+            Self::Index(xs) => xs.is_present(ix),
         }
     }
 
@@ -96,6 +98,10 @@ impl FeatureData {
                 xs.get(ix).map(Datum::Count).unwrap_or(Datum::Missing)
             }
             FeatureData::Latent { .. } => Datum::Missing,
+            #[cfg(feature = "experimental")]
+            FeatureData::Index(xs) => {
+                xs.get(ix).map(Datum::Index).unwrap_or(Datum::Missing)
+            }
         }
     }
 
@@ -118,6 +124,8 @@ impl FeatureData {
             }
             FeatureData::Count(ref container) => summarize_count(container),
             FeatureData::Latent { .. } => SummaryStatistics::None,
+            #[cfg(feature = "experimental")]
+            FeatureData::Index(_) => unimplemented!(),
         }
     }
 }

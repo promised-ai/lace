@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 
 use lace_data::{Container, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+#[cfg(feature = "experimental")]
+use lace_stats::experimental::dp_discrete::{DpDiscrete, StickBreaking};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -37,6 +39,18 @@ impl ColumnGewekeSettings {
             transitions,
             fixed_prior,
         }
+    }
+
+    pub fn asgn(&self) -> &Assignment {
+        &self.asgn
+    }
+
+    pub fn transitions(&self) -> &[ViewTransition] {
+        &self.transitions
+    }
+
+    pub fn fixed_prior(&self) -> bool {
+        self.fixed_prior
     }
 }
 
@@ -74,7 +88,7 @@ pub enum GewekeColumnSummary {
     /// Categorical feature
     Categorical {
         /// The sum of the data
-        x_sum: u32,
+        x_sum: usize,
         /// The mean of the squared weights
         sq_weight_mean: f64,
         /// The mean of the weights
@@ -183,6 +197,8 @@ macro_rules! impl_gewek_resample {
 impl_gewek_resample!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 impl_gewek_resample!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 impl_gewek_resample!(u32, Poisson, Gamma, PgHyper);
+#[cfg(feature = "experimental")]
+impl_gewek_resample!(usize, DpDiscrete, StickBreaking, Gamma);
 
 // Continuous
 // ----------
@@ -302,7 +318,7 @@ impl GewekeSummarize for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
             .data
             .present_cloned()
             .iter()
-            .fold(0_u32, |acc, &x| acc + u32::from(x));
+            .fold(0_usize, |acc, &x| acc + usize::from(x));
 
         fn sum_sq(logws: &[f64]) -> f64 {
             logws.iter().fold(0.0, |acc, lw| {
@@ -390,6 +406,8 @@ impl GewekeSummarize for ColModel {
             ColModel::Latent(Latent { ref column, .. }) => {
                 column.geweke_summarize(settings)
             }
+            #[cfg(feature = "experimental")]
+            ColModel::Index(ref f) => f.geweke_summarize(settings),
         }
     }
 }
