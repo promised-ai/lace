@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use lace_data::{Container, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::{DpDiscrete, StickBreaking};
+use lace_stats::experimental::dp_discrete::{Dpd, DpdHyper, DpdPrior};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -198,7 +198,7 @@ impl_gewek_resample!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 impl_gewek_resample!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 impl_gewek_resample!(u32, Poisson, Gamma, PgHyper);
 #[cfg(feature = "experimental")]
-impl_gewek_resample!(usize, DpDiscrete, StickBreaking, Gamma);
+impl_gewek_resample!(usize, Dpd, DpdPrior, DpdHyper);
 
 // Continuous
 // ----------

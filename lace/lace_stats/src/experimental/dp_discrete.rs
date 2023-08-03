@@ -2,60 +2,58 @@ use crate::rv::data::DataOrSuffStat;
 use crate::rv::dist::{
     Categorical, CategoricalError, Gamma, SymmetricDirichlet,
 };
-use crate::rv::traits::{
-    ConjugatePrior, Entropy, HasSuffStat, Mode, Rv, SuffStat,
-};
+use crate::rv::traits::{ConjugatePrior, Entropy, HasSuffStat, Mode, Rv};
 use crate::UpdatePrior;
+use lace_consts::rv::data::CategoricalSuffStat;
+use lace_consts::rv::prelude::{Beta, Dirichlet};
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub struct DpDiscreteSuffStat {
-    n: usize,
-    counts: Vec<usize>,
+/// The minimum stick breaking mass
+pub const BETA_0: f64 = 1e-6;
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DpdHyper {
+    pub gamma: Gamma,
 }
 
-impl DpDiscreteSuffStat {
-    pub fn new() -> Self {
+impl Default for DpdHyper {
+    fn default() -> Self {
         Self {
-            n: 0,
-            counts: Vec::new(),
+            gamma: Gamma::new_unchecked(2.0, 2.0),
         }
     }
 }
 
-impl SuffStat<usize> for DpDiscreteSuffStat {
-    fn n(&self) -> usize {
-        self.n
-    }
-
-    fn forget(&mut self, x: &usize) {
-        if self.n == 1 {
-            self.n = 0;
-            self.counts = Vec::new();
-        } else if self.counts[*x] == 1 {
-            // remove this
-            self.counts.remove(*x);
-        } else {
-            // could should be greater than 1
-            self.counts[*x] -= 1;
+impl DpdHyper {
+    pub fn draw<R: rand::Rng>(
+        &self,
+        k_r: usize,
+        m: usize,
+        rng: &mut R,
+    ) -> DpdPrior {
+        let alpha = self.gamma.draw(rng);
+        DpdPrior::Symmetric {
+            k_r,
+            m,
+            dir: SymmetricDirichlet::new_unchecked(alpha, k_r + m),
         }
     }
+}
 
-    fn observe(&mut self, x: &usize) {
-        unimplemented!()
+impl DpdHyper {
+    pub fn new() -> Self {
+        DpdHyper::default()
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct DpDiscrete {
+pub struct Dpd {
     k: usize,
     m: usize,
     categorical: Categorical,
 }
 
-impl DpDiscrete {
+impl Dpd {
     pub fn new(k: usize, weights: &[f64]) -> Result<Self, CategoricalError> {
         let categorical = Categorical::new(weights)?;
         Ok(Self {
@@ -94,7 +92,7 @@ impl DpDiscrete {
     }
 }
 
-impl Rv<usize> for DpDiscrete {
+impl Rv<usize> for Dpd {
     fn ln_f(&self, x: &usize) -> f64 {
         let ln_weights = self.categorical.ln_weights();
         if *x >= self.k {
@@ -109,110 +107,258 @@ impl Rv<usize> for DpDiscrete {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialOrd, PartialEq)]
-pub struct StickBreaking {
-    // k: usize,
-    alpha: f64,
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum DpdPrior {
+    Symmetric {
+        k_r: usize,
+        m: usize,
+        dir: SymmetricDirichlet,
+    },
+    Dirichlet {
+        k_r: usize,
+        m: usize,
+        dir: Dirichlet,
+    },
 }
 
-impl StickBreaking {
-    pub fn new_unchecked(alpha: f64) -> Self {
-        Self { alpha }
+impl DpdPrior {
+    pub fn new_unchecked(k_realized: usize, m: usize, alpha: f64) -> Self {
+        Self::Symmetric {
+            k_r: k_realized,
+            m,
+            dir: SymmetricDirichlet::new_unchecked(alpha, k_realized + m),
+        }
     }
 
-    pub fn alpha(&self) -> f64 {
-        self.alpha
+    pub fn sym_alpha(&self) -> Option<f64> {
+        match self {
+            Self::Symmetric { dir, .. } => Some(dir.alpha()),
+            _ => None,
+        }
+    }
+
+    fn set_sym_alpha(&mut self, alpha: f64) {
+        match self {
+            Self::Symmetric { dir, .. } => dir.set_alpha(alpha).unwrap(),
+            _ => {
+                panic!("cannot set sym_alpha of Dirichlet variant")
+            }
+        }
+    }
+
+    pub fn k(&self) -> usize {
+        match self {
+            Self::Symmetric { k_r, .. } => *k_r,
+            Self::Dirichlet { k_r, .. } => *k_r,
+        }
+    }
+
+    pub fn m(&self) -> usize {
+        match self {
+            Self::Symmetric { m, .. } => *m,
+            Self::Dirichlet { m, .. } => *m,
+        }
     }
 }
 
-impl Default for StickBreaking {
-    fn default() -> Self {
-        StickBreaking::new_unchecked(1.0)
-    }
-}
-
-impl HasSuffStat<usize> for DpDiscrete {
-    type Stat = DpDiscreteSuffStat;
+impl HasSuffStat<usize> for Dpd {
+    type Stat = CategoricalSuffStat;
 
     fn empty_suffstat(&self) -> Self::Stat {
-        DpDiscreteSuffStat::new()
+        Self::Stat::new(self.k + self.m)
     }
 }
 
-impl Rv<DpDiscrete> for StickBreaking {
-    fn ln_f(&self, x: &DpDiscrete) -> f64 {
-        unimplemented!()
+impl Rv<Dpd> for DpdPrior {
+    fn ln_f(&self, x: &Dpd) -> f64 {
+        let beta = Beta::new_unchecked(1.0, self.sym_alpha().unwrap());
+        x.categorical
+            .ln_weights()
+            .iter()
+            .fold((1.0, 0.0), |(b0, ln_f), &ln_w| {
+                let w = ln_w.exp();
+                (b0 - w, ln_f + beta.ln_f(&(w / b0)))
+            })
+            .1
     }
 
-    fn draw<R: rand::Rng>(&self, rng: &mut R) -> DpDiscrete {
-        unimplemented!()
+    fn draw<R: rand::Rng>(&self, rng: &mut R) -> Dpd {
+        match self {
+            Self::Symmetric { k_r, m, dir } => {
+                let cat: Categorical = dir.draw(rng);
+                Dpd {
+                    k: *k_r,
+                    m: *m,
+                    categorical: cat,
+                }
+            }
+            Self::Dirichlet { k_r, m, dir } => {
+                let cat: Categorical = dir.draw(rng);
+                Dpd {
+                    k: *k_r,
+                    m: *m,
+                    categorical: cat,
+                }
+            }
+        }
     }
 }
 
-impl Rv<StickBreaking> for Gamma {
-    fn ln_f(&self, x: &StickBreaking) -> f64 {
-        self.ln_f(&x.alpha)
+impl Rv<Dpd> for SymmetricDirichlet {
+    fn ln_f(&self, x: &Dpd) -> f64 {
+        self.ln_f(&x.categorical)
     }
 
-    fn draw<R: rand::Rng>(&self, rng: &mut R) -> StickBreaking {
-        let alpha: f64 = self.draw(rng);
-        StickBreaking { alpha }
+    fn draw<R: rand::Rng>(&self, rng: &mut R) -> Dpd {
+        let categorical: Categorical = self.draw(rng);
+        Dpd {
+            k: categorical.k(),
+            m: 3,
+            categorical,
+        }
     }
 }
 
-impl ConjugatePrior<usize, DpDiscrete> for StickBreaking {
-    type LnMCache = ();
-    type LnPpCache = ();
-    type Posterior = StickBreaking;
+impl Rv<Dpd> for Dirichlet {
+    fn ln_f(&self, x: &Dpd) -> f64 {
+        self.ln_f(&x.categorical)
+    }
+
+    fn draw<R: rand::Rng>(&self, rng: &mut R) -> Dpd {
+        let categorical: Categorical = self.draw(rng);
+        Dpd {
+            k: categorical.k(),
+            m: 3,
+            categorical,
+        }
+    }
+}
+
+fn dpd_to_cat_suffstat<'a>(
+    stat_dpd: &'a DataOrSuffStat<usize, Dpd>,
+) -> DataOrSuffStat<'a, usize, Categorical> {
+    match stat_dpd {
+        DataOrSuffStat::SuffStat(stat) => DataOrSuffStat::SuffStat(*stat),
+        DataOrSuffStat::Data(xs) => DataOrSuffStat::Data(xs),
+        DataOrSuffStat::None => DataOrSuffStat::None,
+    }
+}
+
+impl ConjugatePrior<usize, Dpd> for SymmetricDirichlet {
+    type LnMCache =
+        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::LnMCache;
+    type LnPpCache =
+        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::LnPpCache;
+    type Posterior = Dirichlet;
 
     fn ln_m_cache(&self) -> Self::LnMCache {
-        unimplemented!()
+        <Self as ConjugatePrior<usize, Categorical>>::ln_m_cache(self)
     }
 
-    fn ln_pp_cache(
-        &self,
-        x: &DataOrSuffStat<usize, DpDiscrete>,
-    ) -> Self::LnPpCache {
-        unimplemented!()
+    fn ln_pp_cache(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::LnPpCache {
+        let x = dpd_to_cat_suffstat(x);
+        <Self as ConjugatePrior<usize, Categorical>>::ln_pp_cache(self, &x)
+        // self.ln_pp_cache(x)
     }
 
     fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &usize) -> f64 {
-        unimplemented!()
+        <Self as ConjugatePrior<usize, Categorical>>::ln_pp_with_cache(
+            self, cache, y,
+        )
     }
 
     fn ln_m_with_cache(
         &self,
         cache: &Self::LnMCache,
-        x: &DataOrSuffStat<usize, DpDiscrete>,
+        x: &DataOrSuffStat<usize, Dpd>,
     ) -> f64 {
-        unimplemented!()
+        let x = dpd_to_cat_suffstat(x);
+        self.ln_m_with_cache(cache, &x)
     }
 
-    fn posterior(
-        &self,
-        x: &DataOrSuffStat<usize, DpDiscrete>,
-    ) -> Self::Posterior {
-        unimplemented!()
+    fn posterior(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::Posterior {
+        let x = dpd_to_cat_suffstat(x);
+        self.posterior(&x)
     }
 }
 
-impl Entropy for DpDiscrete {
+impl ConjugatePrior<usize, Dpd> for DpdPrior {
+    type LnMCache =
+        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::LnMCache;
+    type LnPpCache =
+        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::LnPpCache;
+    type Posterior = DpdPrior;
+
+    fn ln_m_cache(&self) -> Self::LnMCache {
+        if let Self::Symmetric { dir, .. } = self {
+            <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::ln_m_cache(dir)
+        } else {
+            panic!("Cannot compute ln_m_cache for DpdPrior::Dirichlet")
+        }
+    }
+
+    fn ln_pp_cache(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::LnPpCache {
+        if let Self::Symmetric { dir, .. } = self {
+            dir.ln_pp_cache(x)
+        } else {
+            panic!("Cannot compute ln_pp_cache for DpdPrior::Dirichlet")
+        }
+    }
+
+    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &usize) -> f64 {
+        if let Self::Symmetric { dir, .. } = self {
+            <SymmetricDirichlet as ConjugatePrior<usize, Dpd>>::ln_pp_with_cache(
+                dir, cache, y,
+            )
+        } else {
+            panic!("Cannot compute ln_m_with_cache for DpdPrior::Dirichlet")
+        }
+    }
+
+    fn ln_m_with_cache(
+        &self,
+        cache: &Self::LnMCache,
+        x: &DataOrSuffStat<usize, Dpd>,
+    ) -> f64 {
+        if let Self::Symmetric { dir, .. } = self {
+            <SymmetricDirichlet as ConjugatePrior<usize, Dpd>>::ln_m_with_cache(
+                dir, cache, x,
+            )
+        } else {
+            panic!("Cannot compute ln_m_with_cache for DpdPrior::Dirichlet")
+        }
+    }
+
+    fn posterior(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::Posterior {
+        if let Self::Symmetric { dir, m, k_r } = self {
+            DpdPrior::Dirichlet {
+                m: *m,
+                k_r: *k_r,
+                dir: dir.posterior(x),
+            }
+        } else {
+            panic!("Cannot compute posterior for DpdPrior::Dirichlet")
+        }
+    }
+}
+
+impl Entropy for Dpd {
     fn entropy(&self) -> f64 {
         self.categorical.entropy()
     }
 }
 
-impl Mode<usize> for DpDiscrete {
+impl Mode<usize> for Dpd {
     fn mode(&self) -> Option<usize> {
         self.categorical.mode()
     }
 }
 
-impl UpdatePrior<usize, DpDiscrete, Gamma> for StickBreaking {
+impl UpdatePrior<usize, Dpd, DpdHyper> for DpdPrior {
     fn update_prior<R: rand::Rng>(
         &mut self,
-        components: &[&DpDiscrete],
-        hyper: &Gamma,
+        components: &[&Dpd],
+        hyper: &DpdHyper,
         rng: &mut R,
     ) -> f64 {
         let k = components[0].k;
@@ -226,14 +372,14 @@ impl UpdatePrior<usize, DpDiscrete, Gamma> for StickBreaking {
         };
 
         let res = crate::mh::mh_prior(
-            self.alpha,
+            self.sym_alpha().unwrap(),
             ln_prior,
-            |r| hyper.draw(r),
+            |r| hyper.gamma.draw(r),
             200,
             rng,
         );
 
-        self.alpha = res.x;
+        self.set_sym_alpha(res.x);
 
         res.score_x
     }

@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::DpDiscrete;
+use lace_stats::experimental::dp_discrete::Dpd;
 use lace_stats::rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
 
 #[derive(Clone, Debug)]
@@ -17,7 +17,7 @@ pub enum Component {
     Count(Poisson),
     /// Index-type component
     #[cfg(feature = "experimental")]
-    Index(DpDiscrete),
+    Index(Dpd),
 }
 
 macro_rules! impl_from_traits {
@@ -48,4 +48,4 @@ impl_from_traits!(Poisson, Count);
 impl_from_traits!(Bernoulli, Binary);
 impl_from_traits!(Categorical);
 #[cfg(feature = "experimental")]
-impl_from_traits!(DpDiscrete, Index);
+impl_from_traits!(Dpd, Index);

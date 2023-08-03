@@ -1,4 +1,4 @@
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
 use rayon::slice::{ParallelSlice, ParallelSliceMut};
 
@@ -220,6 +220,15 @@ where
     #[inline]
     fn index(&self, (i, j): (usize, usize)) -> &Self::Output {
         &self.values[self.n_cols * i + j]
+    }
+}
+
+impl<T> IndexMut<(usize, usize)> for Matrix<T>
+where
+    T: Send + Sync,
+{
+    fn index_mut(&mut self, (i, j): (usize, usize)) -> &mut Self::Output {
+        &mut self.values[self.n_cols * i + j]
     }
 }
 

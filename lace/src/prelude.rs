@@ -2,9 +2,9 @@
 
 pub use crate::{
     update_handler, AppendStrategy, Builder, Datum, Engine, EngineUpdateConfig,
-    Given, HasData, ImputeUncertaintyType, InsertMode, LatentColumnType,
-    MiType, OracleT, OverwriteMode, PredictUncertaintyType, Row,
-    RowSimilarityVariant, SupportExtension, Value, WriteMode,
+    Given, HasData, HasStates, ImputeUncertaintyType, InsertMode,
+    LatentColumnType, MiType, OracleT, OverwriteMode, PredictUncertaintyType,
+    Row, RowSimilarityVariant, SupportExtension, Value, WriteMode,
 };
 
 pub use crate::data::DataSource;

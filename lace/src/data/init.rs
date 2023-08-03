@@ -51,12 +51,11 @@ use crate::codebook::{CodebookError, ValueMap};
 use crate::error::DataParseError;
 use lace_data::{Container, SparseContainer};
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::StickBreaking;
+use lace_stats::experimental::dp_discrete::{DpdHyper, DpdPrior};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
-use lace_stats::rv::traits::Rv;
 
 use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;
@@ -123,8 +122,10 @@ fn count_col_model<R: rand::Rng>(
 fn index_col_model<R: rand::Rng>(
     id: usize,
     srs: &Series,
-    hyper_opt: Option<Gamma>,
-    prior_opt: Option<StickBreaking>,
+    k_r: usize,
+    m: usize,
+    hyper_opt: Option<DpdHyper>,
+    prior_opt: Option<DpdPrior>,
     mut rng: &mut R,
 ) -> Result<ColModel, CodebookError> {
     let xs: Vec<Option<usize>> =
@@ -133,13 +134,13 @@ fn index_col_model<R: rand::Rng>(
     let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
         (Some(hy), Some(pr)) => (hy, pr, true),
         (Some(hy), None) => {
-            let pr = hy.draw(rng);
+            let pr = hy.draw(k_r, m, rng);
             (hy, pr, false)
         }
-        (None, Some(pr)) => (Gamma::default(), pr, true),
+        (None, Some(pr)) => (DpdHyper::default(), pr, true),
         (None, None) => {
-            let hy = Gamma::default();
-            let pr = hy.draw(&mut rng);
+            let hy = DpdHyper::default();
+            let pr = hy.draw(k_r, m, &mut rng);
             (hy, pr, false)
         }
     };
@@ -289,10 +290,21 @@ pub fn df_to_col_models<R: rand::Rng>(
                 )
                 .map_err(DataParseError::Codebook),
                 #[cfg(feature = "experimental")]
-                ColType::Index { hyper, prior } => {
-                    index_col_model(id, srs, hyper.clone(), prior.clone(), rng)
-                        .map_err(DataParseError::Codebook)
-                }
+                ColType::Index {
+                    k_r,
+                    m,
+                    hyper,
+                    prior,
+                } => index_col_model(
+                    id,
+                    srs,
+                    *k_r,
+                    *m,
+                    hyper.clone(),
+                    prior.clone(),
+                    rng,
+                )
+                .map_err(DataParseError::Codebook),
             };
 
             // If missing not at random, convert the column type

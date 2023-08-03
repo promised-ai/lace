@@ -1,23 +1,23 @@
 //! Experimental implementations
-use lace_consts::rv::dist::Gamma;
+use lace_consts::rv::data::CategoricalSuffStat;
 use lace_consts::rv::traits::{ConjugatePrior, Rv};
 use lace_data::{Container, Datum, FeatureData, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeSummarize};
+use once_cell::sync::OnceCell;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use std::collections::HashSet;
-use thiserror::Error;
 
+use crate::assignment::Assignment;
+use crate::component::ConjugateComponent;
 use crate::feature::geweke::{ColumnGewekeSettings, GewekeColumnSummary};
-use crate::feature::{Column, FType, Feature, TranslateDatum};
+use crate::feature::{ColModel, Column, FType, Feature, TranslateDatum};
 use crate::state::State;
 use crate::traits::AccumScore;
 use crate::traits::LacePrior;
 use crate::view::View;
-use lace_stats::experimental::dp_discrete::{
-    DpDiscrete, DpDiscreteSuffStat, StickBreaking,
-};
+use lace_stats::experimental::dp_discrete::{Dpd, DpdHyper, DpdPrior};
 use lace_utils::{Matrix, Shape};
 
 pub struct ViewSliceMatrix {
@@ -37,12 +37,6 @@ impl ViewSliceMatrix {
     pub fn n_cats(&self) -> usize {
         self.matrix.n_rows()
     }
-}
-
-#[derive(Clone, Debug, Error)]
-enum CabnError {
-    #[error("Child columns {col_ix} is not categorical {ftype:?}")]
-    ChildNotCategorical { col_ix: usize, ftype: FType },
 }
 
 impl View {
@@ -135,20 +129,59 @@ impl State {
                 view.integrate_slice_assign(logps, &mut rng);
             });
     }
+
+    // append a linking partition column to the table
+    pub fn append_partition_column<R: Rng>(
+        &mut self,
+        asgn: &Assignment,
+        rng: &mut R,
+    ) {
+        // 1. choose a random view for this column
+        let view_ix = rng.gen_range(0..self.n_views());
+
+        // 2. Initialize the ColModel
+        let ftr: ColModel = {
+            let n_cols = self.n_cols();
+            let n_cats = self.views[view_ix].n_cats();
+
+            let hyper = DpdHyper::new();
+            let prior = hyper.draw(asgn.n_cats, 3, rng);
+            let components = (0..n_cats)
+                .map(|_| ConjugateComponent::new(prior.draw(rng)))
+                .collect::<Vec<_>>();
+
+            ColModel::Index(Column {
+                id: n_cols,
+                data: SparseContainer::from(asgn.asgn.clone()),
+                components,
+                prior,
+                hyper,
+                ignore_hyper: false,
+                ln_m_cache: OnceCell::new(),
+            })
+        };
+
+        // 3. Insert into the view
+        self.views[view_ix].insert_feature(ftr, rng);
+
+        // 4. increment assignment
+        self.asgn.asgn.push(view_ix);
+        self.asgn.counts[view_ix] += 1;
+    }
 }
 
-impl AccumScore<usize> for DpDiscrete {}
+impl AccumScore<usize> for Dpd {}
 
-impl LacePrior<usize, DpDiscrete, Gamma> for StickBreaking {
-    fn empty_suffstat(&self) -> DpDiscreteSuffStat {
-        DpDiscreteSuffStat::new()
+impl LacePrior<usize, Dpd, DpdHyper> for DpdPrior {
+    fn empty_suffstat(&self) -> CategoricalSuffStat {
+        CategoricalSuffStat::new(self.k() + self.m())
     }
 
-    fn invalid_temp_component(&self) -> DpDiscrete {
-        DpDiscrete::uniform(2, 1)
+    fn invalid_temp_component(&self) -> Dpd {
+        Dpd::uniform(self.k(), self.m())
     }
 
-    fn score_column<I: Iterator<Item = DpDiscreteSuffStat>>(
+    fn score_column<I: Iterator<Item = CategoricalSuffStat>>(
         &self,
         stats: I,
     ) -> f64 {
@@ -163,7 +196,7 @@ impl LacePrior<usize, DpDiscrete, Gamma> for StickBreaking {
     }
 }
 
-impl TranslateDatum<usize> for Column<usize, DpDiscrete, StickBreaking, Gamma> {
+impl TranslateDatum<usize> for Column<usize, Dpd, DpdPrior, DpdHyper> {
     fn translate_datum(datum: Datum) -> usize {
         match datum {
             Datum::Index(x) => x,
@@ -193,22 +226,24 @@ impl TranslateDatum<usize> for Column<usize, DpDiscrete, StickBreaking, Gamma> {
 
 // Geweke for DpDiscrete
 // ---------------------
-impl GewekeModel for Column<usize, DpDiscrete, StickBreaking, Gamma> {
+impl GewekeModel for Column<usize, Dpd, DpdPrior, DpdHyper> {
     #[must_use]
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
     ) -> Self {
-        let k = 5;
+        let k_r = 5;
         let m = 3;
-        let f = DpDiscrete::uniform(k, m);
+
+        let f = Dpd::uniform(k_r, m);
         let xs: Vec<usize> = f.sample(settings.asgn().len(), &mut rng);
+
         let data = SparseContainer::from(xs); // initial data is resampled anyway
-        let hyper = Gamma::new_unchecked(4.0, 4.0);
+        let hyper = DpdHyper::default();
         let prior = if settings.fixed_prior() {
-            StickBreaking::default()
+            DpdPrior::new_unchecked(k_r, m, 2.0)
         } else {
-            hyper.draw(&mut rng)
+            hyper.draw(k_r, m, &mut rng)
         };
         let mut col = Column::new(0, data, prior, hyper);
         col.init_components(settings.asgn().n_cats, &mut rng);
@@ -228,7 +263,7 @@ impl GewekeModel for Column<usize, DpDiscrete, StickBreaking, Gamma> {
     }
 }
 
-impl GewekeSummarize for Column<usize, DpDiscrete, StickBreaking, Gamma> {
+impl GewekeSummarize for Column<usize, Dpd, DpdPrior, DpdHyper> {
     type Summary = GewekeColumnSummary;
 
     fn geweke_summarize(
@@ -263,7 +298,7 @@ impl GewekeSummarize for Column<usize, DpDiscrete, StickBreaking, Gamma> {
             sq_weight_mean,
             weight_mean,
             prior_alpha: if !settings.fixed_prior() {
-                Some(self.prior.alpha())
+                Some(self.prior.sym_alpha().expect("Wrong variant - oops!"))
             } else {
                 None
             },

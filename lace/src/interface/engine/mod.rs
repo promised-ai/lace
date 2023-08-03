@@ -972,14 +972,14 @@ impl Engine {
             .default_transitions()
             .n_iters(n_iters);
 
-        self.update(config, ())
+        self.update(&config, ())
     }
 
     /// Run each `State` in the `Engine` according to the config. If the
     /// `Engine` is empty, `update` will return immediately.
     pub fn update<U>(
         &mut self,
-        config: EngineUpdateConfig,
+        config: &EngineUpdateConfig,
         mut update_handler: U,
     ) -> Result<(), crate::metadata::Error>
     where

@@ -181,7 +181,7 @@ impl Datum {
             Datum::Count(x) => Some(f64::from(*x)),
             Datum::Missing => None,
             #[cfg(feature = "experimental")]
-            Datum::Index(x) => None,
+            Datum::Index(_) => None,
         }
     }
 
@@ -208,7 +208,7 @@ impl Datum {
             Datum::Count(..) => None,
             Datum::Missing => None,
             #[cfg(feature = "experimental")]
-            Datum::Index(x) => None,
+            Datum::Index(_) => None,
         }
     }
 

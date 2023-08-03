@@ -231,14 +231,16 @@ fn gen_feature<R: rand::Rng>(
             ColModel::Categorical(col)
         }
         #[cfg(feature = "experimental")]
-        ColType::Index { .. } => {
-            use lace_stats::experimental::dp_discrete::StickBreaking;
+        ColType::Index { k_r, m, .. } => {
+            use lace_stats::experimental::dp_discrete::{
+                Dpd, DpdHyper, DpdPrior,
+            };
 
-            let hyper = Gamma::default();
-            let prior = StickBreaking::default();
-            let cat = Categorical::uniform(10);
+            let hyper = DpdHyper::default();
+            let prior: DpdPrior = hyper.draw(k_r, m, rng);
+            let dpd: Dpd = prior.draw(rng);
             let data = {
-                let xs: Vec<usize> = cat.sample(n_rows, rng);
+                let xs: Vec<usize> = dpd.sample(n_rows, rng);
                 SparseContainer::from(xs)
             };
             let col = Column::new(id, data, prior, hyper);

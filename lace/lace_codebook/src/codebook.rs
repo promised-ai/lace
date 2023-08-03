@@ -2,6 +2,8 @@ use crate::error::{
     ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
 };
 use crate::{CodebookError, ValueMap};
+#[cfg(feature = "experimental")]
+use lace_stats::experimental::dp_discrete::DpdHyper;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -15,7 +17,7 @@ use std::io::{self, Read};
 use std::path::Path;
 
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::StickBreaking;
+use lace_stats::experimental::dp_discrete::DpdPrior;
 
 /// A structure that enforces unique IDs and row names.
 ///
@@ -509,8 +511,12 @@ pub enum ColType {
     #[cfg(feature = "experimental")]
     /// Index type
     Index {
-        hyper: Option<Gamma>,
-        prior: Option<StickBreaking>,
+        /// The number of realized classes
+        k_r: usize,
+        /// Additional number of hypothetical classes for finite approximation
+        m: usize,
+        hyper: Option<DpdHyper>,
+        prior: Option<DpdPrior>,
     },
 }
 

@@ -8,7 +8,7 @@ use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
 use lace_cc::view::View;
 use lace_data::{FeatureData, SparseContainer};
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::{DpDiscrete, StickBreaking};
+use lace_stats::experimental::dp_discrete::{Dpd, DpdHyper, DpdPrior};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -209,7 +209,7 @@ pub enum DatalessColModel {
     MissingNotAtRandom(DatalessMissingNotAtRandom),
     Latent(DatalessLatent),
     #[cfg(feature = "experimental")]
-    Index(DatalessColumn<usize, DpDiscrete, StickBreaking, Gamma>),
+    Index(DatalessColumn<usize, Dpd, DpdPrior, DpdHyper>),
 }
 
 impl From<ColModel> for DatalessColModel {
@@ -326,7 +326,7 @@ col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 col2dataless!(u32, Poisson, Gamma, PgHyper);
 col2dataless!(bool, Bernoulli, Beta, ());
 #[cfg(feature = "experimental")]
-col2dataless!(usize, DpDiscrete, StickBreaking, Gamma);
+col2dataless!(usize, Dpd, DpdPrior, DpdHyper);
 
 struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
 where
@@ -366,7 +366,7 @@ dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 dataless2col!(u32, Poisson, Gamma, PgHyper);
 dataless2col!(bool, Bernoulli, Beta, ());
 #[cfg(feature = "experimental")]
-dataless2col!(usize, DpDiscrete, StickBreaking, Gamma);
+dataless2col!(usize, Dpd, DpdPrior, DpdHyper);
 
 impl_metadata_version!(Metadata, METADATA_VERSION);
 impl_metadata_version!(Codebook, METADATA_VERSION);

@@ -30,7 +30,7 @@ use crate::traits::{
 use lace_data::Datum;
 
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::{DpDiscrete, StickBreaking};
+use lace_stats::experimental::dp_discrete::{Dpd, DpdHyper, DpdPrior};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
@@ -66,7 +66,7 @@ pub enum ColModel {
     MissingNotAtRandom(super::mnar::MissingNotAtRandom),
     Latent(super::latent::Latent),
     #[cfg(feature = "experimental")]
-    Index(Column<usize, DpDiscrete, StickBreaking, Gamma>),
+    Index(Column<usize, Dpd, DpdPrior, DpdHyper>),
 }
 
 impl ColModel {

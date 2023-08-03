@@ -12,7 +12,6 @@ use lace_data::SparseContainer;
 use lace_data::{Category, Datum};
 use lace_stats::rv::data::CategoricalSuffStat;
 use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
-use lace_stats::rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;
@@ -986,18 +985,45 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     }
                 }
                 #[cfg(feature = "experimental")]
-                ColType::Index { hyper, prior } => new_col_arm!(
-                    Index,
-                    crate::stats::rv::dist::Gamma,
-                    NoIndexHyperForNewColumn,
-                    colmd,
+                ColType::Index {
+                    k_r,
+                    m,
                     hyper,
                     prior,
-                    n_rows,
-                    id,
-                    usize,
-                    rng
-                ),
+                    ..
+                } => {
+                    let data: SparseContainer<usize> =
+                        SparseContainer::all_missing(n_rows);
+
+                    let id = i + n_cols;
+                    match (hyper, prior) {
+                        (Some(h), _) => {
+                            let pr = if let Some(pr) = prior {
+                                pr.clone()
+                            } else {
+                                h.draw(*k_r, *m, &mut rng)
+                            };
+                            let column = Column::new(id, data, pr, h.clone());
+                            Ok(ColModel::Index(column))
+                        }
+                        (None, Some(pr)) => {
+                            use lace_stats::experimental::dp_discrete::DpdHyper;
+                            let mut column = Column::new(
+                                id,
+                                data,
+                                pr.clone(),
+                                DpdHyper::default(),
+                            );
+                            column.ignore_hyper = true;
+                            Ok(ColModel::Index(column))
+                        }
+                        (None, None) => {
+                            Err(InsertDataError::NoIndexHyperForNewColumn(
+                                colmd.name.clone(),
+                            ))
+                        }
+                    }
+                }
             }
         })
         .collect()

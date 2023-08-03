@@ -148,7 +148,7 @@ impl Example {
             timeout.map(Duration::from_secs).unwrap_or(Duration::MAX),
         );
 
-        engine.update(config, timeout)?;
+        engine.update(&config, timeout)?;
         engine
             .save(paths.lace.as_path(), lace_metadata::SerializedType::Yaml)?;
         Ok(())
