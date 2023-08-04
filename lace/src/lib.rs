@@ -184,6 +184,11 @@ pub use interface::{
     WriteMode,
 };
 
+#[cfg(feature = "experimental")]
+pub mod experimental {
+    pub use crate::interface::SliceRowMatrices;
+}
+
 pub mod error {
     pub use super::interface::error::*;
 }

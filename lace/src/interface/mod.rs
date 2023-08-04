@@ -9,6 +9,10 @@ pub use engine::{
     InsertDataActions, InsertMode, LatentColumnType, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
 };
+
+#[cfg(feature = "experimental")]
+pub use engine::experimental::SliceRowMatrices;
+
 use lace_codebook::Codebook;
 pub use lace_metadata::latest::Metadata;
 pub use oracle::utils;

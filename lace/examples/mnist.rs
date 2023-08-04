@@ -252,45 +252,4 @@ fn main() {
     pbar.finish();
 
     engine.save(dst, SerializedType::Bincode).unwrap()
-
-    // let given_nothing: Given<usize> = Given::Nothing;
-    // let n_rows = engine.shape().0;
-    // let mut pixels = {
-    //     let rows = (0..n_rows)
-    //         .map(|_| {
-    //             let values = engine
-    //                 .simulate(&z_cols, &given_nothing, 1, None, &mut rng)
-    //                 .unwrap();
-    //             let conditions = values[0]
-    //                 .iter()
-    //                 .zip(z_cols.iter())
-    //                 .map(|(z, &ix)| (ix, z.clone()))
-    //                 .collect::<Vec<(usize, Datum)>>();
-    //             engine
-    //                 .simulate(
-    //                     &col_ixs,
-    //                     &Given::Conditions(conditions),
-    //                     1,
-    //                     None,
-    //                     &mut rng,
-    //                 )
-    //                 .unwrap()
-    //                 .pop()
-    //                 .unwrap()
-    //         })
-    //         .collect::<Vec<Vec<Datum>>>();
-    //     let mut pixels = DataFrame::default();
-    //     for col_ix in 0..n_cols {
-    //         let col: Vec<f64> = rows
-    //             .iter()
-    //             .map(|row| row[col_ix].to_f64_opt().unwrap())
-    //             .collect();
-    //         let srs = Series::new(format!("px_{col_ix}").as_str(), col);
-    //         pixels.with_column(srs).unwrap();
-    //     }
-    //     pixels
-    // };
-
-    // let mut file = std::fs::File::create(dst).unwrap();
-    // CsvWriter::new(&mut file).finish(&mut pixels).unwrap();
 }
