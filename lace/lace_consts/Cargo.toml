@@ -1,6 +1,6 @@
 [package]
 name = "lace_consts"
-version = "0.1.2"
+version = "0.1.4"
 authors = ["Promied AI"]
 edition = "2021"
 license = "SSPL-1.0"
@@ -9,4 +9,4 @@ repository = "https://github.com/promised-ai/lace"
 description = "Default constants for Lace"
 
 [dependencies]
-rv = { version = "0.15.0", features = ["serde1", "arraydist"] }
+rv = { version = "0.16.0", features = ["serde1", "arraydist"] }

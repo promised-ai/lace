@@ -213,25 +213,29 @@ jobs:
         run: |
           pip install yq
           DEPLOYING_VERSION=$(echo "$NEW_VERSION" | perl -lpe 's/^rust-//')
-          find . -name Cargo.toml -exec tomlq -r .package.version {} \; | xargs -n 1 test "$DEPLOYING_VERSION" =
-
-      - name: Publish to Crates.io
+          MAIN_VERSION=$(tomlq -r .package.version Cargo.toml)
+          test "$DEPLOYING_VERSION" = "$MAIN_VERSION"
+      - name: Install dependencies
+        run: cargo install cargo-crate
+      - name: Publish Updated Crates to Crates.io
         working-directory: lace
-        run: |
-          cargo publish --token "${CRATES_TOKEN}" -p lace_utils
-
-          cargo publish --token "${CRATES_TOKEN}" -p lace_consts
-          cargo publish --token "${CRATES_TOKEN}" -p lace_data
-
-          cargo publish --token "${CRATES_TOKEN}" -p lace_stats
-
-          cargo publish --token "${CRATES_TOKEN}" -p lace_codebook
-          cargo publish --token "${CRATES_TOKEN}" -p lace_geweke
-
-          cargo publish --token "${CRATES_TOKEN}" -p lace_cc
-
-          cargo publish --token "${CRATES_TOKEN}" -p lace_metadata
-
-          cargo publish --token "${CRATES_TOKEN}" -p lace
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
+          PACKAGE_ORDER: "lace_utils lace_consts lace_data lace_stats lace_codebook lace_geweke lace_cc lace_metadata lace"
+        run: |
+          for PACKAGE_NAME in $PACKAGE_ORDER
+          do
+            echo "Processing package $PACKAGE_NAME"
+            if [ "$PACKAGE_NAME" == 'lace' ]
+            then
+              CARGO_FILE="Cargo.toml"
+            else
+              CARGO_FILE="$PACKAGE_NAME/Cargo.toml"
+            fi
+            PACKAGE_VERSION=$(tomlq .package.version $CARGO_FILE)
+            ALREADY_PUBLISHED=$(cargo crate info $PACKAGE_NAME --json --max-versions 100 | jq '[.krate.versions[].num] | any(. == '$PACKAGE_VERSION')')
+            if [ "$ALREADY_PUBLISHED" == 'false' ]
+            then
+              cargo publish --token "${CRATES_TOKEN}" -p $PACKAGE_NAME
+            fi
+          done

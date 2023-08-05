@@ -75,31 +75,35 @@ pub struct RunArgs {
     #[clap(long = "n-states", short = 's', default_value = "8")]
     pub nstates: usize,
     /// The number of iterations to run each state
-    #[clap(long = "n-iters", short = 'n', required_unless = "run-config")]
+    #[clap(
+        long = "n-iters",
+        short = 'n',
+        required_unless_present = "run_config"
+    )]
     pub n_iters: Option<usize>,
     /// The number of iterations between state saves
-    #[clap(short = 'C', long, conflicts_with = "run-config")]
+    #[clap(short = 'C', long, conflicts_with = "run_config")]
     pub checkpoint: Option<usize>,
     /// The row reassignment algorithm
     #[clap(
         long = "row-alg",
-        possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
+        value_parser = ["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub row_alg: Option<RowAssignAlg>,
     /// The column reassignment algorithm
     #[clap(
         long = "col-alg",
-        possible_values = &["finite_cpu", "gibbs", "slice"],
+        value_parser = ["finite_cpu", "gibbs", "slice"],
     )]
     pub col_alg: Option<ColAssignAlg>,
     /// A list of the state transitions to run
-    #[clap(long = "transitions", use_delimiter = true)]
+    #[clap(long = "transitions", value_delimiter = ',')]
     pub transitions: Option<Vec<Transition>>,
     /// Path to the engine run config yaml file.
     #[clap(
         long,
         help = "Path to Engine run config Yaml",
-        conflicts_with_all = &["transitions", "col-alg", "row-alg", "n-iters"],
+        conflicts_with_all = &["transitions", "col_alg", "row_alg", "n_iters"],
     )]
     pub run_config: Option<PathBuf>,
     /// An offset for the state IDs. The n state will be named
@@ -219,7 +223,7 @@ impl RunArgs {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GammaParameters {
     pub shape: f64,
     pub rate: f64,
@@ -305,7 +309,7 @@ pub struct RegenExamplesArgs {
     #[clap(long, short)]
     pub timeout: Option<u64>,
     /// A list of which examples to regenerate
-    #[clap(long, min_values = 0)]
+    #[clap(long)]
     pub examples: Option<Vec<Example>>,
 }
 

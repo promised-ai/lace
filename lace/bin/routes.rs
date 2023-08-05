@@ -113,11 +113,11 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
 
     if cmd.quiet {
         engine
-            .update(update_config, (timeout, CtrlC::new()))
+            .update(&update_config, (timeout, CtrlC::new()))
             .unwrap();
     } else {
         engine
-            .update(update_config, (timeout, ProgressBar::new(), CtrlC::new()))
+            .update(&update_config, (timeout, ProgressBar::new(), CtrlC::new()))
             .unwrap();
     }
 
@@ -172,11 +172,11 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
 
     if cmd.quiet {
         engine
-            .update(update_config, (timeout, CtrlC::new()))
+            .update(&update_config, (timeout, CtrlC::new()))
             .unwrap();
     } else {
         engine
-            .update(update_config, (timeout, ProgressBar::new(), CtrlC::new()))
+            .update(&update_config, (timeout, ProgressBar::new(), CtrlC::new()))
             .unwrap();
     }
 
