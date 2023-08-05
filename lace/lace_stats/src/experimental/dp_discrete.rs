@@ -167,6 +167,10 @@ impl HasSuffStat<usize> for Dpd {
     fn empty_suffstat(&self) -> Self::Stat {
         Self::Stat::new(self.k + self.m)
     }
+
+    fn ln_f_stat(&self, stat: &Self::Stat) -> f64 {
+        <Categorical as HasSuffStat<usize>>::ln_f_stat(&self.categorical, stat)
+    }
 }
 
 impl Rv<Dpd> for DpdPrior {
