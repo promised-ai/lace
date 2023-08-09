@@ -273,6 +273,32 @@ pub use series_to_opt_vec;
 pub use series_to_strings;
 pub use series_to_vec;
 
+#[cfg(feature = "experimental")]
+fn index_coltype(
+    srs: &Series,
+    no_hypers: bool,
+) -> Result<ColType, CodebookError> {
+    use lace_stats::experimental::dp_discrete::{DpdHyper, DpdPrior};
+
+    let k = {
+        let k_max: u64 = srs.max().unwrap();
+        k_max as usize + 1
+    };
+
+    let (hyper, prior) = if no_hypers {
+        (None, Some(DpdPrior::new_unchecked(k, 3, 0.5)))
+    } else {
+        (Some(DpdHyper::new()), None)
+    };
+
+    Ok(ColType::Index {
+        k_r: k,
+        m: 3,
+        hyper,
+        prior,
+    })
+}
+
 fn uint_coltype(
     srs: &Series,
     cat_cutoff: Option<u8>,
@@ -409,7 +435,10 @@ pub fn series_to_colmd(
         DataType::UInt8 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt16 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt32 => uint_coltype(srs, cat_cutoff, no_hypers),
+        #[cfg(not(feature = "experimental"))]
         DataType::UInt64 => uint_coltype(srs, cat_cutoff, no_hypers),
+        #[cfg(feature = "experimental")]
+        DataType::UInt64 => index_coltype(srs, no_hypers), // FIXME: use cutoff?
         DataType::Int8 => int_coltype(srs, cat_cutoff, no_hypers),
         DataType::Int16 => int_coltype(srs, cat_cutoff, no_hypers),
         DataType::Int32 => int_coltype(srs, cat_cutoff, no_hypers),

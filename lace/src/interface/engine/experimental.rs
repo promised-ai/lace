@@ -18,8 +18,8 @@ impl Engine {
         &mut self,
         targets: &HashSet<usize>,
     ) -> SliceRowMatrices {
-        let seeds: Vec<u64> =
-            (0..self.n_states()).map(|_| self.rng.gen()).collect();
+        let mut rng = self.rng.clone();
+        let seeds: Vec<u64> = (0..self.n_states()).map(|_| rng.gen()).collect();
 
         let state_matrices: Vec<Vec<ViewSliceMatrix>> = self
             .states
