@@ -2,7 +2,9 @@ use crate::rv::data::DataOrSuffStat;
 use crate::rv::dist::{
     Categorical, CategoricalError, Gamma, SymmetricDirichlet,
 };
-use crate::rv::traits::{ConjugatePrior, Entropy, HasSuffStat, Mode, Rv};
+use crate::rv::traits::{
+    ConjugatePrior, Entropy, HasSuffStat, Mode, Rv, SuffStat,
+};
 use crate::UpdatePrior;
 use lace_consts::rv::data::CategoricalSuffStat;
 use lace_consts::rv::prelude::{Beta, Dirichlet};
@@ -10,6 +12,41 @@ use serde::{Deserialize, Serialize};
 
 /// The minimum stick breaking mass
 pub const BETA_0: f64 = 1e-6;
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DpdSuffStat {
+    n: usize,
+    counts: Vec<f64>,
+}
+
+impl DpdSuffStat {
+    pub fn new() -> Self {
+        Self {
+            n: 0,
+            counts: Vec::new(),
+        }
+    }
+}
+
+impl SuffStat<usize> for DpdSuffStat {
+    fn n(&self) -> usize {
+        self.n
+    }
+
+    fn observe(&mut self, x: &usize) {
+        if *x >= self.counts.len() {
+            self.counts.resize(*x + 1, 0.0);
+        }
+
+        self.n += 1;
+        self.counts[*x] += 1.0;
+    }
+
+    fn forget(&mut self, x: &usize) {
+        self.n -= 1;
+        self.counts[*x] -= 1.0;
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DpdHyper {
@@ -162,10 +199,10 @@ impl DpdPrior {
 }
 
 impl HasSuffStat<usize> for Dpd {
-    type Stat = CategoricalSuffStat;
+    type Stat = DpdSuffStat;
 
     fn empty_suffstat(&self) -> Self::Stat {
-        Self::Stat::new(self.k + self.m)
+        Self::Stat::new()
     }
 
     fn ln_f_stat(&self, stat: &Self::Stat) -> f64 {
@@ -238,85 +275,42 @@ impl Rv<Dpd> for Dirichlet {
     }
 }
 
-fn dpd_to_cat_suffstat<'a>(
-    stat_dpd: &'a DataOrSuffStat<usize, Dpd>,
-) -> DataOrSuffStat<'a, usize, Categorical> {
-    match stat_dpd {
-        DataOrSuffStat::SuffStat(stat) => DataOrSuffStat::SuffStat(*stat),
-        DataOrSuffStat::Data(xs) => DataOrSuffStat::Data(xs),
-        DataOrSuffStat::None => DataOrSuffStat::None,
-    }
-}
+fn dpd_posterior_from_stat(
+    stat: &CategoricalSuffStat,
+    dir: &SymmetricDirichlet,
+) -> Dirichlet {
+    let k = stat.counts().len();
+    let alpha = dir.alpha();
+    let stat = DataOrSuffStat::SuffStat(stat);
 
-impl ConjugatePrior<usize, Dpd> for SymmetricDirichlet {
-    type LnMCache =
-        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::LnMCache;
-    type LnPpCache =
-        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::LnPpCache;
-    type Posterior = Dirichlet;
-
-    fn ln_m_cache(&self) -> Self::LnMCache {
-        <Self as ConjugatePrior<usize, Categorical>>::ln_m_cache(self)
-    }
-
-    fn ln_pp_cache(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::LnPpCache {
-        let x = dpd_to_cat_suffstat(x);
-        <Self as ConjugatePrior<usize, Categorical>>::ln_pp_cache(self, &x)
-        // self.ln_pp_cache(x)
-    }
-
-    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &usize) -> f64 {
-        <Self as ConjugatePrior<usize, Categorical>>::ln_pp_with_cache(
-            self, cache, y,
+    if dir.k() < k {
+        let symdir = SymmetricDirichlet::new(alpha, k).unwrap();
+        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::posterior(
+            &symdir, &stat,
         )
-    }
-
-    fn ln_m_with_cache(
-        &self,
-        cache: &Self::LnMCache,
-        x: &DataOrSuffStat<usize, Dpd>,
-    ) -> f64 {
-        let x = dpd_to_cat_suffstat(x);
-        self.ln_m_with_cache(cache, &x)
-    }
-
-    fn posterior(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::Posterior {
-        let x = dpd_to_cat_suffstat(x);
-        self.posterior(&x)
+    } else if dir.k() > k {
+        let symdir = SymmetricDirichlet::new(alpha, dir.k()).unwrap();
+        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::posterior(
+            &symdir, &stat,
+        )
+    } else {
+        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::posterior(
+            dir, &stat,
+        )
     }
 }
 
 impl ConjugatePrior<usize, Dpd> for DpdPrior {
-    type LnMCache =
-        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::LnMCache;
-    type LnPpCache =
-        <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::LnPpCache;
+    type LnMCache = ();
+    type LnPpCache = ();
     type Posterior = DpdPrior;
 
-    fn ln_m_cache(&self) -> Self::LnMCache {
-        if let Self::Symmetric { dir, .. } = self {
-            <SymmetricDirichlet as ConjugatePrior<usize, Categorical>>::ln_m_cache(dir)
-        } else {
-            panic!("Cannot compute ln_m_cache for DpdPrior::Dirichlet")
-        }
-    }
+    fn ln_m_cache(&self) -> Self::LnMCache {}
 
-    fn ln_pp_cache(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::LnPpCache {
-        if let Self::Symmetric { dir, .. } = self {
-            dir.ln_pp_cache(x)
-        } else {
-            panic!("Cannot compute ln_pp_cache for DpdPrior::Dirichlet")
-        }
-    }
+    fn ln_pp_cache(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::LnPpCache {}
 
     fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &usize) -> f64 {
-        if let Self::Symmetric { dir, .. } = self {
-            <SymmetricDirichlet as ConjugatePrior<usize, Dpd>>::ln_pp_with_cache(
-                dir, cache, y,
-            )
-        } else {
-            panic!("Cannot compute ln_m_with_cache for DpdPrior::Dirichlet")
-        }
+        panic!("Cannot compute ln_pp_with_cache for Dpd")
     }
 
     fn ln_m_with_cache(
@@ -324,21 +318,37 @@ impl ConjugatePrior<usize, Dpd> for DpdPrior {
         cache: &Self::LnMCache,
         x: &DataOrSuffStat<usize, Dpd>,
     ) -> f64 {
-        if let Self::Symmetric { dir, .. } = self {
-            <SymmetricDirichlet as ConjugatePrior<usize, Dpd>>::ln_m_with_cache(
-                dir, cache, x,
-            )
-        } else {
-            panic!("Cannot compute ln_m_with_cache for DpdPrior::Dirichlet")
-        }
+        panic!("Cannot compute ln_m_with_cache for Dpd")
     }
 
     fn posterior(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::Posterior {
         if let Self::Symmetric { dir, m, k_r } = self {
+            let stat = match x {
+                DataOrSuffStat::Data(xs) => {
+                    let k = xs.iter().max().unwrap() + 1;
+                    let mut stat_cat = CategoricalSuffStat::new(k);
+                    stat_cat.observe_many(&xs);
+                    stat_cat
+                }
+                DataOrSuffStat::SuffStat(stat) => {
+                    let k = stat.counts.len();
+                    let mut stat_cat = CategoricalSuffStat::new(k);
+                    for (ix, ct) in stat.counts.iter().enumerate() {
+                        for _ in 0..(ct.round() as usize) {
+                            stat_cat.observe(&ix)
+                        }
+                    }
+                    stat_cat
+                }
+                DataOrSuffStat::None => {
+                    panic!("Should never have `None` Stat");
+                }
+            };
+            let posterior = dpd_posterior_from_stat(&stat, &dir);
             DpdPrior::Dirichlet {
                 m: *m,
                 k_r: *k_r,
-                dir: dir.posterior(x),
+                dir: posterior,
             }
         } else {
             panic!("Cannot compute posterior for DpdPrior::Dirichlet")
