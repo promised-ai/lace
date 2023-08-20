@@ -1,8 +1,10 @@
 //! Experimental implementations
 use lace_consts::rv::data::CategoricalSuffStat;
+use lace_consts::rv::experimental::{Sb, Sbd, SbdSuffStat};
 use lace_consts::rv::traits::{ConjugatePrior, Rv};
 use lace_data::{Container, Datum, FeatureData, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeSummarize};
+use lace_stats::experimental::sbd::SbdHyper;
 use once_cell::sync::OnceCell;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -17,7 +19,9 @@ use crate::state::State;
 use crate::traits::AccumScore;
 use crate::traits::LacePrior;
 use crate::view::View;
-use lace_stats::experimental::dp_discrete::{Dpd, DpdHyper, DpdPrior};
+use lace_stats::experimental::dp_discrete::{
+    Dpd, DpdHyper, DpdPrior, DpdSuffStat,
+};
 use lace_utils::{Matrix, Shape};
 
 pub struct ViewSliceMatrix {
@@ -170,33 +174,81 @@ impl State {
     }
 }
 
-impl AccumScore<usize> for Dpd {}
+// impl AccumScore<usize> for Dpd {}
+impl AccumScore<usize> for Sbd {}
 
-impl LacePrior<usize, Dpd, DpdHyper> for DpdPrior {
-    fn empty_suffstat(&self) -> CategoricalSuffStat {
-        CategoricalSuffStat::new(self.k() + self.m())
+// impl LacePrior<usize, Dpd, DpdHyper> for DpdPrior {
+//     fn empty_suffstat(&self) -> DpdSuffStat {
+//         DpdSuffStat::new()
+//     }
+
+//     fn invalid_temp_component(&self) -> Dpd {
+//         Dpd::uniform(self.k(), self.m())
+//     }
+
+//     fn score_column<I: Iterator<Item = DpdSuffStat>>(&self, stats: I) -> f64 {
+//         use lace_stats::rv::data::DataOrSuffStat;
+//         // let cache = self.ln_m_cache();
+//         stats
+//             .map(|stat| {
+//                 let x = DataOrSuffStat::SuffStat(&stat);
+//                 self.ln_m_with_cache(&(), &x)
+//             })
+//             .sum::<f64>()
+//     }
+// }
+//
+// impl TranslateDatum<usize> for Column<usize, Dpd, DpdPrior, DpdHyper> {
+//     fn translate_datum(datum: Datum) -> usize {
+//         match datum {
+//             Datum::Index(x) => x,
+//             _ => panic!("Invalid Datum variant for conversion"),
+//         }
+//     }
+
+//     fn translate_value(x: usize) -> Datum {
+//         Datum::Index(x)
+//     }
+
+//     fn translate_feature_data(data: FeatureData) -> SparseContainer<usize> {
+//         match data {
+//             FeatureData::Index(xs) => xs,
+//             _ => panic!("Invalid FeatureData variant for conversion"),
+//         }
+//     }
+
+//     fn translate_container(xs: SparseContainer<usize>) -> FeatureData {
+//         FeatureData::Index(xs)
+//     }
+
+//     fn ftype() -> FType {
+//         FType::Index
+//     }
+// }
+
+impl LacePrior<usize, Sbd, SbdHyper> for Sb {
+    fn empty_suffstat(&self) -> SbdSuffStat {
+        SbdSuffStat::new()
     }
 
-    fn invalid_temp_component(&self) -> Dpd {
-        Dpd::uniform(self.k(), self.m())
+    fn invalid_temp_component(&self) -> Sb {
+        Sb::new(self.alpha(), self.k(), self.seed())
     }
 
-    fn score_column<I: Iterator<Item = CategoricalSuffStat>>(
-        &self,
-        stats: I,
-    ) -> f64 {
-        use lace_stats::rv::data::DataOrSuffStat;
-        let cache = self.ln_m_cache();
-        stats
-            .map(|stat| {
-                let x = DataOrSuffStat::SuffStat(&stat);
-                self.ln_m_with_cache(&cache, &x)
-            })
-            .sum::<f64>()
+    fn score_column<I: Iterator<Item = SbdSuffStat>>(&self, stats: I) -> f64 {
+        // use lace_stats::rv::data::DataOrSuffStat;
+        // // let cache = self.ln_m_cache();
+        // stats
+        //     .map(|stat| {
+        //         let x = DataOrSuffStat::SuffStat(&stat);
+        //         self.ln_m_with_cache(&(), &x)
+        //     })
+        //     .sum::<f64>()
+        unimplemented!()
     }
 }
 
-impl TranslateDatum<usize> for Column<usize, Dpd, DpdPrior, DpdHyper> {
+impl TranslateDatum<usize> for Column<usize, Sbd, Sb, SbdHyper> {
     fn translate_datum(datum: Datum) -> usize {
         match datum {
             Datum::Index(x) => x,

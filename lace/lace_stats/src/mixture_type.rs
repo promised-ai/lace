@@ -1,7 +1,7 @@
 use std::convert::From;
 
 #[cfg(feature = "experimental")]
-use crate::experimental::dp_discrete::Dpd;
+use lace_consts::rv::experimental::Sbd;
 
 use crate::rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
 use crate::rv::traits::Entropy;
@@ -16,7 +16,7 @@ pub enum MixtureType {
     Categorical(Mixture<Categorical>),
     Poisson(Mixture<Poisson>),
     #[cfg(feature = "experimental")]
-    Index(Mixture<Dpd>),
+    Index(Mixture<Sbd>),
 }
 
 macro_rules! mt_combine_arm {
@@ -85,7 +85,7 @@ impl MixtureType {
             MixtureType::Poisson(..) => mt_combine_arm!(Poisson, mixtures),
             #[cfg(feature = "experimental")]
             MixtureType::Index(..) => {
-                mt_combine_arm!(Index, Dpd, mixtures)
+                mt_combine_arm!(Index, Sbd, mixtures)
             }
         }
     }
@@ -133,7 +133,7 @@ impl_from!(Poisson);
 impl_from!(Bernoulli);
 
 #[cfg(feature = "experimental")]
-impl_from!(Index, Dpd);
+impl_from!(Index, Sbd);
 
 impl<Fx> MixtureJsd for Mixture<Fx>
 where

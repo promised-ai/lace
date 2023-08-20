@@ -205,8 +205,8 @@ impl HasSuffStat<usize> for Dpd {
         Self::Stat::new()
     }
 
-    fn ln_f_stat(&self, stat: &Self::Stat) -> f64 {
-        <Categorical as HasSuffStat<usize>>::ln_f_stat(&self.categorical, stat)
+    fn ln_f_stat(&self, _stat: &Self::Stat) -> f64 {
+        unimplemented!()
     }
 }
 
@@ -300,6 +300,30 @@ fn dpd_posterior_from_stat(
     }
 }
 
+fn dpd_to_cat_stat(x: &DataOrSuffStat<usize, Dpd>) -> CategoricalSuffStat {
+    match x {
+        DataOrSuffStat::Data(xs) => {
+            let k = xs.iter().max().unwrap() + 1;
+            let mut stat_cat = CategoricalSuffStat::new(k);
+            stat_cat.observe_many(&xs);
+            stat_cat
+        }
+        DataOrSuffStat::SuffStat(stat) => {
+            let k = stat.counts.len();
+            let mut stat_cat = CategoricalSuffStat::new(k);
+            for (ix, ct) in stat.counts.iter().enumerate() {
+                for _ in 0..(ct.round() as usize) {
+                    stat_cat.observe(&ix)
+                }
+            }
+            stat_cat
+        }
+        DataOrSuffStat::None => {
+            panic!("Should never have `None` Stat");
+        }
+    }
+}
+
 impl ConjugatePrior<usize, Dpd> for DpdPrior {
     type LnMCache = ();
     type LnPpCache = ();
@@ -323,27 +347,7 @@ impl ConjugatePrior<usize, Dpd> for DpdPrior {
 
     fn posterior(&self, x: &DataOrSuffStat<usize, Dpd>) -> Self::Posterior {
         if let Self::Symmetric { dir, m, k_r } = self {
-            let stat = match x {
-                DataOrSuffStat::Data(xs) => {
-                    let k = xs.iter().max().unwrap() + 1;
-                    let mut stat_cat = CategoricalSuffStat::new(k);
-                    stat_cat.observe_many(&xs);
-                    stat_cat
-                }
-                DataOrSuffStat::SuffStat(stat) => {
-                    let k = stat.counts.len();
-                    let mut stat_cat = CategoricalSuffStat::new(k);
-                    for (ix, ct) in stat.counts.iter().enumerate() {
-                        for _ in 0..(ct.round() as usize) {
-                            stat_cat.observe(&ix)
-                        }
-                    }
-                    stat_cat
-                }
-                DataOrSuffStat::None => {
-                    panic!("Should never have `None` Stat");
-                }
-            };
+            let stat = dpd_to_cat_stat(x);
             let posterior = dpd_posterior_from_stat(&stat, &dir);
             DpdPrior::Dirichlet {
                 m: *m,
