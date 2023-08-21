@@ -237,15 +237,15 @@ impl LacePrior<usize, Sbd, SbdHyper> for Sb {
     }
 
     fn score_column<I: Iterator<Item = SbdSuffStat>>(&self, stats: I) -> f64 {
-        // use lace_stats::rv::data::DataOrSuffStat;
-        // // let cache = self.ln_m_cache();
-        // stats
-        //     .map(|stat| {
-        //         let x = DataOrSuffStat::SuffStat(&stat);
-        //         self.ln_m_with_cache(&(), &x)
-        //     })
-        //     .sum::<f64>()
-        unimplemented!()
+        use lace_stats::rv::data::DataOrSuffStat;
+        // let cache = self.ln_m_cache();
+        stats
+            .map(|stat| {
+                let x = DataOrSuffStat::SuffStat(&stat);
+                self.ln_m_with_cache(&(), &x)
+            })
+            .sum::<f64>()
+        // unimplemented!()
     }
 }
 
