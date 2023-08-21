@@ -51,11 +51,13 @@ use crate::codebook::{CodebookError, ValueMap};
 use crate::error::DataParseError;
 use lace_data::{Container, SparseContainer};
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::{DpdHyper, DpdPrior};
+use lace_stats::experimental::sbd::SbdHyper;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+#[cfg(feature = "experimental")]
+use lace_stats::rv::experimental::{Sb, Sbd};
 
 use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;
@@ -122,10 +124,9 @@ fn count_col_model<R: rand::Rng>(
 fn index_col_model<R: rand::Rng>(
     id: usize,
     srs: &Series,
-    k_r: usize,
-    m: usize,
-    hyper_opt: Option<DpdHyper>,
-    prior_opt: Option<DpdPrior>,
+    k: usize,
+    hyper_opt: Option<SbdHyper>,
+    prior_opt: Option<Sb>,
     mut rng: &mut R,
 ) -> Result<ColModel, CodebookError> {
     let xs: Vec<Option<usize>> =
@@ -134,13 +135,13 @@ fn index_col_model<R: rand::Rng>(
     let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
         (Some(hy), Some(pr)) => (hy, pr, true),
         (Some(hy), None) => {
-            let pr = hy.draw(k_r, m, rng);
+            let pr = hy.draw(k, rng);
             (hy, pr, false)
         }
-        (None, Some(pr)) => (DpdHyper::default(), pr, true),
+        (None, Some(pr)) => (SbdHyper::default(), pr, true),
         (None, None) => {
-            let hy = DpdHyper::default();
-            let pr = hy.draw(k_r, m, &mut rng);
+            let hy = SbdHyper::default();
+            let pr = hy.draw(k, &mut rng);
             (hy, pr, false)
         }
     };
@@ -290,16 +291,10 @@ pub fn df_to_col_models<R: rand::Rng>(
                 )
                 .map_err(DataParseError::Codebook),
                 #[cfg(feature = "experimental")]
-                ColType::Index {
-                    k_r,
-                    m,
-                    hyper,
-                    prior,
-                } => index_col_model(
+                ColType::Index { k, hyper, prior } => index_col_model(
                     id,
                     srs,
-                    *k_r,
-                    *m,
+                    *k,
                     hyper.clone(),
                     prior.clone(),
                     rng,

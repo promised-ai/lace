@@ -1,6 +1,7 @@
 //! Experimental implementations
 use lace_consts::rv::data::CategoricalSuffStat;
 use lace_consts::rv::experimental::{Sb, Sbd, SbdSuffStat};
+use lace_consts::rv::prelude::Categorical;
 use lace_consts::rv::traits::{ConjugatePrior, Rv};
 use lace_data::{Container, Datum, FeatureData, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeSummarize};
@@ -148,8 +149,8 @@ impl State {
             let n_cols = self.n_cols();
             let n_cats = self.views[view_ix].n_cats();
 
-            let hyper = DpdHyper::new();
-            let prior = hyper.draw(asgn.n_cats, 3, rng);
+            let hyper = SbdHyper::default();
+            let prior = hyper.draw(asgn.n_cats, rng);
             let components = (0..n_cats)
                 .map(|_| ConjugateComponent::new(prior.draw(rng)))
                 .collect::<Vec<_>>();
@@ -231,8 +232,8 @@ impl LacePrior<usize, Sbd, SbdHyper> for Sb {
         SbdSuffStat::new()
     }
 
-    fn invalid_temp_component(&self) -> Sb {
-        Sb::new(self.alpha(), self.k(), self.seed())
+    fn invalid_temp_component(&self) -> Sbd {
+        Sbd::new(1.0, Some(1337)).unwrap()
     }
 
     fn score_column<I: Iterator<Item = SbdSuffStat>>(&self, stats: I) -> f64 {
@@ -276,26 +277,25 @@ impl TranslateDatum<usize> for Column<usize, Sbd, Sb, SbdHyper> {
     }
 }
 
-// Geweke for DpDiscrete
-// ---------------------
-impl GewekeModel for Column<usize, Dpd, DpdPrior, DpdHyper> {
+// Geweke for Sbd
+// --------------
+impl GewekeModel for Column<usize, Sbd, Sb, SbdHyper> {
     #[must_use]
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
     ) -> Self {
-        let k_r = 5;
-        let m = 3;
+        let k = 5;
 
-        let f = Dpd::uniform(k_r, m);
+        let f = Categorical::uniform(k);
         let xs: Vec<usize> = f.sample(settings.asgn().len(), &mut rng);
 
         let data = SparseContainer::from(xs); // initial data is resampled anyway
-        let hyper = DpdHyper::default();
+        let hyper = SbdHyper::default();
         let prior = if settings.fixed_prior() {
-            DpdPrior::new_unchecked(k_r, m, 2.0)
+            Sb::new(1.0, k, Some(rng.gen()))
         } else {
-            hyper.draw(k_r, m, &mut rng)
+            hyper.draw(k, &mut rng)
         };
         let mut col = Column::new(0, data, prior, hyper);
         col.init_components(settings.asgn().n_cats, &mut rng);
@@ -315,7 +315,7 @@ impl GewekeModel for Column<usize, Dpd, DpdPrior, DpdHyper> {
     }
 }
 
-impl GewekeSummarize for Column<usize, Dpd, DpdPrior, DpdHyper> {
+impl GewekeSummarize for Column<usize, Sbd, Sb, SbdHyper> {
     type Summary = GewekeColumnSummary;
 
     fn geweke_summarize(
@@ -331,26 +331,38 @@ impl GewekeSummarize for Column<usize, Dpd, DpdPrior, DpdHyper> {
             })
         }
 
-        let k = self.components.len() as f64;
-        let sq_weight_mean: f64 = self
+        let kf = self.components.len() as f64;
+
+        let ln_weights: Vec<Vec<f64>> = self
             .components
             .iter()
-            .fold(0.0, |acc, cpnt| acc + sum_sq(cpnt.fx.ln_weights()))
-            / k;
+            .map(|cpnt| {
+                cpnt.fx
+                    .inner
+                    .read()
+                    .map(|inner| inner.ln_weights.clone())
+                    .unwrap()
+            })
+            .collect();
 
-        let weight_mean: f64 = self.components.iter().fold(0.0, |acc, cpnt| {
-            let kw = cpnt.fx.ln_weights().len() as f64;
-            let mean =
-                cpnt.fx.ln_weights().iter().fold(0.0, |acc, lw| acc + lw) / kw;
-            acc + mean
-        }) / k;
+        let sq_weight_mean: f64 =
+            ln_weights.iter().map(|lnws| sum_sq(lnws)).sum::<f64>() / kf;
+
+        let weight_mean: f64 = ln_weights
+            .iter()
+            .map(|lnws| {
+                let kw = lnws.len() as f64;
+                lnws.iter().sum::<f64>() / kw
+            })
+            .sum::<f64>()
+            / kf;
 
         GewekeColumnSummary::Categorical {
             x_sum,
             sq_weight_mean,
             weight_mean,
             prior_alpha: if !settings.fixed_prior() {
-                Some(self.prior.sym_alpha().expect("Wrong variant - oops!"))
+                Some(self.prior.alpha())
             } else {
                 None
             },

@@ -2,6 +2,7 @@ use crate::rv::experimental::Sb;
 use crate::rv::traits::Rv;
 use crate::{rv::dist::Gamma, UpdatePrior};
 use lace_consts::rv::experimental::Sbd;
+use lace_consts::rv::prelude::GammaError;
 use lace_data::AccumScore;
 use serde::{Deserialize, Serialize};
 
@@ -19,16 +20,16 @@ impl Default for SbdHyper {
 }
 
 impl SbdHyper {
+    pub fn new(shape: f64, rate: f64) -> Result<Self, GammaError> {
+        Ok(Self {
+            gamma: Gamma::new(shape, rate)?,
+        })
+    }
+
     pub fn draw<R: rand::Rng>(&self, k: usize, rng: &mut R) -> Sb {
         let seed: u64 = rng.gen();
         let alpha = self.gamma.draw(rng);
         Sb::new(alpha, k, Some(seed))
-    }
-}
-
-impl SbdHyper {
-    pub fn new() -> Self {
-        SbdHyper::default()
     }
 }
 

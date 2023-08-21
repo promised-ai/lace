@@ -278,7 +278,8 @@ fn index_coltype(
     srs: &Series,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    use lace_stats::experimental::dp_discrete::{DpdHyper, DpdPrior};
+    use lace_stats::experimental::sbd::SbdHyper;
+    use lace_stats::rv::experimental::Sb;
 
     let k = {
         let k_max: u64 = srs.max().unwrap();
@@ -286,17 +287,12 @@ fn index_coltype(
     };
 
     let (hyper, prior) = if no_hypers {
-        (None, Some(DpdPrior::new_unchecked(k, 3, 0.5)))
+        (None, Some(Sb::new(0.5, k, None)))
     } else {
-        (Some(DpdHyper::new()), None)
+        (Some(SbdHyper::default()), None)
     };
 
-    Ok(ColType::Index {
-        k_r: k,
-        m: 3,
-        hyper,
-        prior,
-    })
+    Ok(ColType::Index { k, hyper, prior })
 }
 
 fn uint_coltype(

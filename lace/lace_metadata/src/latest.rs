@@ -8,7 +8,7 @@ use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
 use lace_cc::view::View;
 use lace_data::{FeatureData, SparseContainer};
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::{Dpd, DpdHyper, DpdPrior};
+use lace_stats::experimental::sbd::SbdHyper;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -16,6 +16,8 @@ use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
     NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
+#[cfg(feature = "experimental")]
+use lace_stats::rv::experimental::{Sb, Sbd};
 use lace_stats::MixtureType;
 
 use once_cell::sync::OnceCell;
@@ -209,7 +211,7 @@ pub enum DatalessColModel {
     MissingNotAtRandom(DatalessMissingNotAtRandom),
     Latent(DatalessLatent),
     #[cfg(feature = "experimental")]
-    Index(DatalessColumn<usize, Dpd, DpdPrior, DpdHyper>),
+    Index(DatalessColumn<usize, Sbd, Sb, SbdHyper>),
 }
 
 impl From<ColModel> for DatalessColModel {
@@ -326,7 +328,7 @@ col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 col2dataless!(u32, Poisson, Gamma, PgHyper);
 col2dataless!(bool, Bernoulli, Beta, ());
 #[cfg(feature = "experimental")]
-col2dataless!(usize, Dpd, DpdPrior, DpdHyper);
+col2dataless!(usize, Sbd, Sb, SbdHyper);
 
 struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
 where
@@ -366,7 +368,7 @@ dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 dataless2col!(u32, Poisson, Gamma, PgHyper);
 dataless2col!(bool, Bernoulli, Beta, ());
 #[cfg(feature = "experimental")]
-dataless2col!(usize, Dpd, DpdPrior, DpdHyper);
+dataless2col!(usize, Sbd, Sb, SbdHyper);
 
 impl_metadata_version!(Metadata, METADATA_VERSION);
 impl_metadata_version!(Codebook, METADATA_VERSION);

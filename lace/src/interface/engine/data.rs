@@ -986,33 +986,30 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 }
                 #[cfg(feature = "experimental")]
                 ColType::Index {
-                    k_r,
-                    m,
-                    hyper,
-                    prior,
-                    ..
+                    k, hyper, prior, ..
                 } => {
+                    use lace_stats::rv::experimental::Sb;
                     let data: SparseContainer<usize> =
                         SparseContainer::all_missing(n_rows);
 
                     let id = i + n_cols;
                     match (hyper, prior) {
                         (Some(h), _) => {
-                            let pr = if let Some(pr) = prior {
+                            let pr: Sb = if let Some(pr) = prior {
                                 pr.clone()
                             } else {
-                                h.draw(*k_r, *m, &mut rng)
+                                h.draw(*k, &mut rng)
                             };
                             let column = Column::new(id, data, pr, h.clone());
                             Ok(ColModel::Index(column))
                         }
                         (None, Some(pr)) => {
-                            use lace_stats::experimental::dp_discrete::DpdHyper;
+                            use lace_stats::experimental::sbd::SbdHyper;
                             let mut column = Column::new(
                                 id,
                                 data,
                                 pr.clone(),
-                                DpdHyper::default(),
+                                SbdHyper::default(),
                             );
                             column.ignore_hyper = true;
                             Ok(ColModel::Index(column))

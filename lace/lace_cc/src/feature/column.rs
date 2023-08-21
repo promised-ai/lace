@@ -703,11 +703,7 @@ impl QmcEntropy for ColModel {
                 b - a
             }
             #[cfg(feature = "experimental")]
-            ColModel::Index(cm) => {
-                let k = cm.components()[0].fx.k() as f64;
-                let m = cm.components()[0].fx.m() as f64;
-                k + m
-            }
+            ColModel::Index(cm) => cm.components()[0].fx.k() as f64,
         }
     }
 
@@ -738,9 +734,10 @@ impl QmcEntropy for ColModel {
             }
             #[cfg(feature = "experimental")]
             ColModel::Index(cm) => {
-                let km: f64 = cm.components()[0].fx.len() as f64;
-                let ix = (us.next().unwrap() * km) as usize;
-                Datum::Index(ix)
+                unimplemented!(
+                    "QMC integration not implemented for Stick Breaking \
+                    Discrete"
+                )
             }
         }
     }

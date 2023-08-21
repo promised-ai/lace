@@ -5,11 +5,13 @@ use crate::error::{
 };
 use crate::ValueMap;
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::DpdHyper;
+use lace_stats::experimental::sbd::SbdHyper;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+#[cfg(feature = "experimental")]
+use lace_stats::rv::experimental::Sb;
 use polars::prelude::DataFrame;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -520,12 +522,12 @@ pub enum ColType {
     #[cfg(feature = "experimental")]
     /// Index type
     Index {
-        /// The number of realized classes
-        k_r: usize,
-        /// Additional number of hypothetical classes for finite approximation
-        m: usize,
-        hyper: Option<DpdHyper>,
-        prior: Option<DpdPrior>,
+        /// The number of realized classes.
+        /// This is the starting point for the model. As data are removed,
+        /// added, or edited, k will change internally
+        k: usize,
+        hyper: Option<SbdHyper>,
+        prior: Option<Sb>,
     },
 }
 

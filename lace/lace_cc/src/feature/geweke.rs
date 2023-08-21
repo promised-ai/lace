@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use lace_data::{Container, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 #[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::{Dpd, DpdHyper, DpdPrior};
+use lace_stats::experimental::sbd::SbdHyper;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -12,6 +12,8 @@ use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
+#[cfg(feature = "experimental")]
+use lace_stats::rv::experimental::{Sb, Sbd};
 use lace_stats::rv::traits::Rv;
 use lace_utils::{mean, std};
 use rand::Rng;
@@ -198,7 +200,7 @@ impl_gewek_resample!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 impl_gewek_resample!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 impl_gewek_resample!(u32, Poisson, Gamma, PgHyper);
 #[cfg(feature = "experimental")]
-impl_gewek_resample!(usize, Dpd, DpdPrior, DpdHyper);
+impl_gewek_resample!(usize, Sbd, Sb, SbdHyper);
 
 // Continuous
 // ----------
