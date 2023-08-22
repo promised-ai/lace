@@ -245,7 +245,7 @@ jobs:
       - name: Install preprocessor
         working-directory: book/lace_preprocess_mdbook_yaml
         run: |
-          cargo install --bins --path --locked .
+          cargo install --bins --locked --path .
 
       - name: Install mdBook
         run: |
