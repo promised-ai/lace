@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -130,7 +130,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           architecture: ${{ matrix.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -165,7 +165,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -206,7 +206,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install codedown
         run: npm install -g codedown
@@ -215,7 +215,7 @@ jobs:
         # Install using the direct file name to prevent downloading from PyPi
         # My tests indicate that using --find-links still grabs `pylace` from PyPi
         # unless the version is higher than what is published on PyPi
-        run: pip install dist/pylace-*-cp310-cp310-manylinux_*_x86_64.manylinux*_x86_64.whl
+        run: pip install dist/pylace-*-cp311-cp311-manylinux_*_x86_64.manylinux*_x86_64.whl
 
       - name: Test MDBook Code Samples (Python)
         env:
@@ -245,7 +245,7 @@ jobs:
       - name: Install preprocessor
         working-directory: book/lace_preprocess_mdbook_yaml
         run: |
-          cargo install --bins --path .
+          cargo install --bins --path --locked .
 
       - name: Install mdBook
         run: |
