@@ -48,6 +48,11 @@ impl Feature for Latent {
         self.column.init_components(k, rng);
     }
 
+    #[cfg(feature = "experimental")]
+    fn update_component(&mut self, k: usize, rng: &mut impl Rng) {
+        self.column.update_component(k, rng);
+    }
+
     #[inline]
     fn update_components(&mut self, rng: &mut impl Rng) {
         self.column.update_components(rng);

@@ -8,11 +8,7 @@ use rand_xoshiro::Xoshiro256Plus;
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]
 struct Opt {
-    #[clap(
-        long,
-        default_value = "gibbs",
-        value_parser = ["finite_cpu", "gibbs", "slice", "sams"],
-    )]
+    #[clap(long, default_value = "gibbs")]
     pub alg: RowAssignAlg,
     #[clap(short, long, default_value = "20")]
     pub nrows: usize,

@@ -20,9 +20,6 @@ use crate::state::State;
 use crate::traits::AccumScore;
 use crate::traits::LacePrior;
 use crate::view::View;
-use lace_stats::experimental::dp_discrete::{
-    Dpd, DpdHyper, DpdPrior, DpdSuffStat,
-};
 use lace_utils::{Matrix, Shape};
 
 pub struct ViewSliceMatrix {
@@ -70,6 +67,12 @@ impl View {
         let new_asgn_vec = crate::massflip::massflip_slice_mat_par(&logps, rng);
 
         self.integrate_finite_asgn(new_asgn_vec, n_cats, rng);
+    }
+
+    pub fn update_component<R: Rng>(&mut self, k: usize, rng: &mut R) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.update_component(k, rng)
+        }
     }
 
     // pub fn increment_parent_slice_matrix(

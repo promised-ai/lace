@@ -42,7 +42,19 @@ impl UpdatePrior<usize, Sbd, SbdHyper> for Sb {
     ) -> f64 {
         let ln_prior = |alpha: &f64| {
             let sb = Sb::new(*alpha, 1, None);
-            components.iter().map(|cpnt| sb.ln_f(cpnt)).sum::<f64>()
+            components
+                .iter()
+                .map(|cpnt| {
+                    let ln_f = sb.ln_f(cpnt);
+                    if !ln_f.is_finite() {
+                        panic!(
+                            "ln_f for Sb {:?} was not finite ({})",
+                            cpnt, ln_f
+                        );
+                    }
+                    ln_f
+                })
+                .sum::<f64>()
         };
 
         let res = crate::mh::mh_prior(

@@ -307,6 +307,14 @@ where
         self.components = draw_cpnts(&self.prior, k, &mut rng);
     }
 
+    #[cfg(feature = "experimental")]
+    fn update_component(&mut self, k: usize, mut rng: &mut impl Rng) {
+        let prior = self.prior.clone();
+        let cpnt = &mut self.components[k];
+        let fx = prior.posterior(&cpnt.obs()).draw(&mut rng);
+        cpnt.fx = fx;
+    }
+
     #[inline]
     fn update_components(&mut self, mut rng: &mut impl Rng) {
         let prior = self.prior.clone();

@@ -55,6 +55,12 @@ impl Feature for MissingNotAtRandom {
         self.present.init_components(k, rng);
     }
 
+    #[cfg(feature = "experimental")]
+    fn update_component(&mut self, k: usize, rng: &mut impl Rng) {
+        self.fx.update_component(k, rng);
+        self.present.update_component(k, rng);
+    }
+
     #[inline]
     fn update_components(&mut self, rng: &mut impl Rng) {
         self.fx.update_components(rng);

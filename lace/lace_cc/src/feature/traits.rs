@@ -60,6 +60,10 @@ pub trait Feature {
     fn accum_score(&self, scores: &mut [f64], k: usize);
     /// Draw `k` components from the prior
     fn init_components(&mut self, k: usize, rng: &mut impl Rng);
+    /// Redraw the component parameters for component k from the posterior
+    /// distribution, f(θ|x<sub>k</sub>).
+    #[cfg(feature = "experimental")]
+    fn update_component(&mut self, k: usize, rng: &mut impl Rng);
     /// Redraw the component parameters from the posterior distribution,
     /// f(θ|x<sub>k</sub>).
     fn update_components(&mut self, rng: &mut impl Rng);
