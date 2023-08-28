@@ -7,20 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [python-0.3.1]
+## [python-0.3.1] - 2023-08-28
 
 ### Fixed
 
 - Automatic conversion from `np.int*` types to Categorical.
+- Updated lace version to 0.3.1
 
-## [python-0.3.0]
+## [rust-0.3.1] - 2023-08-28
+
+### Fixed
+
+- Locked to a specific version of `polars 0.32` to produce reproducible builds on Rust 1.72
+
+## [python-0.3.0] - 2023-07-25
 
 ### Changed
 
 - Updated lace version to 0.3.0
 - Updated polars to version ^0.31
 
-## [python-0.2.0]
+## [rust-0.3.0] - 2023-07-25
+
+## Fixed
+
+- Updated breaking dependencies
+
+## [python-0.2.0] - 2023-07-14
 
 ### Changed
 
@@ -36,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Can delete columns using `Engine.del_column`
 - New plot: `lace.plot.prediction_uncertainty`
 
-## [rust-0.2.0]
+## [rust-0.2.0] - 2023-07-14
 
 ### Changed
 
@@ -104,8 +117,17 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.1.0...HEAD
-[rust-0.1.1]: https://github.com/promised-ai/lace/compare/rust-0.1.1...rust-0.1.0
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.3.1...HEAD
+[python-0.3.1]: https://github.com/promised-ai/lace/compare/python-0.3.0...python-0.3.1
+[rust-0.3.1]: https://github.com/promised-ai/lace/compare/rust-0.3.0...rust-0.3.1
+[python-0.3.0]: https://github.com/promised-ai/lace/compare/python-0.2.0...python-0.3.0
+[rust-0.3.0]: https://github.com/promised-ai/lace/compare/rust-0.2.0...rust-0.3.0
+[python-0.2.0]: https://github.com/promised-ai/lace/compare/python-0.1.2...python-0.2.0
+[rust-0.2.0]: https://github.com/promised-ai/lace/compare/rust-0.1.2...rust-0.2.0
+[python-0.1.2]: https://github.com/promised-ai/lace/compare/python-0.1.1...python-0.1.2
+[python-0.1.1]: https://github.com/promised-ai/lace/compare/python-0.1.0...python-0.1.1
+[rust-0.1.2]: https://github.com/promised-ai/lace/compare/rust-0.1.1...rust-0.1.2
+[rust-0.1.1]: https://github.com/promised-ai/lace/compare/rust-0.1.0...rust-0.1.1
 [python-0.1.0]: https://github.com/promised-ai/lace/releases/tag/python-0.1.0
 [rust-0.1.0]: https://github.com/promised-ai/lace/releases/tag/rust-0.1.0
 
