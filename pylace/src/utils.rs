@@ -520,6 +520,10 @@ fn pyany_to_category(val: &PyAny) -> PyResult<lace::Category> {
             let x = val.downcast::<PyString>()?.extract::<String>()?;
             Ok(Category::String(x))
         }
+        "int64" | "int32" | "int16" | "int8" => {
+            let x = val.call_method("__int__", (), None)?.extract::<u8>()?;
+            Ok(Category::U8(x))
+        }
         _ => Err(PyErr::new::<PyValueError, _>(format!(
             "Cannot convert {name} into Category"
         ))),
