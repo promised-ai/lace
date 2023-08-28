@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.3.1]
+
+### Fixed
+
+- Automatic conversion from `np.int*` types to Categorical.
+
+## [python-0.3.0]
+
+### Changed
+
+- Updated lace version to 0.3.0
+- Updated polars to version ^0.31
+
 ## [python-0.2.0]
 
 ### Changed
