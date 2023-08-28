@@ -1036,10 +1036,10 @@ impl CoreEngine {
         };
 
         if quiet {
-            self.engine.update(config, timeout).unwrap();
+            self.engine.update(&config, timeout).unwrap();
         } else {
             let pbar = ProgressBar::new();
-            self.engine.update(config, (timeout, pbar)).unwrap();
+            self.engine.update(&config, (timeout, pbar)).unwrap();
         }
     }
 
