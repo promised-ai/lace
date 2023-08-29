@@ -1,5 +1,4 @@
 //! Experimental implementations
-use lace_consts::rv::data::CategoricalSuffStat;
 use lace_consts::rv::experimental::{Sb, Sbd, SbdSuffStat};
 use lace_consts::rv::prelude::Categorical;
 use lace_consts::rv::traits::{ConjugatePrior, Rv};

@@ -431,6 +431,10 @@ impl GewekeResampleData for ColModel {
             ColModel::Count(ref mut f) => {
                 f.geweke_resample_data(settings, &mut rng)
             }
+            #[cfg(feature = "experimental")]
+            ColModel::Index(ref mut f) => {
+                f.geweke_resample_data(settings, &mut rng)
+            }
             _ => unimplemented!("Unsupported column type"),
         }
     }
@@ -510,6 +514,21 @@ pub fn gen_geweke_col_models(
                     let data = SparseContainer::from(xs);
                     let column = Column::new(id, data, prior, hyper);
                     ColModel::Categorical(column)
+                }
+                #[cfg(feature = "experimental")]
+                FType::Index => {
+                    let k = 5; // number of categorical values
+                    let hyper = SbdHyper::new(4.0, 4.0).unwrap();
+                    let prior = if prior_trans {
+                        hyper.draw(k, &mut rng)
+                    } else {
+                        Sb::new(2.0, k, None)
+                    };
+                    let f: Sbd = prior.draw(&mut rng);
+                    let xs: Vec<usize> = f.sample(n_rows, &mut rng);
+                    let data = SparseContainer::from(xs);
+                    let column = Column::new(id, data, prior, hyper);
+                    ColModel::Index(column)
                 }
                 _ => unimplemented!("Unsupported FType"),
             }
