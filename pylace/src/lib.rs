@@ -307,8 +307,6 @@ impl CoreEngine {
                 Ok(params.into_py(py).into_ref(py))
             }
         }
-
-        // Ok(component::FeatureParams::from(mixture))
     }
 
     fn diagnostics(&self) -> Vec<HashMap<String, Vec<f64>>> {
