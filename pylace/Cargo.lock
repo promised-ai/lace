@@ -962,7 +962,7 @@ dependencies = [
 
 [[package]]
 name = "lace"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bincode",
  "clap",
@@ -1000,7 +1000,7 @@ dependencies = [
 
 [[package]]
 name = "lace_cc"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "enum_dispatch",
  "indicatif",
@@ -1022,7 +1022,7 @@ dependencies = [
 
 [[package]]
 name = "lace_codebook"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "flate2",
  "lace_consts",
@@ -1069,7 +1069,7 @@ dependencies = [
 
 [[package]]
 name = "lace_metadata"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "bincode",
  "dirs",
@@ -1931,7 +1931,7 @@ checksum = "fe7765e19fb2ba6fd4373b8d90399f5321683ea7c11b598c6bbaa3a72e9c83b8"
 
 [[package]]
 name = "pylace"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "arrow2",
  "lace",

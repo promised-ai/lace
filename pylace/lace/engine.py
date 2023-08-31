@@ -445,6 +445,63 @@ class Engine:
         """
         return self.engine.row_assignments(state_ix)
 
+    def feature_params(
+        self,
+        col: Union[int, str],
+        state_ixs: Optional[List[int]]=None
+    ) -> Dict:
+        """Get the component parameters for a given column
+
+        Parameters
+        ----------
+        col: int or str
+            The index or name of the column from which to retrieve parameters
+        state_ixs: List[int], optional
+            And optional list of state indices from which to return parameters
+
+        Returns
+        -------
+        params: Dict[List]
+            `params[state_ix][component_ix]` is the component parameters for the
+            given component in the given state
+
+        Examples
+        --------
+
+        Get Gaussian component parameters from the Satellites dataset
+
+        >>> from lace.examples import Satellites
+        >>> sats = Satellites()
+        >>> gauss_params = sats.feature_params("Period_minutes")
+        >>> g = gauss_params[1][0]
+        >>> g
+        Gaussian(mu=97.38792034245135, sigma=8.864698646528195)
+        >>> g.mu
+        97.38792034245135
+
+        Get categorical weights from the Satellites dataset
+
+        >>> cat_params = sats.feature_params("Class_of_Orbit", state_ixs=[2])
+        >>> c = cat_params[2][0]
+        >>> c
+        Categorical_4(weights=[0.7196355242414928, ..., 0.12915471912497747])
+        >>> c.weights  # doctest: +ELLIPSIS
+        [0.7196355242414928, ..., 0.12915471912497747]
+
+        You can also select columns by integer index
+        
+        >>> sats.columns[3]
+        'Class_of_Orbit'
+        >>> params = sats.feature_params(3)
+        >>> params[0][1]
+        Categorical_4(weights=[0.0016550494108113051, ..., 0.000028906241993218738])
+        """
+        if state_ixs is None:
+            state_ixs = list(range(self.n_states))
+
+        return { state_ix: self.engine.feature_params(col, state_ix)
+                for state_ix in state_ixs }
+
     def __getitem__(self, ix):
         df = self.engine[ix]
         if df.shape[0] == 1 and df.shape[1] == 2:
