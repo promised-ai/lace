@@ -448,7 +448,8 @@ class Engine:
     def feature_params(
         self, col: Union[int, str], state_ixs: Optional[List[int]] = None
     ) -> Dict:
-        """Get the component parameters for a given column
+        """
+        Get the component parameters for a given column.
 
         Parameters
         ----------
@@ -465,7 +466,6 @@ class Engine:
 
         Examples
         --------
-
         Get Gaussian component parameters from the Satellites dataset
 
         >>> from lace.examples import Satellites
