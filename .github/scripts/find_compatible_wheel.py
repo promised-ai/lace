@@ -19,7 +19,7 @@ wheel=None
 
 for tag in sys_tags():
     print(f"Looking for file matching tag {tag}", file=sys.stderr)
-    matches=glob.glob(args.package + "*" + str(tag) + ".whl", root_dir=args.dir)
+    matches=glob.glob(args.package + "*" + str(tag) + "*.whl", root_dir=args.dir)
     if len(matches) == 1:
         wheel=matches[0]
         break
