@@ -15,6 +15,7 @@ on:
       - 'book/**'
       - '.github/workflows/python-build-test.yaml'
       - '.github/scripts/run_code_in_mdfile.py'
+      - '.github/scripts/find_compatible_wheel.py'
 
 jobs:
   lint-python:
