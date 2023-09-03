@@ -159,7 +159,7 @@ jobs:
       - name: Install pylace
         run: |
           ls -l ./dist
-          WHEEL_FILE=$(python3 .github/scripts/find_compatible_wheel.py pylace ./dist)
+          $WHEEL_FILE = (python3 .github/scripts/find_compatible_wheel.py pylace ./dist)
           echo "Installing $WHEEL_FILE"
           pip install $WHEEL_FILE
 
@@ -237,6 +237,7 @@ jobs:
 
       - name: Install Wheel
         run: |
+          pip install packaging
           WHEEL_FILE=$(python3 .github/scripts/find_compatible_wheel.py pylace ./dist)
           echo "Installing $WHEEL_FILE"
           pip install $WHEEL_FILE
