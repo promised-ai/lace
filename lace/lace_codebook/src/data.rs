@@ -491,7 +491,16 @@ pub fn df_to_codebook(
                 }
                 row_names_opt = Some(rownames_from_index(srs)?);
             } else {
+                #[cfg(not(feature = "experimental"))]
                 if srs.n_unique()? < 2 {
+                    return Err(CodebookError::SingleValueColumn(
+                        srs.name().to_owned(),
+                    ));
+                }
+                #[cfg(feature = "experimental")]
+                if srs.n_unique()? < 2
+                    && !matches!(srs.dtype(), DataType::UInt64)
+                {
                     return Err(CodebookError::SingleValueColumn(
                         srs.name().to_owned(),
                     ));

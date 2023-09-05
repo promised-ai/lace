@@ -7,6 +7,7 @@ use std::collections::HashSet;
 
 use rayon::prelude::*;
 
+#[derive(Debug)]
 pub struct SliceRowMatrices {
     // state_matrices[s][v] is the logp matric for view v under state s
     pub state_matrices: Vec<Vec<ViewSliceMatrix>>,

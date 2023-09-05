@@ -21,6 +21,7 @@ use crate::traits::LacePrior;
 use crate::view::View;
 use lace_utils::{Matrix, Shape};
 
+#[derive(Debug)]
 pub struct ViewSliceMatrix {
     pub col_ixs: Vec<usize>,
     pub matrix: lace_utils::Matrix<f64>,
