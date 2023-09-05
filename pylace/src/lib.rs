@@ -1318,7 +1318,6 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<metadata::CategoricalPrior>()?;
     m.add_class::<metadata::CountHyper>()?;
     m.add_class::<metadata::CountPrior>()?;
-    m.add_class::<metadata::CountPrior>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
     Ok(())
