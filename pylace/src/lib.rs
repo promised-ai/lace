@@ -1,3 +1,4 @@
+mod component;
 mod df;
 mod metadata;
 mod transition;
@@ -270,6 +271,41 @@ impl CoreEngine {
                 .map(|view| view.asgn.asgn.clone())
                 .collect();
             Ok(asgns)
+        }
+    }
+
+    fn feature_params<'p>(
+        &self,
+        py: Python<'p>,
+        col: &PyAny,
+        state_ix: usize,
+    ) -> PyResult<&'p PyAny> {
+        use component::ComponentParams;
+
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+
+        let n_states = self.engine.n_states();
+        if state_ix >= n_states {
+            return Err(PyIndexError::new_err(format!(
+                "State index {state_ix} is out of bounds for Engine with \
+                    {n_states} states"
+            )));
+        }
+
+        let mixture = self.engine.states[state_ix].feature_as_mixture(col_ix);
+        match ComponentParams::from(mixture) {
+            ComponentParams::Bernoulli(params) => {
+                Ok(params.into_py(py).into_ref(py))
+            }
+            ComponentParams::Categorical(params) => {
+                Ok(params.into_py(py).into_ref(py))
+            }
+            ComponentParams::Gaussian(params) => {
+                Ok(params.into_py(py).into_ref(py))
+            }
+            ComponentParams::Poisson(params) => {
+                Ok(params.into_py(py).into_ref(py))
+            }
         }
     }
 
