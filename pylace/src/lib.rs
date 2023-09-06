@@ -26,6 +26,7 @@ use metadata::{Codebook, CodebookBuilder};
 
 use crate::utils::*;
 
+#[derive(Clone)]
 #[pyclass(subclass)]
 struct CoreEngine {
     engine: lace::Engine,
@@ -138,6 +139,11 @@ impl CoreEngine {
     /// Seed the random number generator
     fn seed(&mut self, rng_seed: u64) {
         self.rng = Xoshiro256Plus::seed_from_u64(rng_seed);
+    }
+
+    /// Return a copy of the engine
+    fn __deepcopy__(&self, _memo: &PyDict) -> Self {
+        self.clone()
     }
 
     /// Return the number of states

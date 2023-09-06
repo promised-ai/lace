@@ -387,6 +387,7 @@ pub(crate) fn str_to_mitype(mi_type: &str) -> PyResult<lace::MiType> {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) struct Indexer {
     pub to_ix: HashMap<String, usize>,
     pub to_name: HashMap<usize, String>,
