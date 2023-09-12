@@ -47,12 +47,15 @@ impl UpdatePrior<usize, Sbd, SbdHyper> for Sb {
                 .map(|cpnt| {
                     let ln_f = sb.ln_f(cpnt);
                     if !ln_f.is_finite() {
-                        panic!(
-                            "ln_f for Sb {:?} was not finite ({})",
-                            cpnt, ln_f
-                        );
+                        // FIXME
+                        // panic!(
+                        //     "ln_f for Sb {:?} was not finite ({})",
+                        //     cpnt, ln_f
+                        // );
+                        -1e16
+                    } else {
+                        ln_f
                     }
-                    ln_f
                 })
                 .sum::<f64>()
         };

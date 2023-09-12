@@ -201,6 +201,7 @@ pub(crate) fn coltype_to_ftype(col_type: &ColType) -> FType {
         ColType::Continuous { .. } => FType::Continuous,
         ColType::Count { .. } => FType::Count,
         ColType::Categorical { .. } => FType::Categorical,
+        ColType::Index { .. } => FType::Index,
     }
 }
 
@@ -289,6 +290,7 @@ pub(crate) fn vec_to_srs(
             }
         }
         FType::Count => Ok(srs_from_vec!(values, name, u32, Count)),
+        FType::Index => Ok(srs_from_vec!(values, name, u64, Index)),
         // ftype => Err(PyErr::new::<PyValueError, _>(format!(
         //     "Simulated unsupported ftype: {ftype:?}"
         // ))),
@@ -358,6 +360,7 @@ pub(crate) fn simulate_to_df(
                 }
             }
             FType::Count => Ok(srs_from_simulate!(values, i, name, u32, Count)),
+            FType::Index => Ok(srs_from_simulate!(values, i, name, u64, Index)),
             // ftype => Err(PyErr::new::<PyValueError, _>(format!(
             //     "Simulated unsupported ftype: {ftype:?}"
             // ))),
@@ -548,6 +551,7 @@ pub(crate) fn value_to_datum(val: &PyAny, ftype: FType) -> PyResult<Datum> {
             Ok(Datum::Categorical(x))
         }
         FType::Count => Ok(Datum::Count(val.extract().unwrap())),
+        FType::Index => Ok(Datum::Index(val.extract().unwrap())),
         ftype => Err(PyErr::new::<PyValueError, _>(format!(
             "Unsupported ftype: {:?}",
             ftype

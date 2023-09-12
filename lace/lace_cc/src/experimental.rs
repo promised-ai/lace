@@ -21,6 +21,10 @@ use crate::traits::LacePrior;
 use crate::view::View;
 use lace_utils::{Matrix, Shape};
 
+pub trait IndexConstrainer: Send + Sync {
+    fn index_constrain(&self, k: usize, n: usize) -> f64;
+}
+
 #[derive(Debug)]
 pub struct ViewSliceMatrix {
     pub col_ixs: Vec<usize>,
@@ -75,21 +79,252 @@ impl View {
         }
     }
 
-    // pub fn increment_parent_slice_matrix(
-    //     &self,
-    //     mut matrix: ViewSliceMatrix,
-    // ) -> Result<ViewSliceMatrix, CabnError> {
-    //     for col_ix in matrix.col_ixs {
-    //         let ftr = self.ftrs[&col_ix];
-    //         for k in 0..matrix.n_cats() {
-    //             let x = Datum::Categorical(k);
-    //             for row_ix in 0..self.n_rows() {
-    //                 ftr.
-    //             }
-    //         }
-    //     }
-    //     matrix
-    // }
+    /// Sequential adaptive merge-split (SAMS) row reassignment kernel
+    pub fn reassign_rows_sams_constrained<C, R>(
+        &mut self,
+        constrainer: &C,
+        rng: &mut R,
+    ) where
+        R: Rng,
+        C: IndexConstrainer,
+    {
+        use rand::seq::IteratorRandom;
+
+        let (i, j, zi, zj) = {
+            let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
+            let i = ixs[0];
+            let j = ixs[1];
+
+            let zi = self.asgn.asgn[i];
+            let zj = self.asgn.asgn[j];
+
+            if zi < zj {
+                (i, j, zi, zj)
+            } else {
+                (j, i, zj, zi)
+            }
+        };
+
+        if zi == zj {
+            self.sams_split_constrained(i, j, constrainer, rng);
+        } else {
+            assert!(zi < zj);
+            self.sams_merge_constrained(i, j, constrainer, rng);
+        }
+        debug_assert!(self.asgn.validate().is_valid());
+    }
+
+    fn sams_merge_constrained<C, R>(
+        &mut self,
+        i: usize,
+        j: usize,
+        constrainer: &C,
+        rng: &mut R,
+    ) where
+        R: Rng,
+        C: IndexConstrainer,
+    {
+        use crate::assignment::lcrp;
+        use crate::assignment::AssignmentBuilder;
+        use std::cmp::Ordering;
+
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        let (logp_spt, logq_spt, ..) =
+            self.propose_split_constrained(i, j, true, constrainer, rng);
+
+        let asgn = {
+            let zs = self
+                .asgn
+                .asgn
+                .iter()
+                .map(|&z| match z.cmp(&zj) {
+                    Ordering::Equal => zi,
+                    Ordering::Greater => z - 1,
+                    Ordering::Less => z,
+                })
+                .collect();
+
+            AssignmentBuilder::from_vec(zs)
+                .with_prior(self.asgn.prior.clone())
+                .with_alpha(self.asgn.alpha)
+                .seed_from_rng(rng)
+                .build()
+                .unwrap()
+        };
+
+        self.append_empty_component(rng);
+        asgn.asgn.iter().enumerate().for_each(|(ix, &z)| {
+            if z == zi {
+                self.force_observe_row(ix, self.n_cats());
+            }
+        });
+
+        let logp_mrg = self.logm(self.n_cats())
+            + lcrp(asgn.len(), &asgn.counts, asgn.alpha)
+            + self
+                .asgn
+                .asgn
+                .iter()
+                .enumerate()
+                .filter(|(_, &z)| z == zi)
+                .map(|(ix, &z)| constrainer.index_constrain(z, ix))
+                .sum::<f64>();
+
+        self.drop_component(self.n_cats());
+
+        if rng.gen::<f64>().ln() < logp_mrg - logp_spt + logq_spt {
+            self.set_asgn(asgn, rng)
+        }
+    }
+
+    fn sams_split_constrained<C, R>(
+        &mut self,
+        i: usize,
+        j: usize,
+        constrainer: &C,
+        rng: &mut R,
+    ) where
+        R: Rng,
+        C: IndexConstrainer,
+    {
+        use crate::assignment::lcrp;
+
+        let zi = self.asgn.asgn[i];
+
+        let logp_mrg = self.logm(zi)
+            + lcrp(self.asgn.len(), &self.asgn.counts, self.asgn.alpha)
+            + self
+                .asgn
+                .asgn
+                .iter()
+                .enumerate()
+                .filter(|(_, &z)| z == zi)
+                .map(|(ix, &z)| constrainer.index_constrain(z, ix))
+                .sum::<f64>();
+        let (logp_spt, logq_spt, asgn_opt) =
+            self.propose_split_constrained(i, j, false, constrainer, rng);
+
+        let asgn = asgn_opt.unwrap();
+
+        if rng.gen::<f64>().ln() < logp_spt - logp_mrg - logq_spt {
+            self.set_asgn(asgn, rng)
+        }
+    }
+
+    fn propose_split_constrained<C, R>(
+        &mut self,
+        i: usize,
+        j: usize,
+        calc_reverse: bool,
+        constrainer: &C,
+        rng: &mut R,
+    ) -> (f64, f64, Option<Assignment>)
+    where
+        R: Rng,
+        C: IndexConstrainer,
+    {
+        use crate::assignment::lcrp;
+        use crate::assignment::AssignmentBuilder;
+        use lace_utils::logaddexp;
+
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        self.append_empty_component(rng);
+        self.append_empty_component(rng);
+
+        let zi_tmp = self.asgn.n_cats;
+        let zj_tmp = zi_tmp + 1;
+
+        self.force_observe_row(i, zi_tmp);
+        self.force_observe_row(j, zj_tmp);
+
+        let mut tmp_z: Vec<usize> = {
+            // mark everything assigned to the split cluster as unassigned (-1)
+            let mut zs: Vec<usize> = self
+                .asgn
+                .iter()
+                .map(|&z| if z == zi { std::usize::MAX } else { z })
+                .collect();
+            zs[i] = zi_tmp;
+            zs[j] = zj_tmp;
+            zs
+        };
+
+        let row_ixs = self.get_sams_indices(zi, zj, calc_reverse, rng);
+
+        let mut logq: f64 = 0.0;
+        let mut nk_i: f64 = 1.0;
+        let mut nk_j: f64 = 1.0;
+
+        let mut logp = 0.0;
+
+        row_ixs
+            .iter()
+            .filter(|&&ix| !(ix == i || ix == j))
+            .for_each(|&ix| {
+                let logp_ci = constrainer.index_constrain(zi, ix);
+                let logp_cj = constrainer.index_constrain(zj, ix);
+                let logp_zi =
+                    nk_i.ln() + self.predictive_score_at(ix, zi_tmp) + logp_ci;
+                let logp_zj =
+                    nk_j.ln() + self.predictive_score_at(ix, zj_tmp) + logp_cj;
+                let lognorm = logaddexp(logp_zi, logp_zj);
+
+                let assign_to_zi = if calc_reverse {
+                    self.asgn.asgn[ix] == zi
+                } else {
+                    rng.gen::<f64>().ln() < logp_zi - lognorm
+                };
+
+                if assign_to_zi {
+                    logq += logp_zi - lognorm;
+                    self.force_observe_row(ix, zi_tmp);
+                    nk_i += 1.0;
+                    tmp_z[ix] = zi_tmp;
+                    logp += logp_ci;
+                } else {
+                    logq += logp_zj - lognorm;
+                    self.force_observe_row(ix, zj_tmp);
+                    nk_j += 1.0;
+                    tmp_z[ix] = zj_tmp;
+                    logp += logp_cj;
+                }
+            });
+
+        logp += self.logm(zi_tmp) + self.logm(zj_tmp);
+
+        let asgn = if calc_reverse {
+            logp += lcrp(self.asgn.len(), &self.asgn.counts, self.asgn.alpha);
+            None
+        } else {
+            tmp_z.iter_mut().for_each(|z| {
+                if *z == zi_tmp {
+                    *z = zi;
+                } else if *z == zj_tmp {
+                    *z = self.n_cats();
+                }
+            });
+
+            let asgn = AssignmentBuilder::from_vec(tmp_z)
+                .with_prior(self.asgn.prior.clone())
+                .with_alpha(self.asgn.alpha)
+                .seed_from_rng(rng)
+                .build()
+                .unwrap();
+
+            logp += lcrp(asgn.len(), &asgn.counts, asgn.alpha);
+            Some(asgn)
+        };
+
+        // delete the last component twice since we appended two components
+        self.drop_component(self.n_cats());
+        self.drop_component(self.n_cats());
+
+        (logp, logq, asgn)
+    }
 }
 
 impl State {

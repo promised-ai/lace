@@ -1460,7 +1460,7 @@ mod tests {
         let config = EngineUpdateConfig::new().default_transitions().n_iters(1);
 
         engine
-            .update(config, update_handler)
+            .update(&config, update_handler)
             .expect("update() processed correctly");
 
         let expected_methods_called: HashSet<String> = vec![
@@ -1492,7 +1492,7 @@ mod tests {
 
         let update_handler = StateTimeout::new(Duration::from_secs(3600));
 
-        engine.update(config, update_handler).expect(
+        engine.update(&config, update_handler).expect(
             "update() processed with the StateTimeout UpdateHandler correctly",
         );
     }

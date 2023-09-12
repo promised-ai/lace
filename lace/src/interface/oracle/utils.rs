@@ -711,6 +711,37 @@ pub fn continuous_impute(
     }
 }
 
+#[cfg(feature = "experimental")]
+pub fn index_impute(states: &[&State], row_ix: usize, col_ix: usize) -> usize {
+    use crate::stats::rv::experimental::Sbd;
+    let cpnts: Vec<Sbd> = states
+        .iter()
+        .map(|state| {
+            state
+                .component(row_ix, col_ix)
+                .try_into()
+                .expect("Unexpected column type")
+        })
+        .collect();
+
+    cpnts[0]
+        .observed_values()
+        .iter()
+        .map(|x| {
+            let logfs: Vec<f64> =
+                cpnts.iter().map(|cpnt| cpnt.ln_f(x)).collect();
+            (*x, logsumexp(&logfs))
+        })
+        .fold((0, std::f64::NEG_INFINITY), |(x_max, p_max), (x, p)| {
+            if p > p_max {
+                (x, p)
+            } else {
+                (x_max, p_max)
+            }
+        })
+        .0
+}
+
 pub fn categorical_impute(
     states: &[&State],
     row_ix: usize,

@@ -1836,7 +1836,10 @@ pub trait OracleT: CanOracle {
                 Datum::Count(x)
             }
             #[cfg(feature = "experimental")]
-            FType::Index => unimplemented!(),
+            FType::Index => {
+                let x = utils::index_impute(&states, row_ix, col_ix);
+                Datum::Index(x)
+            }
         };
 
         let val = utils::post_process_datum(val, col_ix, self.codebook());

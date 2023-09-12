@@ -878,7 +878,7 @@ impl View {
 
     /// Force component k to observe row_ix
     #[inline]
-    fn force_observe_row(&mut self, row_ix: usize, k: usize) {
+    pub(crate) fn force_observe_row(&mut self, row_ix: usize, k: usize) {
         self.ftrs
             .values_mut()
             .for_each(|ftr| ftr.observe_datum(row_ix, k));
@@ -916,14 +916,14 @@ impl View {
     }
 
     #[inline]
-    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
+    pub(crate) fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.append_empty_component(&mut rng);
         }
     }
 
     #[inline]
-    fn drop_component(&mut self, k: usize) {
+    pub(crate) fn drop_component(&mut self, k: usize) {
         for ftr in self.ftrs.values_mut() {
             ftr.drop_component(k);
         }
@@ -959,7 +959,7 @@ impl View {
         }
     }
 
-    fn set_asgn<R: Rng>(&mut self, asgn: Assignment, rng: &mut R) {
+    pub(crate) fn set_asgn<R: Rng>(&mut self, asgn: Assignment, rng: &mut R) {
         self.asgn = asgn;
         self.resample_weights(false, rng);
         for ftr in self.ftrs.values_mut() {
@@ -984,7 +984,7 @@ impl View {
     }
 
     #[inline]
-    fn get_sams_indices<R: Rng>(
+    pub(crate) fn get_sams_indices<R: Rng>(
         &self,
         zi: usize,
         zj: usize,

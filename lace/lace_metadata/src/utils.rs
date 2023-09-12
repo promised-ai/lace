@@ -9,8 +9,9 @@ use log::info;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 
+use crate::latest::Codebook;
 use crate::latest::DatalessStateAndDiagnostics;
-use crate::latest::{Codebook, DataStore};
+use crate::versions::v0::DataStore;
 use crate::{Error, FileConfig, SerializedType};
 
 fn extenson_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {

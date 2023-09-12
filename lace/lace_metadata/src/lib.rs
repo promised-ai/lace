@@ -13,6 +13,7 @@ mod config;
 mod error;
 pub mod latest;
 mod utils;
+pub mod versions;
 
 pub use utils::{deserialize_file, save_state, serialize_obj};
 
@@ -206,7 +207,12 @@ pub fn load_metadata<P: AsRef<Path>>(
 
     let md_version = file_config.metadata_version;
     match md_version {
-        0 => crate::latest::load::load_meatadata(path, &file_config),
+        0 => {
+            let v0 =
+                crate::versions::v0::load::load_meatadata(path, &file_config)?;
+            Ok(v0.into())
+        }
+        1 => crate::latest::load::load_meatadata(path, &file_config),
         requested => Err(Error::UnsupportedMetadataVersion {
             requested,
             max_supported: crate::latest::METADATA_VERSION,
