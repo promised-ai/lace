@@ -21,17 +21,23 @@ use crate::traits::LacePrior;
 use crate::view::View;
 use lace_utils::{Matrix, Shape};
 
-pub trait IndexConstrainer: Send + Sync {
-    fn index_constrain(&self, k: usize, n: usize) -> f64;
-}
-
 #[derive(Debug)]
-pub struct ViewSliceMatrix {
+pub struct ViewConstraintMatrix {
     pub col_ixs: Vec<usize>,
     pub matrix: lace_utils::Matrix<f64>,
 }
 
-impl ViewSliceMatrix {
+impl ViewConstraintMatrix {
+    pub fn zeros_like(other: &Self) -> Self {
+        ViewConstraintMatrix {
+            col_ixs: other.col_ixs.clone(),
+            matrix: lace_utils::Matrix::from_raw_parts(
+                vec![0.0; other.matrix.nelem()],
+                other.matrix.n_rows(),
+            ),
+        }
+    }
+
     pub fn n_cols(&self) -> usize {
         self.col_ixs.len()
     }
@@ -51,7 +57,6 @@ impl View {
     /// # Warning
     /// The row reassignment must be completed or else this function will leave
     /// an invalid view.
-    #[cfg(feature = "experimental")]
     pub fn slice_matrix<R: Rng>(
         &mut self,
         targets: &HashSet<usize>,
@@ -61,9 +66,46 @@ impl View {
         self.accum_score(targets, logps)
     }
 
+    // /// Use the improved slice algorithm to reassign the rows
+    // pub fn reassign_rows_slice_constrained(
+    //     &mut self,
+    //     conditions: Option<&HashSet<usize>>,
+    //     constrainer: &Matrix<f64>,
+    //     mut rng: &mut impl Rng,
+    // ) {
+    //     let mut logps = self._slice_matrix(rng);
+
+    //     assert_eq!(logps.shape(), constrainer.shape());
+
+    //     logps
+    //         .raw_values_mut()
+    //         .iter_mut()
+    //         .zip(constrainer.raw_values().iter())
+    //         .for_each(|(a, b)| *a += b);
+
+    //     let n_cats = logps.n_rows();
+
+    //     if let Some(targets) = conditions {
+    //         self.accum_score_and_integrate_asgn_cnd(
+    //             targets,
+    //             logps,
+    //             n_cats,
+    //             &crate::alg::RowAssignAlg::Slice,
+    //             &mut rng,
+    //         );
+    //     } else {
+    //         self.accum_score_and_integrate_asgn(
+    //             logps,
+    //             n_cats,
+    //             &crate::alg::RowAssignAlg::Slice,
+    //             &mut rng,
+    //         );
+    //     }
+    // }
+
     pub fn integrate_slice_assign(
         &mut self,
-        logps: ViewSliceMatrix,
+        logps: ViewConstraintMatrix,
         rng: &mut impl Rng,
     ) {
         let logps = logps.matrix.implicit_transpose();
@@ -80,14 +122,11 @@ impl View {
     }
 
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
-    pub fn reassign_rows_sams_constrained<C, R>(
+    pub fn reassign_rows_sams_constrained<R: Rng>(
         &mut self,
-        constrainer: &C,
+        constrainer: &Matrix<f64>,
         rng: &mut R,
-    ) where
-        R: Rng,
-        C: IndexConstrainer,
-    {
+    ) {
         use rand::seq::IteratorRandom;
 
         let (i, j, zi, zj) = {
@@ -114,16 +153,13 @@ impl View {
         debug_assert!(self.asgn.validate().is_valid());
     }
 
-    fn sams_merge_constrained<C, R>(
+    fn sams_merge_constrained<R: Rng>(
         &mut self,
         i: usize,
         j: usize,
-        constrainer: &C,
+        constrainer: &Matrix<f64>,
         rng: &mut R,
-    ) where
-        R: Rng,
-        C: IndexConstrainer,
-    {
+    ) {
         use crate::assignment::lcrp;
         use crate::assignment::AssignmentBuilder;
         use std::cmp::Ordering;
@@ -169,7 +205,7 @@ impl View {
                 .iter()
                 .enumerate()
                 .filter(|(_, &z)| z == zi)
-                .map(|(ix, &z)| constrainer.index_constrain(z, ix))
+                .map(|(ix, &z)| constrainer[(z, ix)])
                 .sum::<f64>();
 
         self.drop_component(self.n_cats());
@@ -179,16 +215,13 @@ impl View {
         }
     }
 
-    fn sams_split_constrained<C, R>(
+    fn sams_split_constrained<R: Rng>(
         &mut self,
         i: usize,
         j: usize,
-        constrainer: &C,
+        constrainer: &Matrix<f64>,
         rng: &mut R,
-    ) where
-        R: Rng,
-        C: IndexConstrainer,
-    {
+    ) {
         use crate::assignment::lcrp;
 
         let zi = self.asgn.asgn[i];
@@ -201,7 +234,7 @@ impl View {
                 .iter()
                 .enumerate()
                 .filter(|(_, &z)| z == zi)
-                .map(|(ix, &z)| constrainer.index_constrain(z, ix))
+                .map(|(ix, &z)| constrainer[(z, ix)])
                 .sum::<f64>();
         let (logp_spt, logq_spt, asgn_opt) =
             self.propose_split_constrained(i, j, false, constrainer, rng);
@@ -213,18 +246,14 @@ impl View {
         }
     }
 
-    fn propose_split_constrained<C, R>(
+    fn propose_split_constrained<R: Rng>(
         &mut self,
         i: usize,
         j: usize,
         calc_reverse: bool,
-        constrainer: &C,
+        constrainer: &Matrix<f64>,
         rng: &mut R,
-    ) -> (f64, f64, Option<Assignment>)
-    where
-        R: Rng,
-        C: IndexConstrainer,
-    {
+    ) -> (f64, f64, Option<Assignment>) {
         use crate::assignment::lcrp;
         use crate::assignment::AssignmentBuilder;
         use lace_utils::logaddexp;
@@ -265,8 +294,8 @@ impl View {
             .iter()
             .filter(|&&ix| !(ix == i || ix == j))
             .for_each(|&ix| {
-                let logp_ci = constrainer.index_constrain(zi, ix);
-                let logp_cj = constrainer.index_constrain(zj, ix);
+                let logp_ci = constrainer[(zi, ix)];
+                let logp_cj = constrainer[(zj, ix)];
                 let logp_zi =
                     nk_i.ln() + self.predictive_score_at(ix, zi_tmp) + logp_ci;
                 let logp_zj =
@@ -338,7 +367,7 @@ impl State {
         &mut self,
         targets: &HashSet<usize>,
         rng: &mut R,
-    ) -> Vec<ViewSliceMatrix> {
+    ) -> Vec<ViewConstraintMatrix> {
         let seeds =
             (0..self.n_views()).map(|_| rng.gen()).collect::<Vec<u64>>();
 
@@ -349,7 +378,7 @@ impl State {
                 let mut trng = Xoshiro256Plus::seed_from_u64(*seed);
                 let matrix = view.slice_matrix(targets, &mut trng);
                 let col_ixs = view.ftrs.keys().cloned().collect();
-                ViewSliceMatrix { matrix, col_ixs }
+                ViewConstraintMatrix { matrix, col_ixs }
             })
             .collect()
     }
@@ -357,7 +386,7 @@ impl State {
     /// Complete the slice row reassignment with pre-computed logp matrices
     pub fn integrate_slice_assign<R: Rng>(
         &mut self,
-        mut view_matricies: Vec<ViewSliceMatrix>,
+        mut view_matricies: Vec<ViewConstraintMatrix>,
         rng: &mut R,
     ) {
         let mut seeds: Vec<u64> =
@@ -371,6 +400,24 @@ impl State {
                 let mut rng = Xoshiro256Plus::seed_from_u64(seed);
                 view.integrate_slice_assign(logps, &mut rng);
             });
+    }
+
+    pub fn reassign_rows_sams_constrained<R: Rng>(
+        &mut self,
+        view_constraints: &[ViewConstraintMatrix],
+        rng: &mut R,
+    ) {
+        use rand_xoshiro::Xoroshiro128Plus;
+        let mut t_rngs = (0..self.n_views())
+            .map(|_| Xoroshiro128Plus::seed_from_u64(rng.gen()))
+            .collect::<Vec<_>>();
+        self.views
+            .par_iter_mut()
+            .zip_eq(view_constraints.par_iter())
+            .zip_eq(t_rngs.par_iter_mut())
+            .for_each(|((view, constraints), t_rng)| {
+                view.reassign_rows_sams_constrained(&constraints.matrix, t_rng);
+            })
     }
 
     // append a linking partition column to the table

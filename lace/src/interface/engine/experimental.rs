@@ -1,5 +1,5 @@
 use super::Engine;
-use crate::cc::experimental::ViewSliceMatrix;
+use crate::cc::experimental::ViewConstraintMatrix;
 use lace_codebook::ColMetadata;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -8,9 +8,51 @@ use std::collections::HashSet;
 use rayon::prelude::*;
 
 #[derive(Debug)]
-pub struct SliceRowMatrices {
-    // state_matrices[s][v] is the logp matric for view v under state s
-    pub state_matrices: Vec<Vec<ViewSliceMatrix>>,
+pub struct ConstraintMatrices {
+    // state_matrices[s][v] is the logp matrix for view v under state s
+    pub state_matrices: Vec<Vec<ViewConstraintMatrix>>,
+}
+
+impl ConstraintMatrices {
+    /// Create ConstraintMatrices the same shape as `self` but fully populated
+    /// with zeros
+    pub fn zeros_like(other: &Self) -> Self {
+        Self {
+            state_matrices: other
+                .state_matrices
+                .iter()
+                .map(|view_mats| {
+                    view_mats
+                        .iter()
+                        .map(|mat| ViewConstraintMatrix::zeros_like(mat))
+                        .collect()
+                })
+                .collect(),
+        }
+    }
+
+    /// Add the entries of the equally-sized ConstraintMatrices `other` to
+    /// `self`
+    pub fn recieve_constraints(&mut self, other: &Self) {
+        self.state_matrices
+            .par_iter_mut()
+            .zip_eq(other.state_matrices.par_iter())
+            .for_each(|(view_mats_s, view_mats_o)| {
+                view_mats_s
+                    .par_iter_mut()
+                    .zip_eq(view_mats_o.par_iter())
+                    .for_each(|(mat_s, mat_o)| {
+                        mat_s
+                            .matrix
+                            .raw_values_mut()
+                            .iter_mut()
+                            .zip(mat_o.matrix.raw_values().iter())
+                            .for_each(|(p_s, p_o)| {
+                                *p_s += p_o;
+                            })
+                    })
+            })
+    }
 }
 
 // experimental impls
@@ -18,11 +60,11 @@ impl Engine {
     pub fn slice_row_matrices(
         &mut self,
         targets: &HashSet<usize>,
-    ) -> SliceRowMatrices {
+    ) -> ConstraintMatrices {
         let mut rng = self.rng.clone();
         let seeds: Vec<u64> = (0..self.n_states()).map(|_| rng.gen()).collect();
 
-        let state_matrices: Vec<Vec<ViewSliceMatrix>> = self
+        let state_matrices: Vec<Vec<ViewConstraintMatrix>> = self
             .states
             .par_iter_mut()
             .zip(seeds.par_iter())
@@ -32,10 +74,10 @@ impl Engine {
             })
             .collect();
 
-        SliceRowMatrices { state_matrices }
+        ConstraintMatrices { state_matrices }
     }
 
-    pub fn integrate_slice_assign(&mut self, mut matrices: SliceRowMatrices) {
+    pub fn integrate_slice_assign(&mut self, mut matrices: ConstraintMatrices) {
         let seeds: Vec<u64> =
             (0..self.n_states()).map(|_| self.rng.gen()).collect();
 
@@ -46,6 +88,23 @@ impl Engine {
             .for_each(|((state, view_matrices), seed)| {
                 let mut rng = Xoshiro256Plus::seed_from_u64(*seed);
                 state.integrate_slice_assign(view_matrices, &mut rng)
+            })
+    }
+
+    pub fn reassign_rows_sams_constrained(
+        &mut self,
+        constraints: &ConstraintMatrices,
+    ) {
+        use rand_xoshiro::Xoroshiro128Plus;
+        let mut t_rngs = (0..self.n_states())
+            .map(|_| Xoroshiro128Plus::seed_from_u64(self.rng.gen()))
+            .collect::<Vec<_>>();
+        self.states
+            .par_iter_mut()
+            .zip_eq(constraints.state_matrices.par_iter())
+            .zip_eq(t_rngs.par_iter_mut())
+            .for_each(|((state, constraints), t_rng)| {
+                state.reassign_rows_sams_constrained(&constraints, t_rng);
             })
     }
 

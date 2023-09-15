@@ -11,7 +11,7 @@ pub use engine::{
 };
 
 #[cfg(feature = "experimental")]
-pub use engine::experimental::SliceRowMatrices;
+pub use engine::experimental::ConstraintMatrices;
 
 use lace_codebook::Codebook;
 pub use lace_metadata::latest::Metadata;

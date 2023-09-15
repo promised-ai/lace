@@ -4,7 +4,7 @@ use lace_stats::rv::traits::Rv;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-const MAX_STICK_BREAKING_ITERS: u16 = 1000;
+const MAX_STICK_BREAKING_ITERS: u16 = 5000;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct CrpDraw {
@@ -85,6 +85,12 @@ pub fn sb_slice_extend<R: Rng>(
         }
 
         iters += 1;
+        #[cfg(feature = "experimental")]
+        if iters > MAX_STICK_BREAKING_ITERS {
+            // just give up
+            return Ok(weights);
+        }
+        #[cfg(not(feature = "experimental"))]
         if iters > MAX_STICK_BREAKING_ITERS {
             return Err(TheStickIsDust(MAX_STICK_BREAKING_ITERS));
         }

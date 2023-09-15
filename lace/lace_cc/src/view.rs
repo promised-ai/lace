@@ -369,9 +369,9 @@ impl View {
                 }
                 #[cfg(feature = "experimental")]
                 {
-                    use crate::experimental::ViewSliceMatrix;
+                    use crate::experimental::ViewConstraintMatrix;
                     let matrix = self.slice_matrix(&HashSet::new(), rng);
-                    let logps = ViewSliceMatrix {
+                    let logps = ViewConstraintMatrix {
                         col_ixs: Vec::new(),
                         matrix,
                     };
@@ -1185,7 +1185,7 @@ impl View {
         (logp, logq, asgn)
     }
 
-    fn accum_score_and_integrate_asgn(
+    pub(crate) fn accum_score_and_integrate_asgn(
         &mut self,
         mut logps: Matrix<f64>,
         n_cats: usize,
@@ -1247,7 +1247,7 @@ impl View {
         logps
     }
 
-    fn accum_score_and_integrate_asgn_cnd(
+    pub(crate) fn accum_score_and_integrate_asgn_cnd(
         &mut self,
         targets: &HashSet<usize>,
         logps: Matrix<f64>,

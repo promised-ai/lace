@@ -186,7 +186,7 @@ pub use interface::{
 
 #[cfg(feature = "experimental")]
 pub mod experimental {
-    pub use crate::interface::SliceRowMatrices;
+    pub use crate::interface::ConstraintMatrices;
 }
 
 pub mod error {

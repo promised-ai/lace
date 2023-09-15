@@ -2564,6 +2564,7 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 [[package]]
 name = "rv"
 version = "0.16.0"
+source = "git+https://gitlab.com/baxe/rv.git?branch=feature/experimental#076ada1c52ee76417dd25f8065940015e8a628a7"
 dependencies = [
  "doc-comment",
  "lru",
