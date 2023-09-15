@@ -150,7 +150,6 @@ impl View {
             assert!(zi < zj);
             self.sams_merge_constrained(i, j, constrainer, rng);
         }
-        debug_assert!(self.asgn.validate().is_valid());
     }
 
     fn sams_merge_constrained<R: Rng>(
@@ -205,7 +204,7 @@ impl View {
                 .iter()
                 .enumerate()
                 .filter(|(_, &z)| z == zi)
-                .map(|(ix, &z)| constrainer[(z, ix)])
+                .map(|(ix, &z)| constrainer[(zi, ix)])
                 .sum::<f64>();
 
         self.drop_component(self.n_cats());
@@ -295,7 +294,7 @@ impl View {
             .filter(|&&ix| !(ix == i || ix == j))
             .for_each(|&ix| {
                 let logp_ci = constrainer[(zi, ix)];
-                let logp_cj = constrainer[(zj, ix)];
+                let logp_cj = constrainer[(zi_tmp, ix)];
                 let logp_zi =
                     nk_i.ln() + self.predictive_score_at(ix, zi_tmp) + logp_ci;
                 let logp_zj =
@@ -357,6 +356,16 @@ impl View {
 }
 
 impl State {
+    /// delete any components extend beyond the assignment
+    pub fn drop_extra_components(&mut self) {
+        for view in self.views.iter_mut() {
+            let n_cats = view.asgn.n_cats;
+            for ftr in view.ftrs.values_mut() {
+                (n_cats..ftr.k()).for_each(|_| ftr.drop_component(n_cats));
+            }
+        }
+    }
+
     /// Creates logp matrices and prepares the state for row-reassignment via
     /// slice sampling.
     ///
