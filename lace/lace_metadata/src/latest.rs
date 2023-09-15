@@ -1,30 +1,33 @@
 use std::collections::BTreeMap;
 
 use lace_cc::assignment::Assignment;
-use lace_cc::feature::{ColModel, Column, Latent, MissingNotAtRandom};
+use lace_cc::feature::{ColModel, Latent, MissingNotAtRandom};
 use lace_cc::state::{State, StateDiagnostics};
-use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
 use lace_cc::view::View;
 use lace_codebook::ColMetadata;
-use lace_data::SparseContainer;
-#[cfg(feature = "experimental")]
-use lace_stats::experimental::sbd::SbdHyper;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{
-    Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
-    NormalInvChiSquared, Poisson, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
 };
+
+#[cfg(feature = "experimental")]
+use lace_cc::feature::Column;
+#[cfg(feature = "experimental")]
+use lace_data::SparseContainer;
+#[cfg(feature = "experimental")]
+use lace_stats::experimental::sbd::SbdHyper;
 #[cfg(feature = "experimental")]
 use lace_stats::rv::experimental::{Sb, Sbd};
-use lace_stats::MixtureType;
+#[cfg(feature = "experimental")]
+use once_cell::sync::OnceCell;
 
 use crate::versions::v0;
 use crate::versions::v0::{DataStore, DatalessMissingNotAtRandom};
-use once_cell::sync::OnceCell;
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
 

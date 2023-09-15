@@ -175,8 +175,13 @@ pub use index::*;
 
 pub use config::EngineUpdateConfig;
 
+pub mod utils {
+    pub use crate::interface::utils::*;
+    pub use lace_utils::*;
+}
+
 pub use interface::{
-    update_handler, utils, AppendStrategy, BuildEngineError, Builder,
+    update_handler, AppendStrategy, BuildEngineError, Builder,
     ConditionalEntropyType, DatalessOracle, Engine, Given, HasData, HasStates,
     ImputeUncertaintyType, InsertDataActions, InsertMode, LatentColumnType,
     Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
