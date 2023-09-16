@@ -57,6 +57,16 @@ impl ConstraintMatrices {
 
 // experimental impls
 impl Engine {
+    pub fn sams_row_matrices(&self) -> ConstraintMatrices {
+        let state_matrices: Vec<Vec<ViewConstraintMatrix>> = self
+            .states
+            .par_iter()
+            .map(|state| state.sams_view_matrices())
+            .collect();
+
+        ConstraintMatrices { state_matrices }
+    }
+
     pub fn slice_row_matrices(
         &mut self,
         targets: &HashSet<usize>,

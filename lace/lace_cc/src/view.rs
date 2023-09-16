@@ -362,22 +362,7 @@ impl View {
         }
 
         match alg {
-            RowAssignAlg::Slice => {
-                #[cfg(not(feature = "experimental"))]
-                {
-                    self.reassign_rows_slice(None, &mut rng)
-                }
-                #[cfg(feature = "experimental")]
-                {
-                    use crate::experimental::ViewConstraintMatrix;
-                    let matrix = self.slice_matrix(&HashSet::new(), rng);
-                    let logps = ViewConstraintMatrix {
-                        col_ixs: Vec::new(),
-                        matrix,
-                    };
-                    self.integrate_slice_assign(logps, rng);
-                }
-            }
+            RowAssignAlg::Slice => self.reassign_rows_slice(None, &mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
             RowAssignAlg::Sams => self.reassign_rows_sams(&mut rng),
             RowAssignAlg::FiniteCpu => {

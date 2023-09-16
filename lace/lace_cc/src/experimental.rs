@@ -66,6 +66,12 @@ impl View {
         self.accum_score(targets, logps)
     }
 
+    pub fn constraint_matrix(&self, n_extra: Option<usize>) -> Matrix<f64> {
+        let n_cols = self.n_rows();
+        let n_rows = self.asgn.n_cats + n_extra.unwrap_or(0);
+        Matrix::from_raw_parts(vec![0.0; n_cols * n_rows], n_rows)
+    }
+
     // /// Use the improved slice algorithm to reassign the rows
     // pub fn reassign_rows_slice_constrained(
     //     &mut self,
@@ -117,7 +123,7 @@ impl View {
 
     pub fn update_component<R: Rng>(&mut self, k: usize, rng: &mut R) {
         for ftr in self.ftrs.values_mut() {
-            ftr.update_component(k, rng)
+            ftr.update_component(k, rng);
         }
     }
 
@@ -128,6 +134,9 @@ impl View {
         rng: &mut R,
     ) {
         use rand::seq::IteratorRandom;
+
+        assert_eq!(constrainer.n_cols(), self.n_rows());
+        assert!(constrainer.n_rows() >= self.asgn.n_cats + 1);
 
         let (i, j, zi, zj) = {
             let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
@@ -364,6 +373,21 @@ impl State {
                 (n_cats..ftr.k()).for_each(|_| ftr.drop_component(n_cats));
             }
         }
+    }
+
+    /// Creates logp matrices and prepares the state for row-reassignment via
+    /// merge-split sampling.
+    pub fn sams_view_matrices(&self) -> Vec<ViewConstraintMatrix> {
+        self.views
+            .par_iter()
+            .map(|view| {
+                let matrix = view.constraint_matrix(Some(1));
+                ViewConstraintMatrix {
+                    matrix,
+                    col_ixs: Default::default(),
+                }
+            })
+            .collect()
     }
 
     /// Creates logp matrices and prepares the state for row-reassignment via
