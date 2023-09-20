@@ -194,7 +194,7 @@ impl CoreEngine {
         let (row_ixs, col_ixs) = ixs.ixs(&self.engine.codebook)?;
 
         let index = polars::series::Series::new(
-            "Index",
+            "index",
             row_ixs
                 .iter()
                 .map(|ix| ix.1.clone())
@@ -1146,6 +1146,7 @@ impl CoreEngine {
         let write_mode = lace::WriteMode {
             overwrite: lace::OverwriteMode::Deny,
             insert: lace::InsertMode::DenyNewColumns,
+            allow_extend_support: true,
             ..Default::default()
         };
         self.engine

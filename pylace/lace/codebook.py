@@ -360,7 +360,7 @@ class Codebook:
     def append_column_metadata(self, col_metadata: List[_lc.ColumnMetadata]):
         """Append new columns to the codebook."""
         codebook = copy.copy(self)
-        codebook.codebook.append_col_metadata(col_metadata)
+        codebook.codebook.append_column_metadata(col_metadata)
         return codebook
 
     def set_row_names(

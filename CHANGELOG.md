@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed pylace's `__getitem__` index name to match other accessors.
+- Fixed pylace's `append_column_metadata` to refer to the correct internal function.
+- Pylace will try to use Python's internal conversion for floats in `value_to_datum` conversion. 
+
 ### Added 
  - Pylace's Engine now implements deepcopy.
 
