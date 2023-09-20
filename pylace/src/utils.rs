@@ -660,7 +660,7 @@ pub(crate) fn pyany_to_data(
 
 fn process_row_dict(
     row_dict: &PyDict,
-    col_indexer: &Indexer,
+    _col_indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> Result<Vec<Datum>, PyErr> {

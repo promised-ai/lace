@@ -16,8 +16,8 @@ rand_xoshiro = "0.6.0"
 pyo3 = { version = "0.19", features = ["extension-module"] }
 serde_json = "1.0.91"
 serde_yaml = "0.9.17"
-polars = "=0.32.0"
-arrow2 = "0.17"
+polars = "0.33"
+arrow2 = "0.18"
 
 [package.metadata.maturin]
 name = "lace.core"
