@@ -1,6 +1,6 @@
 [package]
 name = "lace"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Promised AI"]
 build = "build.rs"
 edition = "2021"
