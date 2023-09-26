@@ -1,5 +1,6 @@
 use super::Engine;
 use crate::cc::experimental::ViewConstraintMatrix;
+use lace_cc::experimental::SamsIndices;
 use lace_codebook::ColMetadata;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -24,7 +25,7 @@ impl ConstraintMatrices {
                 .map(|view_mats| {
                     view_mats
                         .iter()
-                        .map(|mat| ViewConstraintMatrix::zeros_like(mat))
+                        .map(ViewConstraintMatrix::zeros_like)
                         .collect()
                 })
                 .collect(),
@@ -104,6 +105,7 @@ impl Engine {
     pub fn reassign_rows_sams_constrained(
         &mut self,
         constraints: &ConstraintMatrices,
+        mut ixs: Vec<Vec<SamsIndices>>,
     ) {
         use rand_xoshiro::Xoroshiro128Plus;
         let mut t_rngs = (0..self.n_states())
@@ -112,9 +114,10 @@ impl Engine {
         self.states
             .par_iter_mut()
             .zip_eq(constraints.state_matrices.par_iter())
+            .zip_eq(ixs.par_drain(..))
             .zip_eq(t_rngs.par_iter_mut())
-            .for_each(|((state, constraints), t_rng)| {
-                state.reassign_rows_sams_constrained(&constraints, t_rng);
+            .for_each(|(((state, constraints), ixs), t_rng)| {
+                state.reassign_rows_sams_constrained(constraints, ixs, t_rng);
             })
     }
 

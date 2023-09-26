@@ -57,7 +57,7 @@ use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 #[cfg(feature = "experimental")]
-use lace_stats::rv::experimental::{Sb, Sbd};
+use lace_stats::rv::experimental::Sb;
 
 use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;

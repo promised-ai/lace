@@ -41,7 +41,7 @@ pub trait Container<T: Clone + TryFrom<Datum>> {
                 if let Ok(val) = T::try_from(x) {
                     self.push(Some(val));
                 } else {
-                    panic!("failed to convert datum");
+                    panic!("failed to convert pushed datum");
                 }
             }
         }
@@ -56,7 +56,7 @@ pub trait Container<T: Clone + TryFrom<Datum>> {
                 if let Ok(val) = T::try_from(x) {
                     self.insert_overwrite(row_ix, val)
                 } else {
-                    panic!("failed to convert datum");
+                    panic!("failed to convert inserted datum");
                 }
             }
         }

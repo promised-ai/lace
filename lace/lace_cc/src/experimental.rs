@@ -51,6 +51,14 @@ impl ViewConstraintMatrix {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct SamsIndices {
+    i: usize,
+    j: usize,
+    zi: usize,
+    zj: usize,
+}
+
 impl View {
     /// Create the slice matrix and prepare the view for the row reassignment
     ///
@@ -72,43 +80,6 @@ impl View {
         Matrix::from_raw_parts(vec![0.0; n_cols * n_rows], n_rows)
     }
 
-    // /// Use the improved slice algorithm to reassign the rows
-    // pub fn reassign_rows_slice_constrained(
-    //     &mut self,
-    //     conditions: Option<&HashSet<usize>>,
-    //     constrainer: &Matrix<f64>,
-    //     mut rng: &mut impl Rng,
-    // ) {
-    //     let mut logps = self._slice_matrix(rng);
-
-    //     assert_eq!(logps.shape(), constrainer.shape());
-
-    //     logps
-    //         .raw_values_mut()
-    //         .iter_mut()
-    //         .zip(constrainer.raw_values().iter())
-    //         .for_each(|(a, b)| *a += b);
-
-    //     let n_cats = logps.n_rows();
-
-    //     if let Some(targets) = conditions {
-    //         self.accum_score_and_integrate_asgn_cnd(
-    //             targets,
-    //             logps,
-    //             n_cats,
-    //             &crate::alg::RowAssignAlg::Slice,
-    //             &mut rng,
-    //         );
-    //     } else {
-    //         self.accum_score_and_integrate_asgn(
-    //             logps,
-    //             n_cats,
-    //             &crate::alg::RowAssignAlg::Slice,
-    //             &mut rng,
-    //         );
-    //     }
-    // }
-
     pub fn integrate_slice_assign(
         &mut self,
         logps: ViewConstraintMatrix,
@@ -127,31 +98,34 @@ impl View {
         }
     }
 
+    pub fn sams_ixs<R: Rng>(&self, rng: &mut R) -> SamsIndices {
+        use rand::seq::IteratorRandom;
+
+        let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
+        let i = ixs[0];
+        let j = ixs[1];
+
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        let (i, j, zi, zj) = if zi < zj {
+            (i, j, zi, zj)
+        } else {
+            (j, i, zj, zi)
+        };
+
+        SamsIndices { i, j, zi, zj }
+    }
+
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
     pub fn reassign_rows_sams_constrained<R: Rng>(
         &mut self,
         constrainer: &Matrix<f64>,
+        SamsIndices { i, j, zi, zj }: SamsIndices,
         rng: &mut R,
     ) {
-        use rand::seq::IteratorRandom;
-
         assert_eq!(constrainer.n_cols(), self.n_rows());
-        assert!(constrainer.n_rows() >= self.asgn.n_cats + 1);
-
-        let (i, j, zi, zj) = {
-            let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
-            let i = ixs[0];
-            let j = ixs[1];
-
-            let zi = self.asgn.asgn[i];
-            let zj = self.asgn.asgn[j];
-
-            if zi < zj {
-                (i, j, zi, zj)
-            } else {
-                (j, i, zj, zi)
-            }
-        };
+        assert!(constrainer.n_rows() > self.asgn.n_cats);
 
         if zi == zj {
             self.sams_split_constrained(i, j, constrainer, rng);
@@ -207,13 +181,12 @@ impl View {
 
         let logp_mrg = self.logm(self.n_cats())
             + lcrp(asgn.len(), &asgn.counts, asgn.alpha)
-            + self
-                .asgn
+            + asgn
                 .asgn
                 .iter()
                 .enumerate()
                 .filter(|(_, &z)| z == zi)
-                .map(|(ix, &z)| constrainer[(zi, ix)])
+                .map(|(ix, _)| constrainer[(zi, ix)])
                 .sum::<f64>();
 
         self.drop_component(self.n_cats());
@@ -242,8 +215,9 @@ impl View {
                 .iter()
                 .enumerate()
                 .filter(|(_, &z)| z == zi)
-                .map(|(ix, &z)| constrainer[(z, ix)])
+                .map(|(ix, _)| constrainer[(zi, ix)])
                 .sum::<f64>();
+
         let (logp_spt, logq_spt, asgn_opt) =
             self.propose_split_constrained(i, j, false, constrainer, rng);
 
@@ -303,7 +277,14 @@ impl View {
             .filter(|&&ix| !(ix == i || ix == j))
             .for_each(|&ix| {
                 let logp_ci = constrainer[(zi, ix)];
-                let logp_cj = constrainer[(zi_tmp, ix)];
+                let logp_cj = if calc_reverse {
+                    // if we're just calculating the reverse, we are 'proposing'
+                    // a move to the current zj ...
+                    constrainer[(zj, ix)]
+                } else {
+                    // ...otherwise we propose to move to a new category
+                    constrainer[(zi_tmp, ix)]
+                };
                 let logp_zi =
                     nk_i.ln() + self.predictive_score_at(ix, zi_tmp) + logp_ci;
                 let logp_zj =
@@ -438,6 +419,7 @@ impl State {
     pub fn reassign_rows_sams_constrained<R: Rng>(
         &mut self,
         view_constraints: &[ViewConstraintMatrix],
+        mut ixs: Vec<SamsIndices>,
         rng: &mut R,
     ) {
         use rand_xoshiro::Xoroshiro128Plus;
@@ -447,9 +429,14 @@ impl State {
         self.views
             .par_iter_mut()
             .zip_eq(view_constraints.par_iter())
+            .zip_eq(ixs.par_drain(..))
             .zip_eq(t_rngs.par_iter_mut())
-            .for_each(|((view, constraints), t_rng)| {
-                view.reassign_rows_sams_constrained(&constraints.matrix, t_rng);
+            .for_each(|(((view, constraints), ixs), t_rng)| {
+                view.reassign_rows_sams_constrained(
+                    &constraints.matrix,
+                    ixs,
+                    t_rng,
+                );
             })
     }
 

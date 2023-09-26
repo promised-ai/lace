@@ -741,7 +741,7 @@ impl QmcEntropy for ColModel {
                 Datum::Categorical(Category::U8(x))
             }
             #[cfg(feature = "experimental")]
-            ColModel::Index(cm) => {
+            ColModel::Index(_) => {
                 unimplemented!(
                     "QMC integration not implemented for Stick Breaking \
                     Discrete"

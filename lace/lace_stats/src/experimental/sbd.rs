@@ -3,7 +3,6 @@ use crate::rv::traits::Rv;
 use crate::{rv::dist::Gamma, UpdatePrior};
 use lace_consts::rv::experimental::Sbd;
 use lace_consts::rv::prelude::GammaError;
-use lace_data::AccumScore;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

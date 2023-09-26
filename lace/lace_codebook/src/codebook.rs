@@ -20,9 +20,6 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
-#[cfg(feature = "experimental")]
-use lace_stats::experimental::dp_discrete::DpdPrior;
-
 /// A structure that enforces unique IDs and row names.
 ///
 /// # Notes

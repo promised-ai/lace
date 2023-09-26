@@ -995,7 +995,7 @@ impl Engine {
         }
 
         // Initialize update_handler
-        update_handler.global_init(&config, &self.states);
+        update_handler.global_init(config, &self.states);
 
         // Save up frontif the the use has provided a save config. If the user
         // has also provided a checkpoint arg, we use this initial save to save
