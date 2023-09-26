@@ -18,7 +18,7 @@ path = "src/main.rs"
 anyhow = "1.0"
 clap = "4.2"
 env_logger = "0.9"
-lace_codebook = { path = "../../lace/lace_codebook", version = "0.1.1" }
+lace_codebook = { path = "../../lace/lace_codebook", version = "0.2.0" }
 lace_stats = { path = "../../lace/lace_stats", version = "0.1.1" }
 log = "0.4"
 mdbook = "0.4"

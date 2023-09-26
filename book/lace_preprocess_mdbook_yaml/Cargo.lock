@@ -1328,7 +1328,7 @@ dependencies = [
 
 [[package]]
 name = "lace_codebook"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "flate2",
  "lace_consts",
