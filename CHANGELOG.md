@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [python-0.4.0] - 2023-09-27
 
-### Added 
+### Added
  - Component params now available from `pylace`
  - `Engine`s in `pylace` now implement deepcopy
 
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated rust `polars` to version `0.33`
 - Updated rust `arrow2` to `0.18`
 
-## [rust-0.3.2] - 2023-09-27
+## [rust-0.4.0] - 2023-09-27
 
 ### Fixed
 
@@ -142,7 +142,7 @@ Initial release on [crates.io](https://crates.io/)
 
 [unreleased]: https://github.com/promised-ai/lace/compare/python-0.4.0...HEAD
 [python-0.4.0]: https://github.com/promised-ai/lace/compare/python-0.3.1...python-0.4.0
-[rust-0.3.2]: https://github.com/promised-ai/lace/compare/rust-0.3.1...rust-0.3.2
+[rust-0.4.0]: https://github.com/promised-ai/lace/compare/rust-0.3.1...rust-0.4.0
 [python-0.3.1]: https://github.com/promised-ai/lace/compare/python-0.3.0...python-0.3.1
 [rust-0.3.1]: https://github.com/promised-ai/lace/compare/rust-0.3.0...rust-0.3.1
 [python-0.3.0]: https://github.com/promised-ai/lace/compare/python-0.2.0...python-0.3.0

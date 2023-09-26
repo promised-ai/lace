@@ -1,6 +1,6 @@
 [package]
 name = "lace_codebook"
-version = "0.1.6"
+version = "0.2.0"
 authors = ["Promised.ai"]
 edition = "2021"
 license = "SSPL-1.0"

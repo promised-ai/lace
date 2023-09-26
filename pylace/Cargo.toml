@@ -9,7 +9,7 @@ name = "lace"
 crate-type = ["cdylib"]
 
 [dependencies]
-lace = { path = "../lace", version="0.3.2" }
+lace = { path = "../lace", version="0.4.0" }
 lace_utils = { path = "../lace/lace_utils", version="0.1.2" }
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"

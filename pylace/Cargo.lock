@@ -943,7 +943,7 @@ dependencies = [
 
 [[package]]
 name = "lace"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "bincode",
  "clap",
@@ -981,7 +981,7 @@ dependencies = [
 
 [[package]]
 name = "lace_cc"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "enum_dispatch",
  "indicatif",
@@ -1003,7 +1003,7 @@ dependencies = [
 
 [[package]]
 name = "lace_codebook"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "flate2",
  "lace_consts",
@@ -1050,7 +1050,7 @@ dependencies = [
 
 [[package]]
 name = "lace_metadata"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "bincode",
  "dirs",
