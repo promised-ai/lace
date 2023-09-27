@@ -1,6 +1,6 @@
 [package]
 name = "pylace"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 license = "SSPL-1.0"
 
@@ -9,15 +9,15 @@ name = "lace"
 crate-type = ["cdylib"]
 
 [dependencies]
-lace = { path = "../lace", version="0.3.1" }
+lace = { path = "../lace", version="0.4.0" }
 lace_utils = { path = "../lace/lace_utils", version="0.1.2" }
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
 pyo3 = { version = "0.19", features = ["extension-module"] }
 serde_json = "1.0.91"
 serde_yaml = "0.9.17"
-polars = "=0.32.0"
-arrow2 = "0.17"
+polars = "0.33"
+arrow2 = "0.18"
 
 [package.metadata.maturin]
 name = "lace.core"

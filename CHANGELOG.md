@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.4.0] - 2023-09-27
+
+### Added
+ - Component params now available from `pylace`
+ - `Engine`s in `pylace` now implement deepcopy
+
+### Fixed
+
+- Fixed `pylace`'s `__getitem__` index name to match other accessors
+- Fixed `pylace`'s `append_column_metadata` to refer to the correct internal function.
+- `pylace` will try to use Python's internal conversion for floats in `value_to_datum` conversion. 
+
+### Changed
+
+- Updated rust `polars` to version `0.33`
+- Updated rust `arrow2` to `0.18`
+
+## [rust-0.4.0] - 2023-09-27
+
+### Fixed
+
+ - Upgraded `polars` version to version `0.33` (fixes builds failing due to no `cmake` installed)
+
 ## [python-0.3.1] - 2023-08-28
 
 ### Fixed
@@ -117,7 +140,9 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.3.1...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.4.0...HEAD
+[python-0.4.0]: https://github.com/promised-ai/lace/compare/python-0.3.1...python-0.4.0
+[rust-0.4.0]: https://github.com/promised-ai/lace/compare/rust-0.3.1...rust-0.4.0
 [python-0.3.1]: https://github.com/promised-ai/lace/compare/python-0.3.0...python-0.3.1
 [rust-0.3.1]: https://github.com/promised-ai/lace/compare/rust-0.3.0...rust-0.3.1
 [python-0.3.0]: https://github.com/promised-ai/lace/compare/python-0.2.0...python-0.3.0

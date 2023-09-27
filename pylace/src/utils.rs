@@ -289,9 +289,6 @@ pub(crate) fn vec_to_srs(
             }
         }
         FType::Count => Ok(srs_from_vec!(values, name, u32, Count)),
-        // ftype => Err(PyErr::new::<PyValueError, _>(format!(
-        //     "Simulated unsupported ftype: {ftype:?}"
-        // ))),
     }
     .map(PySeries)
 }
@@ -358,9 +355,6 @@ pub(crate) fn simulate_to_df(
                 }
             }
             FType::Count => Ok(srs_from_simulate!(values, i, name, u32, Count)),
-            // ftype => Err(PyErr::new::<PyValueError, _>(format!(
-            //     "Simulated unsupported ftype: {ftype:?}"
-            // ))),
         }?;
         df.with_column(srs).map_err(|err| {
             PyErr::new::<PyRuntimeError, _>(format!(
@@ -387,6 +381,7 @@ pub(crate) fn str_to_mitype(mi_type: &str) -> PyResult<lace::MiType> {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) struct Indexer {
     pub to_ix: HashMap<String, usize>,
     pub to_name: HashMap<usize, String>,
@@ -537,10 +532,7 @@ pub(crate) fn value_to_datum(val: &PyAny, ftype: FType) -> PyResult<Datum> {
 
     match ftype {
         FType::Continuous => {
-            let x: f64 = {
-                let f: &PyFloat = val.downcast().unwrap();
-                f.value()
-            };
+            let x: f64 = val.extract().unwrap();
             if x.is_nan() {
                 Ok(Datum::Missing)
             } else {
@@ -668,7 +660,7 @@ pub(crate) fn pyany_to_data(
 
 fn process_row_dict(
     row_dict: &PyDict,
-    col_indexer: &Indexer,
+    _col_indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> Result<Vec<Datum>, PyErr> {

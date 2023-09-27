@@ -65,6 +65,9 @@ impl std::convert::From<DataFrameError> for PyErr {
                 PolarsError::StringCacheMismatch(err) => {
                     StringCacheMismatch::new_err(err.to_string())
                 }
+                PolarsError::OutOfBounds(_) => {
+                    OutOfBounds::new_err(err.to_string())
+                }
             },
             DataFrameError::Arrow(err) => {
                 ArrowErrorException::new_err(format!("{:?}", err))
@@ -220,3 +223,4 @@ create_exception!(exceptions, ShapeError, PyException);
 create_exception!(exceptions, SchemaError, PyException);
 create_exception!(exceptions, DuplicateError, PyException);
 create_exception!(exceptions, StringCacheMismatch, PyException);
+create_exception!(exceptions, OutOfBounds, PyException);
