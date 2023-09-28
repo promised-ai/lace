@@ -51,4 +51,4 @@ and examples, see Mansinghka et al [^pcc-jmlr].
   [^pcc-jmlr]: Mansinghka, V., Shafto, P., Jonas, E., Petschulat, C., Gasner,
   M., & Tenenbaum, J. B. (2016). Crosscat: A fully bayesian nonparametric
   method for analyzing heterogeneous, high dimensional data.
-  [(PDF)](jmlr.org/papers/volume17/11-392/11-392.pdf)
+  [(PDF)](https://jmlr.org/papers/volume17/11-392/11-392.pdf)

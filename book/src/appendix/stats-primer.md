@@ -76,5 +76,5 @@ The CRP metaphor works like this: you are on your lunch break and, as one often 
 
 where \\(z_i\\) is the table of customer i, \\(n_k\\) is the number of customers currently seated at table \\(k\\), and \\(N_{-i}\\) is the total number of seated customers, not including customer i (who is still deciding where to sit).
 
-Under the CRP formalism, we make inferences about what datum belongs to which category. The weight vector is implicit. That's it. For information on how inference is done in DPMMs check out the [literature recommendations](#literature-recommendations).
+Under the CRP formalism, we make inferences about what datum belongs to which category. The weight vector is implicit. That's it. For information on how inference is done in DPMMs check out the [literature recommendations](stats-primer.md).
 
