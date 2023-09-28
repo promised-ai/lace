@@ -29,7 +29,7 @@ Open the model in lace
 ```python
 import lace
 
-engine = lace.Engine(metadata='metadata.lace')
+engine = lace.Engine.load('metadata.lace')
 ```
 
 ```rust,noplayground
