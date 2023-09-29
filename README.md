@@ -68,6 +68,26 @@ distribution over your dataset, which enables users to...
 
 and more, all in one place, without any explicit model building.
 
+```python
+import pandas as pd
+import lace
+
+# Create an engine from a dataframe
+df = pd.read_csv("animals.csv", index_col=0)
+engine = lace.Engine.from_df(df)
+
+# Fit a model to the dataframe over 5000 steps of the fitting procedure
+engine.update(5000)
+
+# Show the statistical structure of the data -- which features are likely
+# dependent (predictive) on each other
+engine.clustermap("depprob", zmin=0, zmax=1)
+```
+
+![Animals dataset dependence probability](assets/animals-depprob.png)
+
+
+
 ## The Problem
 
 The goal of lace is to fill some of the massive chasm between standard machine
@@ -105,7 +125,30 @@ themselves from scratch, meaning they must know (or at least guess) the model.
 PPL users must also know how to specify such a model in a way that is
 compatible with the underlying inference procedure.
 
-### Who should not use lace
+### Example use cases
+
+- **Combine data sources and understand how they interact.** For example, we
+    may wish to predict cognitive decline from demographics, survey or task
+    performance, EKG data, and other clinical data. Combined, this data would
+    typically be very sparse (most patients will not have all fields filled
+    in), and it is difficult to know how to explicitly model the interaction of
+    these data layers. In Lace, we would just concatenate the layers and run
+    them through.
+- **Understanding the amount and causes of uncertainty over time.** For
+    example, a farmer may wish to understand the likelihood of achieving a
+    specific yield over the growing season. As the season progresses, new
+    weather data can be added to the prediction in the form of conditions.
+    Uncertainty can be visualized as variance in the prediction, disagreement
+    between posterior samples, or multi-modality in the predictive distribution
+    (see [this blog post](https://redpoll.ai/blog/ml-uncertainty/) for more
+    information on uncertainty)
+- **Data quality control.** Use `surprisal` to find anomalous data in the table
+    and use `-logp` to identify anomalies before they enter the table. Because
+    Lace creates a model of the data, we can also contrive methods to find data
+    that are *inconsistent* with that model, which we have used to good effect
+    in error finding.
+
+### Who should not use Lace
 
 There are a number of use cases for which Lace is not suited
 
@@ -113,28 +156,31 @@ There are a number of use cases for which Lace is not suited
 - Highly optimizing specific predictions
     + Lace would rather over-generalize than over fit.
 
+
 ## Quick start
 
-Install the CLI and pylace (requires [rust and
-cargo](https://www.rust-lang.org/tools/install))
+### Installation
 
-```console
+Lace requires rust.
+
+To install the CLI:
+```
 $ cargo install --locked lace
-$ pip install py-lace
 ```
 
-First, use the CLI to fit a model to your data
+To install pylace
 
-```console
-$ lace run --csv satellites.csv -n 5000 -s 32 --seed 1337 satellites.lace 
+```
+$ pip install pylace
 ```
 
-Then load the model and start asking questions
+### Examples
 
+Lace comes with two pre-fit example data sets: Satellites and Animals.
 
 ```python
->>> from lace import Engine
->>> engine = Engine(metadata='satellites.lace')
+>>> from lace.examples import Satellites
+>>> engine = Satellites()
 
 # Predict the class of orbit given the satellite has a 75-minute
 # orbital period and that it has a missing value of geosynchronous
@@ -176,9 +222,13 @@ And similarly in rust:
 
 ```rust,noplayground
 use lace::prelude::*;
+use lace::examples::Example;
 
 fn main() {	
-    let mut engine = Engine::load("satellites.lace").unrwap();
+    // In rust, you can create an Engine or and Oracle. The Oracle is an
+    // immutable version of an Engine; it has the same inference functions as
+    // the Engine, but you cannot train or edit data.
+    let mut engine = Example::Satellites.engine().unwrap();
 	
     // Predict the class of orbit given the satellite has a 75-minute
     // orbital period and that it has a missing value of geosynchronous
@@ -195,6 +245,33 @@ fn main() {
     )
 }
 ```
+
+### Fitting a model
+
+To fit a model to your own data you can use the CLI
+
+```console
+$ lace run --csv my-data.csv -n 1000 my-data.lace
+```
+
+...or initialize an engine from a file or dataframe.
+
+```python
+>>> import pandas as pd  # Lace supports polars as well
+>>> from lace import Engine
+>>> engine = Engine.from_df(pd.read_csv("my-data.csv", index_col=0))
+>>> engine.update(1_000)
+>>> engine.save("my-data.lace")
+```
+
+You can monitor the progress of the training using diagnostic plots
+
+```python
+>>> from lace.plot import diagnostics
+>>> diagnostics(engine)
+```
+
+![Animals MCMC convergence](assets/animals-convergence.png)
 
 ## License
 
