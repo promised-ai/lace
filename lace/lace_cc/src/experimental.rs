@@ -51,6 +51,13 @@ impl ViewConstraintMatrix {
     }
 }
 
+pub struct SamsIndices {
+    i: usize,
+    j: usize,
+    zi: usize,
+    zj: usize,
+}
+
 impl View {
     /// Create the slice matrix and prepare the view for the row reassignment
     ///
@@ -72,43 +79,6 @@ impl View {
         Matrix::from_raw_parts(vec![0.0; n_cols * n_rows], n_rows)
     }
 
-    // /// Use the improved slice algorithm to reassign the rows
-    // pub fn reassign_rows_slice_constrained(
-    //     &mut self,
-    //     conditions: Option<&HashSet<usize>>,
-    //     constrainer: &Matrix<f64>,
-    //     mut rng: &mut impl Rng,
-    // ) {
-    //     let mut logps = self._slice_matrix(rng);
-
-    //     assert_eq!(logps.shape(), constrainer.shape());
-
-    //     logps
-    //         .raw_values_mut()
-    //         .iter_mut()
-    //         .zip(constrainer.raw_values().iter())
-    //         .for_each(|(a, b)| *a += b);
-
-    //     let n_cats = logps.n_rows();
-
-    //     if let Some(targets) = conditions {
-    //         self.accum_score_and_integrate_asgn_cnd(
-    //             targets,
-    //             logps,
-    //             n_cats,
-    //             &crate::alg::RowAssignAlg::Slice,
-    //             &mut rng,
-    //         );
-    //     } else {
-    //         self.accum_score_and_integrate_asgn(
-    //             logps,
-    //             n_cats,
-    //             &crate::alg::RowAssignAlg::Slice,
-    //             &mut rng,
-    //         );
-    //     }
-    // }
-
     pub fn integrate_slice_assign(
         &mut self,
         logps: ViewConstraintMatrix,
@@ -127,31 +97,35 @@ impl View {
         }
     }
 
+    pub fn sams_ixs<R: Rng>(&self, rng: &mut R) -> SamsIndices {
+        use rand::seq::IteratorRandom;
+
+        let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
+        let i = ixs[0];
+        let j = ixs[1];
+
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        let (i, j, zi, zj) = if zi < zj {
+            (i, j, zi, zj)
+        } else {
+            (j, i, zj, zi)
+        };
+
+        SamsIndices { i, j, zi, zj }
+    }
+
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
     pub fn reassign_rows_sams_constrained<R: Rng>(
         &mut self,
         constrainer: &Matrix<f64>,
         rng: &mut R,
     ) {
-        use rand::seq::IteratorRandom;
-
         assert_eq!(constrainer.n_cols(), self.n_rows());
         assert!(constrainer.n_rows() >= self.asgn.n_cats + 1);
 
-        let (i, j, zi, zj) = {
-            let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
-            let i = ixs[0];
-            let j = ixs[1];
-
-            let zi = self.asgn.asgn[i];
-            let zj = self.asgn.asgn[j];
-
-            if zi < zj {
-                (i, j, zi, zj)
-            } else {
-                (j, i, zj, zi)
-            }
-        };
+        let SamsIndices { i, j, zi, zj } = self.sams_ixs(rng);
 
         if zi == zj {
             self.sams_split_constrained(i, j, constrainer, rng);
@@ -207,13 +181,12 @@ impl View {
 
         let logp_mrg = self.logm(self.n_cats())
             + lcrp(asgn.len(), &asgn.counts, asgn.alpha)
-            + self
-                .asgn
+            + asgn
                 .asgn
                 .iter()
                 .enumerate()
                 .filter(|(_, &z)| z == zi)
-                .map(|(ix, &z)| constrainer[(zi, ix)])
+                .map(|(ix, _)| constrainer[(zi, ix)])
                 .sum::<f64>();
 
         self.drop_component(self.n_cats());
@@ -242,8 +215,9 @@ impl View {
                 .iter()
                 .enumerate()
                 .filter(|(_, &z)| z == zi)
-                .map(|(ix, &z)| constrainer[(z, ix)])
+                .map(|(ix, _)| constrainer[(zi, ix)])
                 .sum::<f64>();
+
         let (logp_spt, logq_spt, asgn_opt) =
             self.propose_split_constrained(i, j, false, constrainer, rng);
 
