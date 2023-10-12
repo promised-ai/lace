@@ -71,7 +71,6 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
 
     // turn off mutability
     let update_config = update_config;
-    let save_config = save_config;
 
     let codebook_opt: Option<Codebook> = cmd
         .codebook
@@ -167,7 +166,6 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     );
 
     // turn off mutability
-    let save_config = save_config;
     let update_config = update_config;
 
     if cmd.quiet {

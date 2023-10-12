@@ -2049,6 +2049,7 @@ pub trait OracleT: CanOracle {
     /// error is derived from the probability integral transform, and for
     /// discrete variables the error is the error between the inferred and
     /// empirical CDFs.
+    #[allow(clippy::redundant_closure_call)]
     fn feature_error<Ix: ColumnIndex>(
         &self,
         col_ix: Ix,

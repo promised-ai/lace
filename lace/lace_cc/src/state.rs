@@ -1478,7 +1478,6 @@ mod test {
             transitions: vec![StateTransition::ColumnAssignment(
                 ColAssignAlg::Gibbs,
             )],
-            ..StateUpdateConfig::default()
         };
 
         state.update(config, &mut rng);
@@ -1506,7 +1505,6 @@ mod test {
             transitions: vec![StateTransition::RowAssignment(
                 RowAssignAlg::Gibbs,
             )],
-            ..StateUpdateConfig::default()
         };
         state.update(config, &mut rng);
     }

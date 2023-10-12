@@ -143,15 +143,15 @@ impl LacePrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
         &self,
         stats: I,
     ) -> f64 {
-        use special::Gamma;
         let sum_alpha = self.alpha() * self.k() as f64;
-        let a = sum_alpha.ln_gamma().0;
-        let d = self.alpha().ln_gamma().0 * self.k() as f64;
+        let a = ::special::Gamma::ln_gamma(sum_alpha).0;
+        let d = ::special::Gamma::ln_gamma(self.alpha()).0 * self.k() as f64;
         stats
             .map(|stat| {
-                let b = (sum_alpha + stat.n() as f64).ln_gamma().0;
+                let b =
+                    ::special::Gamma::ln_gamma(sum_alpha + stat.n() as f64).0;
                 let c = stat.counts().iter().fold(0.0, |acc, &ct| {
-                    acc + (self.alpha() + ct).ln_gamma().0
+                    acc + ::special::Gamma::ln_gamma(self.alpha() + ct).0
                 });
                 a - b + c - d
             })
@@ -161,10 +161,9 @@ impl LacePrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
 
 #[inline]
 fn poisson_zn(shape: f64, rate: f64, stat: &PoissonSuffStat) -> f64 {
-    use special::Gamma;
     let shape_n = shape + stat.sum();
     let rate_n = rate + stat.n() as f64;
-    let ln_gamma_shape = shape_n.ln_gamma().0;
+    let ln_gamma_shape = ::special::Gamma::ln_gamma(shape_n).0;
     let ln_rate = rate_n.ln();
     shape_n.mul_add(-ln_rate, ln_gamma_shape)
 }
@@ -182,11 +181,10 @@ impl LacePrior<u32, Poisson, PgHyper> for Gamma {
         &self,
         stats: I,
     ) -> f64 {
-        use special::Gamma as _;
         let shape = self.shape();
         let rate = self.rate();
         let z0 = {
-            let ln_gamma_shape = shape.ln_gamma().0;
+            let ln_gamma_shape = ::special::Gamma::ln_gamma(shape).0;
             let ln_rate = rate.ln();
             shape.mul_add(-ln_rate, ln_gamma_shape)
         };

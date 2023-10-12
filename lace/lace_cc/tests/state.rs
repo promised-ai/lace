@@ -30,8 +30,8 @@ fn gen_all_gauss_state<R: Rng>(
     }
     State::from_prior(
         ftrs,
-        Gamma::new(1.0, 1.0).unwrap().into(),
-        Gamma::new(1.0, 1.0).unwrap().into(),
+        Gamma::new(1.0, 1.0).unwrap(),
+        Gamma::new(1.0, 1.0).unwrap(),
         &mut rng,
     )
 }
@@ -60,7 +60,7 @@ fn drop_data_should_remove_data_from_all_fatures() {
 
     for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => {
+            ColModel::Continuous(ftr) => {
                 assert_eq!(ftr.data.len(), n_rows)
             }
             _ => panic!("Unexpected column type"),
@@ -71,7 +71,7 @@ fn drop_data_should_remove_data_from_all_fatures() {
 
     for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
+            ColModel::Continuous(ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
         }
     }
@@ -86,7 +86,7 @@ fn take_data_should_remove_data_from_all_fatures() {
 
     for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => {
+            ColModel::Continuous(ftr) => {
                 assert_eq!(ftr.data.len(), n_rows)
             }
             _ => panic!("Unexpected column type"),
@@ -101,14 +101,14 @@ fn take_data_should_remove_data_from_all_fatures() {
 
     for data_col in data.values() {
         match data_col {
-            &FeatureData::Continuous(ref xs) => assert_eq!(xs.len(), n_rows),
+            FeatureData::Continuous(xs) => assert_eq!(xs.len(), n_rows),
             _ => panic!("Unexpected data types"),
         }
     }
 
     for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
+            ColModel::Continuous(ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
         }
     }
@@ -123,7 +123,7 @@ fn repop_data_should_return_the_data_to_all_fatures() {
 
     for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => {
+            ColModel::Continuous(ftr) => {
                 assert_eq!(ftr.data.len(), n_rows)
             }
             _ => panic!("Unexpected column type"),
@@ -134,7 +134,7 @@ fn repop_data_should_return_the_data_to_all_fatures() {
 
     for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
+            ColModel::Continuous(ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
         }
     }
@@ -147,7 +147,7 @@ fn repop_data_should_return_the_data_to_all_fatures() {
 
     for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => {
+            ColModel::Continuous(ftr) => {
                 assert_eq!(ftr.data.len(), n_rows)
             }
             _ => panic!("Unexpected column type"),
@@ -191,7 +191,6 @@ fn two_part_runner(
             StateTransition::ViewAlphas,
             StateTransition::FeaturePriors,
         ],
-        ..Default::default()
     };
 
     state.update(update_config_1, &mut rng);
@@ -205,7 +204,6 @@ fn two_part_runner(
             StateTransition::ViewAlphas,
             StateTransition::FeaturePriors,
         ],
-        ..Default::default()
     };
 
     state.update(update_config_2, &mut rng);

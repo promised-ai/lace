@@ -231,178 +231,6 @@ fn engine_build_without_flat_col_is_not_flat() {
     assert!(engine.states.iter().any(|state| state.n_views() > 1));
 }
 
-#[cfg(test)]
-mod prior_in_codebook {
-    use super::*;
-    use lace_cc::feature::ColModel;
-    use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
-    use lace_stats::prior::nix::NixHyper;
-    use lace_stats::rv::dist::{Gamma, NormalInvChiSquared};
-    use lace_stats::rv::traits::Rv;
-    use std::convert::TryInto;
-    use std::io::Write;
-
-    // Generate a two-column codebook ('x' and 'y'). The x column will alyways
-    // have a hyper for the x column, but will have a prior defined if set_prior
-    // is true. The y column will have neither a prior or hyper defined.
-    fn gen_codebook(n_rows: usize, set_prior: bool) -> Codebook {
-        Codebook {
-            table_name: String::from("table"),
-            state_alpha_prior: Some(Gamma::default()),
-            view_alpha_prior: Some(Gamma::default()),
-            col_metadata: {
-                let mut col_metadata = ColMetadataList::new(vec![]).unwrap();
-                col_metadata
-                    .push(ColMetadata {
-                        name: String::from("x"),
-                        notes: None,
-                        coltype: ColType::Continuous {
-                            hyper: Some(NixHyper::default()),
-                            prior: if set_prior {
-                                Some(NormalInvChiSquared::new_unchecked(
-                                    0.0, 1.0, 2.0, 3.0,
-                                ))
-                            } else {
-                                None
-                            },
-                        },
-                        missing_not_at_random: false,
-                    })
-                    .unwrap();
-
-                col_metadata
-                    .push(ColMetadata {
-                        name: String::from("y"),
-                        notes: None,
-                        coltype: ColType::Continuous {
-                            hyper: None,
-                            prior: None,
-                        },
-                        missing_not_at_random: false,
-                    })
-                    .unwrap();
-                col_metadata
-            },
-            row_names: (0..n_rows)
-                .map(|i| format!("{}", i))
-                .collect::<Vec<String>>()
-                .try_into()
-                .unwrap(),
-            comments: None,
-        }
-    }
-
-    fn gen_codebook_text(n_rows: usize) -> Codebook {
-        use indoc::indoc;
-        let mut text = indoc!(
-            "
-        ---
-        table_name: table
-        state_alpha_prior:
-            !Gamma
-                shape: 1.0
-                rate: 1.0
-        view_alpha_prior:
-            !Gamma
-                shape: 1.0
-                rate: 1.0
-        col_metadata:
-            - name: x
-              coltype:
-                !Continuous
-                    prior:
-                        m: 0.0
-                        k: 1.0
-                        v: 2.0
-                        s2: 3.0
-            - name: y
-              coltype:
-                !Continuous
-                    hyper: ~
-                    prior: ~
-        comments: ~
-        row_names:
-        "
-        )
-        .to_string();
-
-        for i in 0..n_rows {
-            text = text + format!("  - {}\n", i).as_str();
-        }
-
-        serde_yaml::from_str(&text).unwrap()
-    }
-
-    fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalInvChiSquared {
-        match engine.states[0].feature(col_ix) {
-            ColModel::Continuous(col) => &col.prior,
-            _ => panic!("unexpected ColModel variant"),
-        }
-    }
-
-    fn get_prior_params(
-        engine: &Engine,
-        col_ix: usize,
-    ) -> (f64, f64, f64, f64) {
-        let ng = get_prior_ref(engine, col_ix);
-        (ng.m(), ng.k(), ng.v(), ng.s2())
-    }
-
-    fn run_test(n_rows: usize, codebook: Codebook) {
-        let mut csvfile = tempfile::NamedTempFile::new().unwrap();
-        let mut rng = Xoshiro256Plus::from_entropy();
-        let gauss = lace_stats::rv::dist::Gaussian::standard();
-
-        writeln!(csvfile, "id,x,y").unwrap();
-        for i in 0..n_rows {
-            let x: f64 = gauss.draw(&mut rng);
-            let y: f64 = gauss.draw(&mut rng);
-            write!(csvfile, "{},{},{}", i, x, y).unwrap();
-            if i < 99 {
-                writeln!(csvfile).unwrap();
-            }
-        }
-
-        let mut engine = Engine::new(
-            1,
-            codebook,
-            DataSource::Csv(csvfile.path().to_path_buf()),
-            0,
-            rng,
-        )
-        .unwrap();
-
-        let target_params = (0.0, 1.0, 2.0, 3.0);
-        let x_start_params = get_prior_params(&engine, 0);
-        assert_eq!(x_start_params, target_params);
-
-        let mut last_y_params = get_prior_params(&engine, 1);
-        for _ in 0..5 {
-            engine.run(5).unwrap();
-            let x_params = get_prior_params(&engine, 0);
-            let current_y_params = get_prior_params(&engine, 1);
-
-            assert_eq!(x_params, target_params);
-            assert_ne!(last_y_params, current_y_params);
-            last_y_params = current_y_params;
-        }
-    }
-
-    #[test]
-    fn setting_prior_in_codebook_struct_disables_prior_updates_with_csv_data() {
-        let n_rows = 100;
-        let codebook = gen_codebook(n_rows, true);
-        run_test(n_rows, codebook)
-    }
-
-    #[test]
-    fn setting_prior_in_codebook_yaml_disables_prior_updates_with_csv_data() {
-        let n_rows = 100;
-        let codebook = gen_codebook_text(n_rows);
-        run_test(n_rows, codebook)
-    }
-}
-
 // NOTE: These tests make sure that values have been updated, that the desired
 // rows and columns have been added, and that bad inputs return the correct
 // errors. They do not make sure the State metadata (assignment and sufficient
@@ -2788,5 +2616,177 @@ mod remove_data {
 
         assert_eq!(engine.n_cols(), 83);
         assert_eq!(engine.n_rows(), 48);
+    }
+}
+
+#[cfg(test)]
+mod prior_in_codebook {
+    use super::*;
+    use lace_cc::feature::ColModel;
+    use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
+    use lace_stats::prior::nix::NixHyper;
+    use lace_stats::rv::dist::{Gamma, NormalInvChiSquared};
+    use lace_stats::rv::traits::Rv;
+    use std::convert::TryInto;
+    use std::io::Write;
+
+    // Generate a two-column codebook ('x' and 'y'). The x column will alyways
+    // have a hyper for the x column, but will have a prior defined if set_prior
+    // is true. The y column will have neither a prior or hyper defined.
+    fn gen_codebook(n_rows: usize, set_prior: bool) -> Codebook {
+        Codebook {
+            table_name: String::from("table"),
+            state_alpha_prior: Some(Gamma::default()),
+            view_alpha_prior: Some(Gamma::default()),
+            col_metadata: {
+                let mut col_metadata = ColMetadataList::new(vec![]).unwrap();
+                col_metadata
+                    .push(ColMetadata {
+                        name: String::from("x"),
+                        notes: None,
+                        coltype: ColType::Continuous {
+                            hyper: Some(NixHyper::default()),
+                            prior: if set_prior {
+                                Some(NormalInvChiSquared::new_unchecked(
+                                    0.0, 1.0, 2.0, 3.0,
+                                ))
+                            } else {
+                                None
+                            },
+                        },
+                        missing_not_at_random: false,
+                    })
+                    .unwrap();
+
+                col_metadata
+                    .push(ColMetadata {
+                        name: String::from("y"),
+                        notes: None,
+                        coltype: ColType::Continuous {
+                            hyper: None,
+                            prior: None,
+                        },
+                        missing_not_at_random: false,
+                    })
+                    .unwrap();
+                col_metadata
+            },
+            row_names: (0..n_rows)
+                .map(|i| format!("{}", i))
+                .collect::<Vec<String>>()
+                .try_into()
+                .unwrap(),
+            comments: None,
+        }
+    }
+
+    fn gen_codebook_text(n_rows: usize) -> Codebook {
+        use indoc::indoc;
+        let mut text = indoc!(
+            "
+        ---
+        table_name: table
+        state_alpha_prior:
+            !Gamma
+                shape: 1.0
+                rate: 1.0
+        view_alpha_prior:
+            !Gamma
+                shape: 1.0
+                rate: 1.0
+        col_metadata:
+            - name: x
+              coltype:
+                !Continuous
+                    prior:
+                        m: 0.0
+                        k: 1.0
+                        v: 2.0
+                        s2: 3.0
+            - name: y
+              coltype:
+                !Continuous
+                    hyper: ~
+                    prior: ~
+        comments: ~
+        row_names:
+        "
+        )
+        .to_string();
+
+        for i in 0..n_rows {
+            text += format!("  - {}\n", i).as_str();
+        }
+
+        serde_yaml::from_str(&text).unwrap()
+    }
+
+    fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalInvChiSquared {
+        match engine.states[0].feature(col_ix) {
+            ColModel::Continuous(col) => &col.prior,
+            _ => panic!("unexpected ColModel variant"),
+        }
+    }
+
+    fn get_prior_params(
+        engine: &Engine,
+        col_ix: usize,
+    ) -> (f64, f64, f64, f64) {
+        let ng = get_prior_ref(engine, col_ix);
+        (ng.m(), ng.k(), ng.v(), ng.s2())
+    }
+
+    fn run_test(n_rows: usize, codebook: Codebook) {
+        let mut csvfile = tempfile::NamedTempFile::new().unwrap();
+        let mut rng = Xoshiro256Plus::from_entropy();
+        let gauss = lace_stats::rv::dist::Gaussian::standard();
+
+        writeln!(csvfile, "id,x,y").unwrap();
+        for i in 0..n_rows {
+            let x: f64 = gauss.draw(&mut rng);
+            let y: f64 = gauss.draw(&mut rng);
+            write!(csvfile, "{},{},{}", i, x, y).unwrap();
+            if i < 99 {
+                writeln!(csvfile).unwrap();
+            }
+        }
+
+        let mut engine = Engine::new(
+            1,
+            codebook,
+            DataSource::Csv(csvfile.path().to_path_buf()),
+            0,
+            rng,
+        )
+        .unwrap();
+
+        let target_params = (0.0, 1.0, 2.0, 3.0);
+        let x_start_params = get_prior_params(&engine, 0);
+        assert_eq!(x_start_params, target_params);
+
+        let mut last_y_params = get_prior_params(&engine, 1);
+        for _ in 0..5 {
+            engine.run(5).unwrap();
+            let x_params = get_prior_params(&engine, 0);
+            let current_y_params = get_prior_params(&engine, 1);
+
+            assert_eq!(x_params, target_params);
+            assert_ne!(last_y_params, current_y_params);
+            last_y_params = current_y_params;
+        }
+    }
+
+    #[test]
+    fn setting_prior_in_codebook_struct_disables_prior_updates_with_csv_data() {
+        let n_rows = 100;
+        let codebook = gen_codebook(n_rows, true);
+        run_test(n_rows, codebook)
+    }
+
+    #[test]
+    fn setting_prior_in_codebook_yaml_disables_prior_updates_with_csv_data() {
+        let n_rows = 100;
+        let codebook = gen_codebook_text(n_rows);
+        run_test(n_rows, codebook)
     }
 }

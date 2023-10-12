@@ -953,7 +953,7 @@ mod tests {
             let mn_over_vn = v0_inv.mul_add(m0, sum_x);
             let mn = mn_over_vn * vn_inv.recip();
             let an = a0 + nf / 2.0;
-            let bn = 0.5f64.mul_add(
+            let bn = 0.5_f64.mul_add(
                 (mn * mn).mul_add(-vn_inv, (m0 * m0).mul_add(v0_inv, sum_x_sq)),
                 b0,
             );

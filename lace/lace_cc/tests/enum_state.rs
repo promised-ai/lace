@@ -114,7 +114,7 @@ fn state_from_partition<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, lace_consts::state_alpha_prior().into())
+    State::new(views, asgn, lace_consts::state_alpha_prior())
 }
 
 /// Generates a random start state from the prior, with default values chosen for the
@@ -146,7 +146,7 @@ fn gen_start_state<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, lace_consts::state_alpha_prior().into())
+    State::new(views, asgn, lace_consts::state_alpha_prior())
 }
 
 fn calc_state_ln_posterior<R: Rng>(
@@ -189,7 +189,7 @@ fn extract_state_index(state: &State) -> StateIndex {
     let row_ixs: Vec<u64> = state
         .views
         .iter()
-        .map(|ref v| {
+        .map(|v| {
             let zn = normalize_assignment(v.asgn.asgn.clone());
             partition_to_ix(&zn)
         })
@@ -207,6 +207,7 @@ fn extract_state_index(state: &State) -> StateIndex {
 /// - row_alg: the row assignment algorithm to test
 /// - col_alg: the column assignment algorithm to test
 // TODO: Change arguments to a struct that implements Default and the rng
+#[allow(clippy::too_many_arguments)]
 pub fn state_enum_test<R: Rng>(
     n_rows: usize,
     n_cols: usize,
@@ -226,7 +227,6 @@ pub fn state_enum_test<R: Rng>(
             StateTransition::RowAssignment(row_alg),
             StateTransition::ComponentParams,
         ],
-        ..Default::default()
     };
 
     let inc: f64 = ((n_runs * n_iters) as f64).recip();
@@ -287,7 +287,7 @@ mod tests {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     // TODO: could remove $test name by using mods

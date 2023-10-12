@@ -377,7 +377,7 @@ mod tests {
     fn bounded_should_find_global_min() {
         // set up function with two mins
         fn f(x: f64) -> f64 {
-            (-0.4f64).mul_add(
+            (-0.4_f64).mul_add(
                 (-x * x / 2.0).exp(),
                 -0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp(),
             )
@@ -389,7 +389,7 @@ mod tests {
     // Gradient Descent
     #[test]
     fn gradient_descent_fn1() {
-        let f_prime = |x: f64| 4.0f64.mul_add(x.powi(3), -9.0 * x * x);
+        let f_prime = |x: f64| 4.0_f64.mul_add(x.powi(3), -9.0 * x * x);
 
         let params = GradientDescentParams {
             learning_rate: 0.01,
@@ -405,8 +405,8 @@ mod tests {
     #[test]
     fn newton_fn1() {
         let f_dprime = |x: f64| {
-            let r = 4.0f64.mul_add(x.powi(3), -9.0 * x * x);
-            let rr = 12.0f64.mul_add(x.powi(2), -18.0 * x);
+            let r = 4.0_f64.mul_add(x.powi(3), -9.0 * x * x);
+            let rr = 12.0_f64.mul_add(x.powi(2), -18.0 * x);
             (r, rr)
         };
 
