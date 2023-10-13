@@ -1,6 +1,6 @@
 [package]
 name = "lace_codebook"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Promised.ai"]
 edition = "2021"
 license = "SSPL-1.0"
@@ -10,7 +10,7 @@ description = "Contains the Lace codebook specification as well as utilities for
 
 [dependencies]
 lace_consts = { path = "../lace_consts", version = "0.1.4" }
-lace_stats = { path = "../lace_stats", version = "0.1.4" }
+lace_stats = { path = "../lace_stats", version = "0.1.5" }
 lace_utils = { path = "../lace_utils", version = "0.1.2" }
 lace_data = { path = "../lace_data", version = "0.1.2" }
 serde = { version = "1", features = ["derive"] }
