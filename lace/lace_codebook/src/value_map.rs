@@ -73,7 +73,9 @@ impl<'t> Iterator for CategoryIter<'t> {
         if self.ix == self.map.len() {
             None
         } else {
-            Some(self.map.category(self.ix))
+            let value = self.map.category(self.ix);
+            self.ix += 1;
+            Some(value)
         }
     }
 }
@@ -463,5 +465,43 @@ impl ValueMapExtension {
                 ))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expected_valuemap_u8_iterator() {
+        let vm = ValueMap::U8(2);
+        let cats: Vec<Category> = vm.iter().collect();
+        assert_eq!(cats, &[Category::U8(0), Category::U8(1)]);
+    }
+
+    #[test]
+    fn expected_valuemap_bool_iterator() {
+        let vm = ValueMap::Bool;
+        let cats: Vec<Category> = vm.iter().collect();
+        assert_eq!(cats, &[Category::Bool(false), Category::Bool(true)]);
+    }
+
+    #[test]
+    fn expected_valuemap_string_iterator() {
+        let values = BTreeSet::from_iter([
+            "A".to_string(),
+            "B".to_string(),
+            "C".to_string(),
+        ]);
+        let vm = ValueMap::new(values);
+        let cats: Vec<Category> = vm.iter().collect();
+        assert_eq!(
+            cats,
+            &[
+                Category::String("A".to_string()),
+                Category::String("B".to_string()),
+                Category::String("C".to_string()),
+            ]
+        );
     }
 }

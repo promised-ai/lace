@@ -59,21 +59,21 @@ mod enumeration {
 
     #[test]
     fn test_partitiion_to_ix_on_binary() {
-        assert_eq!(partition_to_ix(&vec![0, 0]), 0);
-        assert_eq!(partition_to_ix(&vec![1, 0]), 1);
-        assert_eq!(partition_to_ix(&vec![0, 1]), 2);
-        assert_eq!(partition_to_ix(&vec![1, 1]), 3);
+        assert_eq!(partition_to_ix(&[0, 0]), 0);
+        assert_eq!(partition_to_ix(&[1, 0]), 1);
+        assert_eq!(partition_to_ix(&[0, 1]), 2);
+        assert_eq!(partition_to_ix(&[1, 1]), 3);
     }
 
     #[test]
     fn test_partitiion_to_ix_on_trinary() {
-        assert_eq!(partition_to_ix(&vec![0, 0, 0]), 0);
-        assert_eq!(partition_to_ix(&vec![1, 0, 0]), 1);
-        assert_eq!(partition_to_ix(&vec![2, 0, 0]), 2);
-        assert_eq!(partition_to_ix(&vec![0, 1, 0]), 3);
-        assert_eq!(partition_to_ix(&vec![1, 1, 0]), 4);
-        assert_eq!(partition_to_ix(&vec![2, 1, 0]), 5);
-        assert_eq!(partition_to_ix(&vec![0, 2, 0]), 6);
+        assert_eq!(partition_to_ix(&[0, 0, 0]), 0);
+        assert_eq!(partition_to_ix(&[1, 0, 0]), 1);
+        assert_eq!(partition_to_ix(&[2, 0, 0]), 2);
+        assert_eq!(partition_to_ix(&[0, 1, 0]), 3);
+        assert_eq!(partition_to_ix(&[1, 1, 0]), 4);
+        assert_eq!(partition_to_ix(&[2, 1, 0]), 5);
+        assert_eq!(partition_to_ix(&[0, 2, 0]), 6);
     }
 
     #[test]

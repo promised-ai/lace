@@ -109,7 +109,7 @@ fn reassign_to_more_components() {
         asgn: vec![0, 0, 0, 1, 1],
         counts: vec![3, 2],
         n_cats: 2,
-        prior: Gamma::new(1.0, 1.0).unwrap().into(),
+        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let mut col = gauss_fixture(&mut rng, &asgn_a);
@@ -243,7 +243,7 @@ fn asgn_score_under_asgn_gaussian_magnitude() {
         asgn: vec![0, 0, 0, 1, 1],
         counts: vec![3, 2],
         n_cats: 2,
-        prior: Gamma::new(1.0, 1.0).unwrap().into(),
+        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let col = gauss_fixture(&mut rng, &asgn_a);
@@ -345,7 +345,7 @@ fn asgn_score_under_asgn_cat_u8_magnitude() {
         asgn: vec![0, 1, 1, 0, 1],
         counts: vec![2, 3],
         n_cats: 2,
-        prior: Gamma::new(1.0, 1.0).unwrap().into(),
+        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let col = categorical_fixture_u8(&mut rng, &asgn_a);

@@ -139,7 +139,7 @@ where
             return true;
         }
     }
-    return false;
+    false
 }
 
 // TODO: could remove $test name by using mods

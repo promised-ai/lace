@@ -5,7 +5,6 @@ use lace_stats::rv::traits::Rv;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
-use special::Gamma as _;
 use thiserror::Error;
 
 use crate::misc::crp_draw;
@@ -575,10 +574,11 @@ impl Assignment {
 
 pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let k: f64 = cts.len() as f64;
-    let gsum = cts
-        .iter()
-        .fold(0.0, |acc, ct| acc + (*ct as f64).ln_gamma().0);
-    let cpnt_2 = alpha.ln_gamma().0 - (n as f64 + alpha).ln_gamma().0;
+    let gsum = cts.iter().fold(0.0, |acc, ct| {
+        acc + ::special::Gamma::ln_gamma(*ct as f64).0
+    });
+    let cpnt_2 = ::special::Gamma::ln_gamma(alpha).0
+        - ::special::Gamma::ln_gamma(n as f64 + alpha).0;
     gsum + k.mul_add(alpha.ln(), cpnt_2)
 }
 

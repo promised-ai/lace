@@ -37,8 +37,8 @@ fn gen_all_gauss_state<R: Rng>(
     }
     State::from_prior(
         ftrs,
-        Gamma::new(1.0, 1.0).unwrap().into(),
-        Gamma::new(1.0, 1.0).unwrap().into(),
+        Gamma::new(1.0, 1.0).unwrap(),
+        Gamma::new(1.0, 1.0).unwrap(),
         &mut rng,
     )
 }

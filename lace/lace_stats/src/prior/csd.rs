@@ -35,15 +35,14 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>
         hyper: &CsdHyper,
         rng: &mut R,
     ) -> f64 {
-        use special::Gamma;
         let mh_result = {
             let k = self.k();
             let kf = k as f64;
 
             let loglike = |alpha: &f64| {
                 // Pre-compute costly gamma_ln functions
-                let sum_ln_gamma = alpha.ln_gamma().0 * kf;
-                let ln_gamma_sum = (alpha * kf).ln_gamma().0;
+                let sum_ln_gamma = special::Gamma::ln_gamma(*alpha).0 * kf;
+                let ln_gamma_sum = special::Gamma::ln_gamma(alpha * kf).0;
                 let am1 = alpha - 1.0;
 
                 components
