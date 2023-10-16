@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [rust-0.4.1] - 2023-10-16
+
+### Fixed
+- Fixed stuck iterator from `ValueMap.iter`.
+
 ## [python-0.4.0] - 2023-09-27
 
 ### Added
- - Component params now available from `pylace`
- - `Engine`s in `pylace` now implement deepcopy
+- Component params now available from `pylace`
+- `Engine`s in `pylace` now implement deepcopy
 
 ### Fixed
 
@@ -140,7 +145,8 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.4.0...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/rust-0.4.1...HEAD
+[rust-0.4.1]: https://github.com/promised-ai/lace/compare/rust-0.4.0...rust-0.4.1
 [python-0.4.0]: https://github.com/promised-ai/lace/compare/python-0.3.1...python-0.4.0
 [rust-0.4.0]: https://github.com/promised-ai/lace/compare/rust-0.3.1...rust-0.4.0
 [python-0.3.1]: https://github.com/promised-ai/lace/compare/python-0.3.0...python-0.3.1
