@@ -30,7 +30,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: "pylace/requirements-lint.txt"
       
@@ -92,6 +92,16 @@ jobs:
       matrix:
         target: [x86_64]
     steps:
+      - name: Install dependencies 
+        run: sudo apt-get install -y build-essential cmake python3-dev ca-certificates lsb-release wget liblz4-dev
+
+      - name: Install Apache Arrow
+        run: |
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt update
+          sudo apt install -y -V libarrow-dev
+
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
@@ -100,12 +110,13 @@ jobs:
             3.9
             3.10
             3.11
+            3.12
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 --manifest-path pylace/Cargo.toml
+          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
           manylinux: auto
     
       - name: Install dev dependencies
@@ -144,12 +155,13 @@ jobs:
             3.9
             3.10
             3.11
+            3.12
           architecture: ${{ matrix.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 --manifest-path pylace/Cargo.toml
+          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
     
       - name: Install dev dependencies
         run: |
@@ -187,11 +199,12 @@ jobs:
             3.9
             3.10
             3.11
+            3.12
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 --manifest-path pylace/Cargo.toml
+          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
 
       - name: Install dev dependencies
         if: ${{ matrix.target != 'aarch64' }}
@@ -230,7 +243,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install codedown
         run: npm install -g codedown
