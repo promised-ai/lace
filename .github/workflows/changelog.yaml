@@ -1,0 +1,20 @@
+name: 'Check changelog for adhereance to keep-a-changelog'
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'CHANGELOG.md'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install nbbrd/tap/heylogs
+          heylogs check CHANGELOG.md | tee heylogs.log
+          grep -i "No problem" heylogs.log
