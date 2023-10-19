@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.4.1] - 2023-10-19
+
+### Fixed
+- Fixed issues when indexing `Engine` with slices.
+
 ## [rust-0.4.1] - 2023-10-16
 
 ### Fixed
