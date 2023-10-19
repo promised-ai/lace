@@ -50,7 +50,7 @@ def test_string_tuple_index(animals):
 
 
 def test_poscont_col_slice_indexing_1(animals):
-    data: pl.DataFrame = animals["otter", :2]
+    data = animals["otter", :2]
     columns = data.columns
 
     assert data.shape == (1, 3)
@@ -59,7 +59,7 @@ def test_poscont_col_slice_indexing_1(animals):
 
 
 def test_poscont_col_slice_indexing_2(animals):
-    data: pl.DataFrame = animals["otter", 80:]
+    data = animals["otter", 80:]
     columns = data.columns
 
     assert data.shape == (1, 6)
@@ -71,7 +71,7 @@ def test_poscont_col_slice_indexing_2(animals):
 
 
 def test_negcont_col_slice_indexing_1(animals):
-    data: pl.DataFrame = animals["otter", -2:]
+    data = animals["otter", -2:]
     columns = data.columns
 
     assert data.shape == (1, 3)
@@ -80,7 +80,7 @@ def test_negcont_col_slice_indexing_1(animals):
 
 
 def test_negcont_col_slice_indexing_2(animals):
-    data: pl.DataFrame = animals["otter", :-80]
+    data = animals["otter", :-80]
     columns = data.columns
 
     assert data.shape == (1, 6)
@@ -92,7 +92,7 @@ def test_negcont_col_slice_indexing_2(animals):
 
 
 def test_skip_col_slice_indexing_1(animals):
-    data: pl.DataFrame = animals["otter", 0:4:2]
+    data = animals["otter", 0:4:2]
     columns = data.columns
 
     assert data.shape == (1, 3)
@@ -101,7 +101,7 @@ def test_skip_col_slice_indexing_1(animals):
 
 
 def test_skip_col_slice_indexing_2(animals):
-    data: pl.DataFrame = animals["otter", 4:0:-1]
+    data = animals["otter", 4:0:-1]
     columns = data.columns
 
     assert data.shape == (1, 5)

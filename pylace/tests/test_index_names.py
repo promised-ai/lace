@@ -27,7 +27,7 @@ def test_getitem_index_name(animals):
 
 
 def test_all_indices_are_the_same(animals):
-    data = animals[['black', 'furry']]
+    data = animals[["black", "furry"]]
     surp = animals.surprisal("black", rows=animals.index)
     imp = animals.impute("black", rows=animals.index)
 
