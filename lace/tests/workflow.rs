@@ -68,6 +68,6 @@ fn satellites_csv_workflow() {
     let config = EngineUpdateConfig::with_default_transitions().n_iters(100);
 
     engine
-        .update(config, Timeout::new(Duration::from_secs(30)))
+        .update(&config, Timeout::new(Duration::from_secs(30)))
         .unwrap();
 }

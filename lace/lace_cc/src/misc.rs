@@ -120,6 +120,7 @@ mod tests {
             assert!(good);
         }
 
+        #[cfg(not(feature = "experimental"))]
         #[test]
         fn should_return_error_for_zero_u_star() {
             let mut rng = rand::thread_rng();

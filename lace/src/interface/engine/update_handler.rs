@@ -59,7 +59,7 @@ use crate::EngineUpdateConfig;
 /// let mut engine = Example::Animals.engine().unwrap();
 ///
 /// engine.update(
-///     EngineUpdateConfig::with_default_transitions().n_iters(100),
+///     &EngineUpdateConfig::with_default_transitions().n_iters(100),
 ///     TimingsHandler::new()
 /// ).unwrap();
 /// ```

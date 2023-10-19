@@ -159,7 +159,7 @@ fn main() {
         };
 
         engine.set_latent_values(proposal).unwrap();
-        engine.update(update_config.clone(), ()).unwrap();
+        engine.update(&update_config, ()).unwrap();
         if i % 10 == 0 {
             println!("sweep {i} of {n_sweeps}");
         }

@@ -246,7 +246,7 @@ fn main() {
         };
 
         engine.set_latent_values(proposal).unwrap();
-        engine.update(update_config.clone(), ()).unwrap();
+        engine.update(&update_config, ()).unwrap();
         pbar.inc(1);
     }
     pbar.finish();

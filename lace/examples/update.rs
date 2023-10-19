@@ -12,7 +12,7 @@ fn main() {
 
     engine
         .update(
-            config,
+            &config,
             (Timeout::new(Duration::from_secs(10)), ProgressBar::new()),
         )
         .unwrap();

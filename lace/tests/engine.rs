@@ -137,7 +137,7 @@ fn update_empty_engine_smoke_test() {
     .unwrap();
 
     engine
-        .update(EngineUpdateConfig::with_default_transitions(), ())
+        .update(&EngineUpdateConfig::with_default_transitions(), ())
         .unwrap();
 }
 
@@ -1538,25 +1538,25 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 3);
         assert_eq!(engine.n_cols(), 1);
 
-        engine.update(cfg.clone(), ()).unwrap();
+        engine.update(&cfg, ()).unwrap();
 
         add_row(&mut engine, "b1", 1.0).unwrap();
 
         assert_eq!(engine.n_rows(), 4);
         assert_eq!(engine.n_cols(), 1);
-        engine.update(cfg.clone(), ()).unwrap();
+        engine.update(&cfg, ()).unwrap();
         assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0).unwrap();
 
         assert_eq!(engine.n_rows(), 5);
-        engine.update(cfg.clone(), ()).unwrap();
+        engine.update(&cfg, ()).unwrap();
         assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0).unwrap();
 
         assert_eq!(engine.n_rows(), 6);
-        engine.update(cfg, ()).unwrap();
+        engine.update(&cfg, ()).unwrap();
         assert_eq!(engine.n_rows(), 6);
     }
 
@@ -1635,25 +1635,25 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 3);
         assert_eq!(engine.n_cols(), 2);
 
-        engine.update(cfg.clone(), ()).unwrap();
+        engine.update(&cfg, ()).unwrap();
 
         add_row(&mut engine, "b1", 1.0, 0.5).unwrap();
 
         assert_eq!(engine.n_rows(), 4);
         assert_eq!(engine.n_cols(), 2);
-        engine.update(cfg.clone(), ()).unwrap();
+        engine.update(&cfg, ()).unwrap();
         assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0, 0.1).unwrap();
 
         assert_eq!(engine.n_rows(), 5);
-        engine.update(cfg.clone(), ()).unwrap();
+        engine.update(&cfg, ()).unwrap();
         assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0, -1.2).unwrap();
 
         assert_eq!(engine.n_rows(), 6);
-        engine.update(cfg, ()).unwrap();
+        engine.update(&cfg, ()).unwrap();
         assert_eq!(engine.n_rows(), 6);
     }
 
@@ -1936,7 +1936,7 @@ mod insert_data {
                 assert!(result.is_ok());
                 engine
                     .update(
-                        EngineUpdateConfig {
+                        &EngineUpdateConfig {
                             n_iters: 2,
                             transitions: vec![
                                 StateTransition::StateAlpha,
@@ -2341,7 +2341,7 @@ mod insert_data {
                     ..Default::default()
                 };
 
-                engine.update(cfg, ()).unwrap();
+                engine.update(&cfg, ()).unwrap();
 
                 assert_eq!(engine.n_rows(), starting_rows);
             }
