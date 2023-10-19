@@ -49,6 +49,68 @@ def test_string_tuple_index(animals):
             assert animals[row, col] == animals.df.loc[row, col]
 
 
+def test_poscont_col_slice_indexing_1(animals):
+    data: pl.DataFrame = animals["otter", :2]
+    columns = data.columns
+
+    assert data.shape == (1, 3)
+    assert columns[1] == animals.columns[0]
+    assert columns[2] == animals.columns[1]
+
+
+def test_poscont_col_slice_indexing_2(animals):
+    data: pl.DataFrame = animals["otter", 80:]
+    columns = data.columns
+
+    assert data.shape == (1, 6)
+    assert columns[1] == animals.columns[80]
+    assert columns[2] == animals.columns[81]
+    assert columns[3] == animals.columns[82]
+    assert columns[4] == animals.columns[83]
+    assert columns[5] == animals.columns[84]
+
+
+def test_negcont_col_slice_indexing_1(animals):
+    data: pl.DataFrame = animals["otter", -2:]
+    columns = data.columns
+
+    assert data.shape == (1, 3)
+    assert columns[1] == animals.columns[83]
+    assert columns[2] == animals.columns[84]
+
+
+def test_negcont_col_slice_indexing_2(animals):
+    data: pl.DataFrame = animals["otter", :-80]
+    columns = data.columns
+
+    assert data.shape == (1, 6)
+    assert columns[1] == animals.columns[0]
+    assert columns[2] == animals.columns[1]
+    assert columns[3] == animals.columns[2]
+    assert columns[4] == animals.columns[3]
+    assert columns[5] == animals.columns[4]
+
+
+def test_skip_col_slice_indexing_1(animals):
+    data: pl.DataFrame = animals["otter", 0:4:2]
+    columns = data.columns
+
+    assert data.shape == (1, 3)
+    assert columns[1] == animals.columns[0]
+    assert columns[2] == animals.columns[2]
+
+
+def test_skip_col_slice_indexing_2(animals):
+    data: pl.DataFrame = animals["otter", 4:0:-1]
+    columns = data.columns
+
+    assert data.shape == (1, 5)
+    assert columns[1] == animals.columns[4]
+    assert columns[2] == animals.columns[3]
+    assert columns[3] == animals.columns[2]
+    assert columns[4] == animals.columns[1]
+
+
 def test_tuple_index_fuzzy_smoke(animals):
     row_strs = animals.index
     col_strs = animals.columns
