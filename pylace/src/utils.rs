@@ -90,7 +90,7 @@ fn slice_ixs(n: usize, slice: &PySlice) -> PyResult<Vec<IntOrString>> {
     let slice_ixs = slice.indices(n as c_long)?;
     let mut current = slice_ixs.start;
     let mut ixs = Vec::new();
-    while current != slice_ixs.stop {
+    while (ixs.len() as isize) < slice_ixs.slicelength {
         ixs.push(IntOrString::Int(current));
         current += slice_ixs.step;
     }
@@ -127,7 +127,7 @@ impl<'s> PyIndex<'s> {
                 ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
             }
             Self::Slice(slice) => {
-                let n = codebook.row_names.len();
+                let n = codebook.n_cols();
                 let ixs = slice_ixs(n, slice)?;
                 ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
             }
