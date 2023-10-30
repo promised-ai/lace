@@ -86,6 +86,7 @@ fn plot(xs_in: Vec<f64>, ys_in: Vec<f64>, xs_sim: Vec<f64>, ys_sim: Vec<f64>) {
     plot.show();
 }
 
+#[cfg(feature = "formats")]
 fn main() {
     let opt = Opt::parse();
 
@@ -139,4 +140,9 @@ fn main() {
     println!("\nPlotting");
     plot(xs_in, ys_in, xs_sim, ys_sim);
     println!("Done");
+}
+
+#[cfg(not(feature = "formats"))]
+fn main() {
+    eprintln!("Please enable the 'formats' feature to use this example.")
 }

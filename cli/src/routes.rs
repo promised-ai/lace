@@ -214,7 +214,7 @@ macro_rules! codebook_from {
             return 1;
         }
 
-        let codebook = match lace::codebook::data::$fn(
+        let codebook = match lace::codebook::formats::$fn(
             $path,
             Some($cmd.category_cutoff),
             Some(alpha_prior),

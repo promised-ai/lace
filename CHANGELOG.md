@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Made changes that allow lace to be compiled to wasm
+- Moved CLI into its own crate
+- Moved `DataSource` variants for Parquet, IPC (feather), and JSON data types into the `formats` feature flag.
+- Moved the `CtrlC` `UpdateHandler` into `ctrlc_handler` feature flag
+- Moved `Bencher` into the `bencher` feature flag
+- Replaced instances of `once_cell::sync::OnceCell` with `syd::sync::OnceLock`
+
 ## [python-0.4.1] - 2023-10-19
 
 ### Fixed

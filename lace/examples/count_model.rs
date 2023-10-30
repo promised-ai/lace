@@ -2,6 +2,7 @@ use lace::prelude::*;
 use lace_stats::rv::prelude::*;
 use std::io::Write;
 
+#[cfg(feature = "formats")]
 fn main() {
     let mut rng = rand::thread_rng();
 
@@ -45,4 +46,9 @@ fn main() {
     for (x, fx) in fx.iter().enumerate() {
         println!("{},{},{}", x, mixture.f(&(x as u32)), fx);
     }
+}
+
+#[cfg(not(feature = "formats"))]
+fn main() {
+    eprintln!("Please enable the 'formats' feature to use this example.")
 }

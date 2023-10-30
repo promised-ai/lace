@@ -1,13 +1,12 @@
 use std::{
     collections::HashMap,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc::Sender,
-        Arc, Mutex, RwLock,
-    },
+    sync::{mpsc::Sender, Arc, Mutex, RwLock},
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+#[cfg(feature = "ctrlc_handler")]
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use lace_cc::state::State;
 
@@ -211,17 +210,20 @@ where
 }
 
 /// Handle Ctrl-C (sigint) signals by stopping the Engine.
+#[cfg(feature = "ctrlc_handler")]
 #[derive(Clone)]
 pub struct CtrlC {
     seen_sigint: Arc<AtomicBool>,
 }
 
+#[cfg(feature = "ctrlc_handler")]
 impl Default for CtrlC {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(feature = "ctrlc_handler")]
 impl CtrlC {
     /// Create a new `CtrlCHandler`
     pub fn new() -> Self {
@@ -237,6 +239,7 @@ impl CtrlC {
     }
 }
 
+#[cfg(feature = "ctrlc_handler")]
 impl UpdateHandler for CtrlC {
     fn global_init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {
     }

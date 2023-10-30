@@ -147,6 +147,13 @@
 //!     RowSimilarityVariant::ViewWeighted,
 //! ).unwrap();
 //! ```
+//!
+//! # Feature flags
+//! - `formats`: create `Engine`s and `Codebook`s from IPC, CSV, JSON, and
+//!   Parquet data files
+//! - `bencher`: Build benchmarking utilties
+//! - `ctrc_handler`: enables and update handler than captures Ctrl+C
+//!
 #![warn(unused_extern_crates)]
 #![warn(
     clippy::all,
@@ -159,10 +166,13 @@
     clippy::perf
 )]
 
+#[cfg(feature = "bencher")]
 pub mod bencher;
+
 pub mod config;
 pub mod data;
 pub mod defaults;
+
 pub mod examples;
 mod interface;
 pub mod misc;

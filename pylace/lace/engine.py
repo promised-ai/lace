@@ -716,7 +716,7 @@ class Engine:
         >>> engine[-3:, "flippers"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (3, 2)
         ┌────────┬──────────┐
-        │ Index  ┆ flippers │
+        │ index  ┆ flippers │
         │ ---    ┆ ---      │
         │ str    ┆ u8       │
         ╞════════╪══════════╡
@@ -823,7 +823,7 @@ class Engine:
         >>> engine[:7, "values"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (7, 2)
         ┌──────────────┬────────┐
-        │ Index        ┆ values │
+        │ index        ┆ values │
         │ ---          ┆ ---    │
         │ str          ┆ f64    │
         ╞══════════════╪════════╡
@@ -859,7 +859,7 @@ class Engine:
         >>> engine[:5, "fav_color"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (5, 2)
         ┌──────────────┬───────────┐
-        │ Index        ┆ fav_color │
+        │ index        ┆ fav_color │
         │ ---          ┆ ---       │
         │ str          ┆ str       │
         ╞══════════════╪═══════════╡
@@ -882,7 +882,7 @@ class Engine:
         >>> engine[:8, "times_watched_the_fifth_element"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (8, 2)
         ┌─────────────────┬─────────────────────────────────┐
-        │ Index           ┆ times_watched_the_fifth_element │
+        │ index           ┆ times_watched_the_fifth_element │
         │ ---             ┆ ---                             │
         │ str             ┆ u32                             │
         ╞═════════════════╪═════════════════════════════════╡

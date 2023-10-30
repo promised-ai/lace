@@ -1,6 +1,6 @@
 [package]
 name = "lace_codebook"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Promised.ai"]
 edition = "2021"
 license = "SSPL-1.0"
@@ -20,7 +20,12 @@ rand = {version="0.8.5", features=["serde1"]}
 thiserror = "1.0.11"
 rayon = "1.5"
 flate2 = "1.0.23"
-polars = { version = "0.33", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
+polars = { version = "0.34", default_features=false, features=["csv", "dtype-i8", "dtype-i16", "dtype-u8", "dtype-u16"] }
+
+[features]
+# default = ["formats"]
+formats = ["polars/json", "polars/ipc", "polars/decompress", "polars/parquet"]
+# formats = []
 
 [dev-dependencies]
 tempfile = "3.3.0"

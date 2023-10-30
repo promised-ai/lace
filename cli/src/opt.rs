@@ -4,8 +4,8 @@ use lace::cc::transition::StateTransition;
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
+use lace::metadata::{Error, FileConfig, SerializedType};
 use lace::stats::rv::dist::Gamma;
-use lace_metadata::{Error, FileConfig, SerializedType};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -75,11 +75,7 @@ pub struct RunArgs {
     #[clap(long = "n-states", short = 's', default_value = "8")]
     pub nstates: usize,
     /// The number of iterations to run each state
-    #[clap(
-        long = "n-iters",
-        short = 'n',
-        required_unless_present = "run_config"
-    )]
+    #[clap(long = "n-iters", short = 'n', required_unless_present = "run_config")]
     pub n_iters: Option<usize>,
     /// The number of iterations between state saves
     #[clap(short = 'C', long, conflicts_with = "run_config")]
@@ -134,10 +130,7 @@ fn filter_transitions(
 ) -> Vec<StateTransition> {
     transitions
         .drain(..)
-        .filter(|t| {
-            !(no_col_reassign
-                && matches!(t, StateTransition::ColumnAssignment(_)))
-        })
+        .filter(|t| !(no_col_reassign && matches!(t, StateTransition::ColumnAssignment(_))))
         .collect()
 }
 
@@ -159,15 +152,9 @@ impl RunArgs {
                     Transition::FeaturePriors => StateTransition::FeaturePriors,
                     Transition::StateAlpha => StateTransition::StateAlpha,
                     Transition::ViewAlphas => StateTransition::ViewAlphas,
-                    Transition::ComponentParams => {
-                        StateTransition::ComponentParams
-                    }
-                    Transition::RowAssignment => {
-                        StateTransition::RowAssignment(row_alg)
-                    }
-                    Transition::ColumnAssignment => {
-                        StateTransition::ColumnAssignment(col_alg)
-                    }
+                    Transition::ComponentParams => StateTransition::ComponentParams,
+                    Transition::RowAssignment => StateTransition::RowAssignment(row_alg),
+                    Transition::ColumnAssignment => StateTransition::ColumnAssignment(col_alg),
                 })
                 .collect::<Vec<_>>(),
         };
@@ -184,12 +171,8 @@ impl RunArgs {
             Some(ref path) => {
                 // TODO: proper error handling
                 let f = std::fs::File::open(path.clone()).unwrap();
-                let mut config: EngineUpdateConfig =
-                    serde_yaml::from_reader(f).unwrap();
-                config.transitions = filter_transitions(
-                    config.transitions,
-                    self.no_col_reassign,
-                );
+                let mut config: EngineUpdateConfig = serde_yaml::from_reader(f).unwrap();
+                config.transitions = filter_transitions(config.transitions, self.no_col_reassign);
                 config
             }
             None => self.get_transitions(),
@@ -198,21 +181,26 @@ impl RunArgs {
 
     pub fn file_config(&self) -> Result<FileConfig, Error> {
         Ok(FileConfig {
-            metadata_version: lace_metadata::latest::METADATA_VERSION,
+            metadata_version: lace::metadata::latest::METADATA_VERSION,
             serialized_type: self.output_format.unwrap_or_default(),
         })
     }
 
     #[allow(clippy::manual_map)]
     pub fn data_source(&self) -> Option<DataSource> {
+        use lace::codebook::formats;
         if let Some(ref path) = self.csv_src {
-            Some(DataSource::Csv(path.clone()))
+            let df = formats::read_csv(path).unwrap();
+            Some(DataSource::Polars(df))
         } else if let Some(ref path) = self.parquet_src {
-            Some(DataSource::Parquet(path.clone()))
+            let df = formats::read_parquet(path).unwrap();
+            Some(DataSource::Polars(df))
         } else if let Some(ref path) = self.ipc_src {
-            Some(DataSource::Ipc(path.clone()))
+            let df = formats::read_ipc(path).unwrap();
+            Some(DataSource::Polars(df))
         } else if let Some(ref path) = self.json_src {
-            Some(DataSource::Json(path.clone()))
+            let df = formats::read_json(path).unwrap();
+            Some(DataSource::Polars(df))
         } else {
             None
         }
@@ -247,10 +235,8 @@ impl FromStr for GammaParameters {
         if parts.len() != 2 {
             return Err(params_parse_fail(s));
         }
-        let shape: f64 =
-            parts[0].trim().parse().map_err(|_| params_parse_fail(s))?;
-        let rate: f64 =
-            parts[1].trim().parse().map_err(|_| params_parse_fail(s))?;
+        let shape: f64 = parts[0].trim().parse().map_err(|_| params_parse_fail(s))?;
+        let rate: f64 = parts[1].trim().parse().map_err(|_| params_parse_fail(s))?;
 
         Ok(GammaParameters { shape, rate })
     }

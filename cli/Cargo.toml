@@ -1,0 +1,31 @@
+[package]
+name = "lace-cli"
+version = "0.4.2"
+authors = ["Promised AI"]
+edition = "2021"
+rust-version = "1.58.1"
+license = "SSPL-1.0"
+homepage = "https://www.lace.dev/"
+repository = "https://github.com/promised-ai/lace"
+description = "A probabilistic cross-categorization engine"
+
+[build-dependencies]
+dirs = "5"
+
+[[bin]]
+name = "lace"
+path = "src/main.rs"
+
+[dependencies]
+lace = { path = "../lace", version = "0.4.1" }
+clap = { version = "4.3.17", features = ["derive"] }
+env_logger = "0.10"
+serde_yaml = "0.9.4"
+
+[dev-dependencies]
+approx = "0.5.1"
+tempfile = "3.4"
+indoc = "2.0.3"
+
+[profile.release]
+lto = "fat"

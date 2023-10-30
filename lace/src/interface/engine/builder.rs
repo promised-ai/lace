@@ -109,11 +109,25 @@ impl Builder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::codebook::ReadError;
     use maplit::btreeset;
+    use polars::prelude::DataFrame;
+    use std::path::Path;
     use std::{collections::BTreeSet, path::PathBuf};
 
+    fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
+        use polars::prelude::{CsvReader, SerReader};
+        let df = CsvReader::from_path(path.as_ref())?
+            .infer_schema(Some(1000))
+            .has_header(true)
+            .finish()?;
+        Ok(df)
+    }
+
     fn animals_csv() -> DataSource {
-        DataSource::Csv(PathBuf::from("resources/datasets/animals/data.csv"))
+        let df = read_csv(PathBuf::from("resources/datasets/animals/data.csv"))
+            .unwrap();
+        DataSource::Polars(df)
     }
 
     #[test]
@@ -124,24 +138,6 @@ mod tests {
         let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2, 3, 4, 5, 6, 7};
         assert_eq!(engine.n_states(), 8);
         assert_eq!(state_ids, target_ids);
-    }
-
-    #[test]
-    fn gzipped_csv() {
-        let path = PathBuf::from("resources/datasets/animals/data.csv.gz");
-
-        let df = lace_codebook::data::read_csv(&path).unwrap();
-        dbg!(df.shape());
-        let datasource = DataSource::Csv(path);
-        let mut engine = Builder::new(datasource).build().unwrap();
-
-        let state_ids: BTreeSet<usize> =
-            engine.state_ids.iter().copied().collect();
-        let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2, 3, 4, 5, 6, 7};
-        assert_eq!(engine.n_states(), 8);
-        assert_eq!(state_ids, target_ids);
-
-        engine.run(10).unwrap();
     }
 
     #[test]

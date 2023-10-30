@@ -31,6 +31,7 @@ fn animals_codebook_path() -> PathBuf {
 
 // TODO: Don't use tiny test files, generate them in code from raw strings and
 // tempfiles.
+#[cfg(feature = "formats")]
 fn engine_from_csv<P: Into<PathBuf>>(path: P) -> Engine {
     Builder::new(DataSource::Csv(path.into()))
         .with_nstates(2)
@@ -67,14 +68,15 @@ fn zero_states_to_new_causes_error() {
         serde_yaml::from_slice(data.as_bytes()).unwrap()
     };
     let rng = Xoshiro256Plus::from_entropy();
-    match Engine::new(0, codebook, DataSource::Csv(animals_data_path()), 0, rng)
-    {
+    let df = lace_codebook::data::read_csv(animals_data_path()).unwrap();
+    match Engine::new(0, codebook, DataSource::Polars(df), 0, rng) {
         Err(lace::error::NewEngineError::ZeroStatesRequested) => (),
         Err(_) => panic!("wrong error"),
         Ok(_) => panic!("Failed to catch zero states error"),
     }
 }
 
+#[cfg(feature = "formats")]
 #[test]
 fn save_run_load_run_should_add_iterations() {
     let dir = tempfile::TempDir::new().unwrap();
@@ -224,7 +226,9 @@ fn cell_gibbs_smoke() {
 
 #[test]
 fn engine_build_without_flat_col_is_not_flat() {
-    let engine = Builder::new(DataSource::Csv(animals_data_path()))
+    let path = animals_data_path();
+    let df = lace_codebook::data::read_csv(path).unwrap();
+    let engine = Builder::new(DataSource::Polars(df))
         .with_nstates(8)
         .build()
         .unwrap();
@@ -2619,6 +2623,7 @@ mod remove_data {
     }
 }
 
+#[cfg(feature = "formats")]
 #[cfg(test)]
 mod prior_in_codebook {
     use super::*;

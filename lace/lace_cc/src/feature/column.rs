@@ -15,9 +15,9 @@ use lace_stats::rv::dist::{
 use lace_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use lace_stats::{MixtureType, QmcEntropy};
 use lace_utils::MinMax;
-use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use std::sync::OnceLock;
 
 use super::{Component, MissingNotAtRandom};
 use crate::assignment::Assignment;
@@ -51,7 +51,7 @@ where
     #[serde(default)]
     pub ignore_hyper: bool,
     #[serde(skip)]
-    pub ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
+    pub ln_m_cache: OnceLock<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
 }
 
 #[enum_dispatch]
@@ -128,7 +128,7 @@ where
             id,
             data,
             components: Vec::new(),
-            ln_m_cache: OnceCell::new(),
+            ln_m_cache: OnceLock::new(),
             prior,
             hyper,
             ignore_hyper: false,
@@ -142,7 +142,7 @@ where
 
     #[inline]
     pub fn unset_ln_m_cache(&mut self) {
-        self.ln_m_cache = OnceCell::new();
+        self.ln_m_cache = OnceLock::new();
     }
 
     pub fn len(&self) -> usize {
@@ -831,7 +831,7 @@ mod tests {
                         stat.observe(&1_u8);
                         stat
                     },
-                    ln_pp_cache: OnceCell::new(),
+                    ln_pp_cache: OnceLock::new(),
                 },
                 ConjugateComponent {
                     fx: Categorical::new(&[0.8, 0.2]).unwrap(),
@@ -840,7 +840,7 @@ mod tests {
                         stat.observe(&0_u8);
                         stat
                     },
-                    ln_pp_cache: OnceCell::new(),
+                    ln_pp_cache: OnceLock::new(),
                 },
                 ConjugateComponent {
                     fx: Categorical::new(&[0.3, 0.7]).unwrap(),
@@ -849,12 +849,12 @@ mod tests {
                         stat.observe(&0_u8);
                         stat
                     },
-                    ln_pp_cache: OnceCell::new(),
+                    ln_pp_cache: OnceLock::new(),
                 },
             ],
             prior: SymmetricDirichlet::new_unchecked(0.5, 2),
             hyper: CsdHyper::default(),
-            ln_m_cache: OnceCell::new(),
+            ln_m_cache: OnceLock::new(),
             ignore_hyper: false,
         };
 

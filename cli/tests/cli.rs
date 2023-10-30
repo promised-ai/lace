@@ -4,8 +4,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use lace::codebook::ColType;
 use lace::HasStates;
-use lace_codebook::ColType;
 use std::{io, process::Output};
 
 fn animals_path() -> PathBuf {
@@ -154,8 +154,7 @@ mod run {
               - d
         "
         );
-        let mut f =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let mut f = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         f.write_all(codebook.as_bytes()).unwrap();
         f
     }
@@ -212,17 +211,12 @@ mod run {
               - d
         "
         );
-        let mut f =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let mut f = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         f.write_all(codebook.as_bytes()).unwrap();
         f
     }
 
-    fn create_animals_lacefile_args(
-        src_flag: &str,
-        src: &str,
-        dst: &str,
-    ) -> io::Result<Output> {
+    fn create_animals_lacefile_args(src_flag: &str, src: &str, dst: &str) -> io::Result<Output> {
         Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
@@ -767,11 +761,7 @@ mod run {
         assert_eq!(engine.n_rows(), 50);
         for col_a in 0..n_cols {
             for col_b in 0..n_cols {
-                assert_relative_eq!(
-                    engine.depprob(col_a, col_b).unwrap(),
-                    1.0,
-                    epsilon = 1E-10
-                )
+                assert_relative_eq!(engine.depprob(col_a, col_b).unwrap(), 1.0, epsilon = 1E-10)
             }
         }
     }
@@ -781,7 +771,7 @@ macro_rules! test_codebook_under_fmt {
     ($mod: ident, $flag: expr) => {
         mod $mod {
             use super::*;
-            use lace_codebook::Codebook;
+            use lace::codebook::Codebook;
             use std::io::Read;
 
             fn load_codebook(filename: &str) -> Codebook {
@@ -799,10 +789,7 @@ macro_rules! test_codebook_under_fmt {
 
             #[test]
             fn with_default_args() {
-                let fileout = tempfile::Builder::new()
-                    .suffix(".yaml")
-                    .tempfile()
-                    .unwrap();
+                let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
                 let output = Command::new(LACE_CMD)
                     .arg("codebook")
                     .arg($flag)
@@ -812,16 +799,12 @@ macro_rules! test_codebook_under_fmt {
                     .expect("failed to execute process");
 
                 assert!(output.status.success());
-                assert!(String::from_utf8_lossy(&output.stdout)
-                    .contains("Wrote file"));
+                assert!(String::from_utf8_lossy(&output.stdout).contains("Wrote file"));
             }
 
             #[test]
             fn with_no_hyper_has_no_hyper() {
-                let fileout = tempfile::Builder::new()
-                    .suffix(".yaml")
-                    .tempfile()
-                    .unwrap();
+                let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
                 let output = Command::new(LACE_CMD)
                     .arg("codebook")
                     .arg($flag)
@@ -838,29 +821,25 @@ macro_rules! test_codebook_under_fmt {
                 assert!(output.status.success());
 
                 let codebook = load_codebook(fileout.path().to_str().unwrap());
-                let no_hypers =
-                    codebook.col_metadata.iter().all(|md| match md.coltype {
-                        ColType::Continuous {
-                            hyper: None,
-                            prior: Some(_),
-                            ..
-                        } => true,
-                        ColType::Categorical {
-                            hyper: None,
-                            prior: Some(_),
-                            ..
-                        } => true,
-                        _ => false,
-                    });
+                let no_hypers = codebook.col_metadata.iter().all(|md| match md.coltype {
+                    ColType::Continuous {
+                        hyper: None,
+                        prior: Some(_),
+                        ..
+                    } => true,
+                    ColType::Categorical {
+                        hyper: None,
+                        prior: Some(_),
+                        ..
+                    } => true,
+                    _ => false,
+                });
                 assert!(no_hypers);
             }
 
             #[test]
             fn with_good_alpha_params() {
-                let fileout = tempfile::Builder::new()
-                    .suffix(".yaml")
-                    .tempfile()
-                    .unwrap();
+                let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
                 let output = Command::new(LACE_CMD)
                     .arg("codebook")
                     .arg($flag)
@@ -876,10 +855,7 @@ macro_rules! test_codebook_under_fmt {
 
             #[test]
             fn with_bad_alpha_params() {
-                let fileout = tempfile::Builder::new()
-                    .suffix(".yaml")
-                    .tempfile()
-                    .unwrap();
+                let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
                 let output = Command::new(LACE_CMD)
                     .arg("codebook")
                     .arg($flag)
@@ -900,7 +876,7 @@ macro_rules! test_codebook_under_fmt {
 
 mod codebook {
     use super::*;
-    use lace_codebook::Codebook;
+    use lace::codebook::Codebook;
 
     test_codebook_under_fmt!(csv, "--csv");
     test_codebook_under_fmt!(csvgz, "--csv");
@@ -910,8 +886,7 @@ mod codebook {
 
     #[test]
     fn with_invalid_csv() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(LACE_CMD)
             .arg("codebook")
             .arg("--csv")
@@ -921,14 +896,12 @@ mod codebook {
             .expect("failed to execute process");
 
         assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("swim.csv\" not found"));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("swim.csv\" not found"));
     }
 
     #[test]
     fn uint_data_with_category_cutoff_becomes_count() -> std::io::Result<()> {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
         // Write CSV with 21 distinct integer values
@@ -939,10 +912,9 @@ mod codebook {
         }
 
         fn get_col_type(file_out: &tempfile::NamedTempFile) -> Option<ColType> {
-            let codebook = Codebook::from_yaml(file_out.path())
-                .expect("Failed to read output codebook");
-            let (_, metadata) =
-                codebook.col_metadata.get(&String::from("data"))?;
+            let codebook =
+                Codebook::from_yaml(file_out.path()).expect("Failed to read output codebook");
+            let (_, metadata) = codebook.col_metadata.get(&String::from("data"))?;
             let coltype = metadata.coltype.clone();
             Some(coltype)
         }
@@ -967,8 +939,7 @@ mod codebook {
         }
 
         // Set the value to 25 and confirm it labed the column to Categorical
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(LACE_CMD)
             .arg("codebook")
             .args(["-c", "25"])
@@ -988,8 +959,7 @@ mod codebook {
         }
 
         // Explicitly set the categorical cutoff below given distinct value count
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(LACE_CMD)
             .arg("codebook")
             .args(["-c", "15"])
@@ -1013,8 +983,7 @@ mod codebook {
 
     #[test]
     fn heuristic_warnings() -> std::io::Result<()> {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
         // Write CSV with two data_columns, one with 15% missing values
@@ -1037,8 +1006,7 @@ mod codebook {
         assert!(!output.status.success());
         let stderr = String::from_utf8(output.stderr).unwrap();
         dbg!(&stderr);
-        assert!(stderr
-            .contains("Column `data_b` contains only a single unique value"));
+        assert!(stderr.contains("Column `data_b` contains only a single unique value"));
         // assert!(stderr.contains("NOTE: Column \"data_a\" is missing"));
 
         Ok(())

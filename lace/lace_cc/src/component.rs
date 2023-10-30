@@ -2,9 +2,9 @@
 use lace_data::SparseContainer;
 use lace_stats::rv::data::DataOrSuffStat;
 use lace_stats::rv::traits::*;
-use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 
 use crate::feature::Component;
 use crate::traits::AccumScore;
@@ -26,7 +26,7 @@ where
     #[serde(bound(deserialize = "Fx: serde::de::DeserializeOwned"))]
     pub stat: Fx::Stat,
     #[serde(skip)]
-    pub ln_pp_cache: OnceCell<Pr::LnPpCache>,
+    pub ln_pp_cache: OnceLock<Pr::LnPpCache>,
 }
 
 impl<X, Fx, Pr> AccumScore<X> for ConjugateComponent<X, Fx, Pr>
@@ -66,7 +66,7 @@ where
         ConjugateComponent {
             fx,
             stat,
-            ln_pp_cache: OnceCell::new(),
+            ln_pp_cache: OnceLock::new(),
         }
     }
 
@@ -78,7 +78,7 @@ where
 
     #[inline]
     pub fn reset_ln_pp_cache(&mut self) {
-        self.ln_pp_cache = OnceCell::new()
+        self.ln_pp_cache = OnceLock::new()
     }
 
     #[inline]

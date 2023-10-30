@@ -76,6 +76,9 @@ pub mod data;
 mod error;
 mod value_map;
 
+#[cfg(feature = "formats")]
+pub mod formats;
+
 pub use codebook::*;
 pub use error::*;
 pub use value_map::{
