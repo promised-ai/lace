@@ -57,15 +57,6 @@ impl CoreEngine {
     ///     and `3.state`
     /// rng_seed: int, optional
     ///     Integer seed for the random number generator
-    /// source_type: str, optional
-    ///     The type of the data file. Can be `'csv'`, `'csv.gz'`, `'feather'`,
-    ///     `'ipc'`, `'parquet'`, `'json'`, or `'jsonl'`. If None (default) the
-    ///     source type will be inferred from the `data_source` file extension.
-    /// cat_cutoff: int, optional
-    ///     The number of distinct unsigned integer values and column can assume
-    ///     before it is inferred not to be a categorical type.
-    /// no_hypers: bool, optional
-    ///     If True, features hyperparameter inference will not be conducted.
     #[allow(clippy::too_many_arguments)]
     #[new]
     #[pyo3(
