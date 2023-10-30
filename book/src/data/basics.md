@@ -57,7 +57,7 @@ Lace currently accepts the following data formats
 - CSV
 - CSV.gz (gzipped CSV)
 - Parquet
-- IPC (feather v2)
+- IPC (Apache Arrow v2)
 - JSON (as output by the pandas function `df.to_json('mydata.json)`)
 - JSON Lines
 

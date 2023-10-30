@@ -25,7 +25,7 @@ pub enum DataSource {
 pub enum DataSource {
     /// CSV file
     Csv(PathBuf),
-    /// Apache IPC data format (e.g. Feather V2)
+    /// Apache IPC data format (e.g. Arrow V2)
     Ipc(PathBuf),
     /// JSON  or JSON line file
     Json(PathBuf),
