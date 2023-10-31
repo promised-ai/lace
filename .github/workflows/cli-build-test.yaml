@@ -1,0 +1,143 @@
+name: 'CLI: Build and Test'
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'cli/**'
+      - 'lace/**'
+      - '.github/workflows/cli-build-test.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  features:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> cli/target
+
+      - name: Install dependencies
+        run: cargo install cargo-hack
+
+      - name: Run cargo check on all features
+        working-directory: cli
+        run: cargo hack check --each-feature --all-targets
+
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> cli/target
+
+      - name: Run rustfmt
+        working-directory: cli
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        working-directory: cli
+        env:
+          RUSTFLAGS: -C debuginfo=0
+        run: |
+          cargo clippy --all-features
+
+      - name: Install audit
+        run: cargo install cargo-audit
+
+      - name: Run audit
+        working-directory: cli
+        # Note: Both `polars` and `arrow2` trigger this security violation
+        #       due to their reliance on `chrono`, which is the ultimate source of the violation
+        #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
+        #       and thus neither `polars` or `arrow2` can pass `audit` checks
+        run: cargo audit -f Cargo.lock --ignore RUSTSEC-2020-0071
+
+  test:
+    runs-on: ${{ matrix.os }}
+    needs: ["lint", "features"]
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: lace
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> cli/target
+    
+      - name: Regen Examples
+        env:
+          RUSTFLAGS: -C debuginfo=0
+        run: cargo run -- regen-examples
+
+      - name: Run tests
+        env:
+          RUSTFLAGS: -C debuginfo=0
+        run: cargo test 
+
+  # semver-checks:
+  #   runs-on: ubuntu-latest
+  #   needs: ["features", "lint", "test"]
+  #   steps:
+  #     - name: Checkout branch
+  #       uses: actions/checkout@v3
+  #       with:
+  #         path: branch
+
+  #     - name: Checkout master
+  #       uses: actions/checkout@v3
+  #       with:
+  #         ref: master
+  #         path: master
+
+  #     - name: Set up Rust
+  #       uses: dtolnay/rust-toolchain@stable
+
+  #     - name: Cache Rust
+  #       uses: Swatinem/rust-cache@v2
+  #       with:
+  #         workspaces: . -> lace/target
+
+  #     - name: Install extra cargo tools
+  #       run: cargo install cargo-semver-checks --locked
+
+  #     - name: Check for semver-incompatibilities
+  #       run: cargo semver-checks check-release --manifest-path branch/lace/Cargo.toml --baseline-root master/lace --verbose
