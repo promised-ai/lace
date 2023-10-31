@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-# Added
+### Added
 
 - Lace can now be compiled to Wasm
 
-# Changed
+### Changed
 
 - Moved CLI into its own crate
 - Moved `DataSource` variants for Parquet, IPC (Arrow), and JSON data types into the `formats` feature flag.
