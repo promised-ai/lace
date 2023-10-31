@@ -68,10 +68,7 @@ fn test_paths() {
     );
     assert_eq!(csvgz::animals(), format!("{RESOURCE_BASE_PATH}data.csv.gz"));
     assert_eq!(jsonl::animals(), format!("{RESOURCE_BASE_PATH}data.jsonl"));
-    assert_eq!(
-        arrow::animals(),
-        format!("{RESOURCE_BASE_PATH}data.arrow")
-    );
+    assert_eq!(arrow::animals(), format!("{RESOURCE_BASE_PATH}data.arrow"));
     assert_eq!(
         parquet::animals(),
         format!("{RESOURCE_BASE_PATH}data.parquet")
