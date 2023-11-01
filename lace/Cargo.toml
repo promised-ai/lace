@@ -70,7 +70,7 @@ indoc = "2.0.3"
 plotly = "0.8"
 
 [features]
-default_features = ["examples"]
+default = ["examples"]
 examples = ["dep:dirs"]
 ctrlc_handler = ["dep:ctrlc"]
 bencher = ["formats", "examples"]
