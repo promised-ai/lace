@@ -92,6 +92,10 @@ required-features = ["examples"]
 name = "engine"
 required-features = ["examples"]
 
+[[test]]
+name = "workflow"
+required-features = ["formats"]
+
 [profile.release]
 lto = "fat"
 

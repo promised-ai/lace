@@ -1068,10 +1068,10 @@ mod tests {
 
     use lace_codebook::{ColMetadata, ColType, ValueMap};
 
-    #[cfg(features="examples")]
+    #[cfg(feature = "examples")]
     mod requiring_examples {
-        use crate::examples::Example;
         use super::*;
+        use crate::examples::Example;
 
         #[test]
         fn errors_when_no_col_metadata_when_new_columns() {
