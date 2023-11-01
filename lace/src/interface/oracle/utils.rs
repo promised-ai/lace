@@ -2396,6 +2396,7 @@ mod tests {
         assert_relative_eq!(h_x, 1.368_715_500_467_195_1, epsilon = 1E-12);
     }
 
+    #[cfg(feature="examples")]
     #[test]
     fn multi_state_categorical_single_entropy_vs_old() {
         use crate::examples::Example;

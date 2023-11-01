@@ -173,7 +173,9 @@ pub mod config;
 pub mod data;
 pub mod defaults;
 
+#[cfg(feature = "examples")]
 pub mod examples;
+
 mod interface;
 pub mod misc;
 pub mod optimize;
