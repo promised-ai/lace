@@ -90,7 +90,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     defaults:
       run:
-        working-directory: lace
+        working-directory: cli
 
     steps:
       - uses: actions/checkout@v3
