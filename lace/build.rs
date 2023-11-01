@@ -1,4 +1,5 @@
-use std::path::{Path, PathBuf};
+use core::panic;
+use std::{path::{Path, PathBuf}, collections::HashMap};
 
 const DATASET_NAMES: [&str; 2] = ["animals", "satellites"];
 
@@ -29,7 +30,8 @@ fn copy_resources(
 
 fn main() {
     // DOCS_RS indicates that you are building for the website `https://docs.rs`
-    if std::env::var("DOCS_RS").is_err() {
+    // CARGO_FEATURE_EXAMPLES indicates that you are building with the `exampes` feature set
+    if std::env::var("DOCS_RS").is_err() && std::env::var("CARGO_FEATURE_EXAMPLES").is_ok() {
         // Copy Examples
         let examples_dir: PathBuf = dirs::data_dir()
             .map(|dir| dir.join("lace").join("examples"))
