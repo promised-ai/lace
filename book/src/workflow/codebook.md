@@ -71,11 +71,11 @@ the codebook. Just give the output of `codebook` a `.json` extension.
 $ lace codebook --csv data.csv codebook.json
 ```
 
-If you use a data format with a schema, such as Parquet or IPC (feather v2),
+If you use a data format with a schema, such as Parquet or IPC (Apache Arrow v2),
 you make Lace's work a bit easier.
 
 ```console
-$ lace codebook --ipc data.feather codebook.yaml
+$ lace codebook --ipc data.arrow codebook.yaml
 ```
 
 If you want to make changes to the codebook -- the most common of which are

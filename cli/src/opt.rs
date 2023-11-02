@@ -54,7 +54,7 @@ pub struct RunArgs {
     /// Path to .csv data source. May be compressed.
     #[clap(long = "csv", group = "input")]
     pub csv_src: Option<PathBuf>,
-    /// Path to Apache IPC (feather v2) data source
+    /// Path to Apache IPC (Arrow v2) data source
     #[clap(long = "ipc", group = "input")]
     pub ipc_src: Option<PathBuf>,
     /// Path to parquet data source
@@ -257,7 +257,7 @@ pub struct CodebookArgs {
     /// .json or .jsonl input filename
     #[clap(long = "json", group = "src")]
     pub json_src: Option<PathBuf>,
-    /// Apache IPC (Feather v2) input filename
+    /// Apache IPC (Arrow v2) input filename
     #[clap(long = "ipc", group = "src")]
     pub ipc_src: Option<PathBuf>,
     /// Parquet input filename

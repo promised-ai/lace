@@ -30,7 +30,6 @@ fn datafile() -> tempfile::NamedTempFile {
 }
 
 // Smoke test default CSV generation with string data
-#[cfg(feature = "formats")]
 #[test]
 fn default_csv_workflow() {
     let file = datafile();
@@ -51,7 +50,6 @@ fn default_csv_workflow() {
 
 // Smoke test satellites dataset csv which is pretty messy and sparse. This has
 // caught errors not caught by other tests.
-#[cfg(feature = "formats")]
 #[test]
 fn satellites_csv_workflow() {
     let path = PathBuf::from("resources/datasets/satellites/data.csv");
