@@ -403,6 +403,39 @@ class Codebook:
 
         return codebook
 
+    def value_map(self, col: str):
+        """Get the value map for a Categorical column if it exists
+
+        Parameters
+        ----------
+        col: str
+            The column name
+
+        Examples
+        --------
+
+        String value map
+
+        >>> from lace.examples import Satellites
+        >>> sats = Satellites()
+        >>> vm = sats.codebook.value_map("Class_of_Orbit")
+        >>> vm
+        ValueMap (String) [ 'Elliptical' 'GEO' 'LEO' 'MEO' ]
+        >>> [c for c in vm.values()]
+        ['Elliptical', 'GEO', 'LEO', 'MEO']
+
+        Integer value map
+
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
+        >>> vm = animals.codebook.value_map("swims")
+        >>> vm
+        ValueMap (UInt, k=2)
+        >>> [c for c in vm.values()]
+        [0, 1]
+        """
+        return self.column_metadata[col].value_map
+
     def json(self) -> str:
         """Return the codebook as a JSON string."""
         return self.codebook.json()
