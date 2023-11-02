@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `DataSource` variants for Parquet, IPC (Arrow), and JSON data types into the `formats` feature flag.
 - Moved the `CtrlC` `UpdateHandler` into `ctrlc_handler` feature flag
 - Moved `Bencher` into the `bencher` feature flag
+- Moved `Example` code into the `examples` feature flag (on by default)
 - Replaced instances of `once_cell::sync::OnceCell` with `syd::sync::OnceLock`
 - Renamed all files/methods with the name `feather` to `arrow`
 
