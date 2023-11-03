@@ -1,9 +1,9 @@
-use lace::prelude::*;
-use lace_stats::rv::prelude::*;
-use std::io::Write;
-
 #[cfg(feature = "formats")]
 fn main() {
+    use lace::prelude::*;
+    use lace_stats::rv::prelude::*;
+    use std::io::Write;
+
     let mut rng = rand::thread_rng();
 
     // Draw data from a mixture of Poisson

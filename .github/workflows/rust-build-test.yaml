@@ -107,6 +107,7 @@ jobs:
           workspaces: . -> lace/target
     
       - name: Regen Examples
+        working-directory: cli
         env:
           RUSTFLAGS: -C debuginfo=0
         run: cargo run -- regen-examples
@@ -114,7 +115,7 @@ jobs:
       - name: Run tests
         env:
           RUSTFLAGS: -C debuginfo=0
-        run: cargo test 
+        run: cargo test --all-features
 
   # semver-checks:
   #   runs-on: ubuntu-latest

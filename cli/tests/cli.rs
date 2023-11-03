@@ -51,7 +51,7 @@ fn animals_codebook_path() -> String {
 path_fn!(csv, "csv");
 path_fn!(csvgz, "csv.gz");
 path_fn!(jsonl, "jsonl");
-path_fn!(feather, "feather");
+path_fn!(arrow, "arrow");
 path_fn!(parquet, "parquet");
 
 #[cfg(not(target_os = "windows"))]
@@ -68,10 +68,7 @@ fn test_paths() {
     );
     assert_eq!(csvgz::animals(), format!("{RESOURCE_BASE_PATH}data.csv.gz"));
     assert_eq!(jsonl::animals(), format!("{RESOURCE_BASE_PATH}data.jsonl"));
-    assert_eq!(
-        feather::animals(),
-        format!("{RESOURCE_BASE_PATH}data.feather")
-    );
+    assert_eq!(arrow::animals(), format!("{RESOURCE_BASE_PATH}data.arrow"));
     assert_eq!(
         parquet::animals(),
         format!("{RESOURCE_BASE_PATH}data.parquet")
@@ -285,11 +282,11 @@ mod run {
     }
 
     #[test]
-    fn from_feather_smoke() {
+    fn from_arrow_smoke() {
         let outdir = tempfile::tempdir().unwrap();
         let output = create_animals_lacefile_args(
             "--ipc",
-            feather::animals().as_str(),
+            arrow::animals().as_str(),
             outdir.path().to_str().unwrap(),
         )
         .unwrap();
@@ -881,7 +878,7 @@ mod codebook {
     test_codebook_under_fmt!(csv, "--csv");
     test_codebook_under_fmt!(csvgz, "--csv");
     test_codebook_under_fmt!(jsonl, "--json");
-    test_codebook_under_fmt!(feather, "--ipc");
+    test_codebook_under_fmt!(arrow, "--ipc");
     test_codebook_under_fmt!(parquet, "--parquet");
 
     #[test]

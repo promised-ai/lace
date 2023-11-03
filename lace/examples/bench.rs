@@ -1,12 +1,11 @@
-use std::env;
-
-#[cfg(feature = "bencher")]
-use lace::bencher::Bencher;
-use lace::prelude::*;
-use lace_utils::{mean, std};
-
 #[cfg(feature = "bencher")]
 fn main() {
+    use std::env;
+
+    use lace::bencher::Bencher;
+    use lace::prelude::*;
+    use lace_utils::{mean, std};
+
     let args: Vec<String> = env::args().skip(1).collect();
 
     let nrows: usize = args[0].parse().unwrap_or(250);
