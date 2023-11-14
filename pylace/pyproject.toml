@@ -21,7 +21,7 @@ classifiers = [
     "Programming Language :: Rust",
     "Topic :: Scientific/Engineering",
 ]
-license = { text="SSPL-1.0" }
+license = { text="BSL-1.1" }
 authors = [
   { name="Baxter Eaves", email="bax@redpoll.ai"},
   { name="Michael Schmidt", email="schmidt@redpoll.ai"},
