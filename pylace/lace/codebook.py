@@ -404,7 +404,8 @@ class Codebook:
         return codebook
 
     def value_map(self, col: str):
-        """Get the value map for a Categorical column if it exists
+        """
+        Get the value map for a Categorical column if it exists.
 
         Parameters
         ----------
@@ -413,7 +414,6 @@ class Codebook:
 
         Examples
         --------
-
         String value map
 
         >>> from lace.examples import Satellites
