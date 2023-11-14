@@ -151,7 +151,7 @@
 //! # Feature flags
 //! - `formats`: create `Engine`s and `Codebook`s from IPC, CSV, JSON, and
 //!   Parquet data files
-//! - `bencher`: Build benchmarking utilties
+//! - `bencher`: Build benchmarking utilities
 //! - `ctrc_handler`: enables and update handler than captures Ctrl+C
 //!
 #![warn(unused_extern_crates)]
