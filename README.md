@@ -1,6 +1,6 @@
 <div align=center>
     <img src='assets/lace.svg' width='250px'/>
-    <h3>Bayesian Tabular Data Analysis for Rust and Python</h3>
+    <h3>Lace: A Probabilistic Machine Learning tool for Scientific Discovery</h3>
 </div>
 
 </br>
