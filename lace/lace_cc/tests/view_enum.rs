@@ -149,12 +149,16 @@ macro_rules! view_enum_test {
         fn $row_alg() {
             fn test_fn() -> bool {
                 let err = view_enum_test(
-                    4,
+                    5,
                     1,
                     1,
                     5_000,
                     FType::$ftype,
                     RowAssignAlg::$row_alg
+                );
+                eprintln!(
+                    "{:?} {:?} view err: {}",
+                    FType::$ftype, RowAssignAlg::$row_alg, err
                 );
                 err < 0.01
             }
@@ -183,3 +187,6 @@ view_enum_test!(
     (Categorical, [Gibbs, Slice, Sams]),
     (Count, [Gibbs, Slice, Sams])
 );
+
+#[cfg(feature = "experimental")]
+view_enum_test!((Index, [Gibbs, Slice, Sams]));

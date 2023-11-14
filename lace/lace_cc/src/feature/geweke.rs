@@ -109,6 +109,20 @@ pub enum GewekeColumnSummary {
         /// The prior parameter summary if the prior was variable
         pg: Option<PgSummary>,
     },
+    #[cfg(feature = "experimental")]
+    Index {
+        /// The number of unique classes
+        k_data: usize,
+        /// The sum of squared differences between the empirical pdf and the
+        /// uniform distribution
+        sum_sq_err_emp: f64,
+        /// The mean of the squared weights
+        sq_weight_mean: f64,
+        /// The mean of the weights
+        weight_mean: f64,
+        /// The prior alpha summary if the prior was variable
+        prior_alpha: Option<f64>,
+    },
 }
 
 impl From<&GewekeColumnSummary> for BTreeMap<String, f64> {
@@ -162,6 +176,24 @@ impl From<&GewekeColumnSummary> for BTreeMap<String, f64> {
                 if let Some(inner) = pg {
                     map.insert("pg shape".into(), inner.shape);
                     map.insert("pg rate".into(), inner.rate);
+                }
+                map
+            }
+            #[cfg(feature = "experimental")]
+            GewekeColumnSummary::Index {
+                k_data,
+                sum_sq_err_emp,
+                sq_weight_mean,
+                weight_mean,
+                prior_alpha,
+            } => {
+                let mut map: BTreeMap<String, f64> = BTreeMap::new();
+                map.insert("k_data".into(), *k_data as f64);
+                map.insert("sum_sq_err_emp ".into(), *sum_sq_err_emp);
+                map.insert("sq weight mean".into(), *sq_weight_mean);
+                map.insert("weight mean".into(), *weight_mean);
+                if let Some(alpha) = prior_alpha {
+                    map.insert("csd alpha".into(), *alpha);
                 }
                 map
             }
@@ -517,12 +549,11 @@ pub fn gen_geweke_col_models(
                 }
                 #[cfg(feature = "experimental")]
                 FType::Index => {
-                    let k = 5; // number of categorical values
                     let hyper = SbdHyper::new(4.0, 4.0).unwrap();
                     let prior = if prior_trans {
-                        hyper.draw(k, &mut rng)
+                        hyper.draw(&mut rng)
                     } else {
-                        Sb::new(2.0, k, None)
+                        Sb::new(1.0, None)
                     };
                     let f: Sbd = prior.draw(&mut rng);
                     let xs: Vec<usize> = f.sample(n_rows, &mut rng);

@@ -141,7 +141,6 @@ impl Engine {
         let col_md = ColMetadata {
             name: format!("_PARTITION_{last_col}"),
             coltype: lace_codebook::ColType::Index {
-                k: 10,
                 hyper: None,
                 prior: None,
             },

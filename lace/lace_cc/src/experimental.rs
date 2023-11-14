@@ -442,7 +442,7 @@ impl State {
             let n_cats = self.views[view_ix].n_cats();
 
             let hyper = SbdHyper::default();
-            let prior = hyper.draw(asgn.n_cats, rng);
+            let prior = hyper.draw(rng);
             let components = (0..n_cats)
                 .map(|_| ConjugateComponent::new(prior.draw(rng)))
                 .collect::<Vec<_>>();
@@ -469,55 +469,6 @@ impl State {
 
 // impl AccumScore<usize> for Dpd {}
 impl AccumScore<usize> for Sbd {}
-
-// impl LacePrior<usize, Dpd, DpdHyper> for DpdPrior {
-//     fn empty_suffstat(&self) -> DpdSuffStat {
-//         DpdSuffStat::new()
-//     }
-
-//     fn invalid_temp_component(&self) -> Dpd {
-//         Dpd::uniform(self.k(), self.m())
-//     }
-
-//     fn score_column<I: Iterator<Item = DpdSuffStat>>(&self, stats: I) -> f64 {
-//         use lace_stats::rv::data::DataOrSuffStat;
-//         // let cache = self.ln_m_cache();
-//         stats
-//             .map(|stat| {
-//                 let x = DataOrSuffStat::SuffStat(&stat);
-//                 self.ln_m_with_cache(&(), &x)
-//             })
-//             .sum::<f64>()
-//     }
-// }
-//
-// impl TranslateDatum<usize> for Column<usize, Dpd, DpdPrior, DpdHyper> {
-//     fn translate_datum(datum: Datum) -> usize {
-//         match datum {
-//             Datum::Index(x) => x,
-//             _ => panic!("Invalid Datum variant for conversion"),
-//         }
-//     }
-
-//     fn translate_value(x: usize) -> Datum {
-//         Datum::Index(x)
-//     }
-
-//     fn translate_feature_data(data: FeatureData) -> SparseContainer<usize> {
-//         match data {
-//             FeatureData::Index(xs) => xs,
-//             _ => panic!("Invalid FeatureData variant for conversion"),
-//         }
-//     }
-
-//     fn translate_container(xs: SparseContainer<usize>) -> FeatureData {
-//         FeatureData::Index(xs)
-//     }
-
-//     fn ftype() -> FType {
-//         FType::Index
-//     }
-// }
 
 impl LacePrior<usize, Sbd, SbdHyper> for Sb {
     fn empty_suffstat(&self) -> SbdSuffStat {
@@ -577,17 +528,15 @@ impl GewekeModel for Column<usize, Sbd, Sb, SbdHyper> {
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
     ) -> Self {
-        let k = 5;
-
-        let f = Categorical::uniform(k);
+        let f = Categorical::uniform(5);
         let xs: Vec<usize> = f.sample(settings.asgn().len(), &mut rng);
 
         let data = SparseContainer::from(xs); // initial data is resampled anyway
         let hyper = SbdHyper::default();
         let prior = if settings.fixed_prior() {
-            Sb::new(1.0, k, Some(rng.gen()))
+            Sb::new(1.0, Some(rng.gen()))
         } else {
-            hyper.draw(k, &mut rng)
+            hyper.draw(&mut rng)
         };
         let mut col = Column::new(0, data, prior, hyper);
         col.init_components(settings.asgn().n_cats, &mut rng);
@@ -614,7 +563,24 @@ impl GewekeSummarize for Column<usize, Sbd, Sb, SbdHyper> {
         &self,
         settings: &ColumnGewekeSettings,
     ) -> Self::Summary {
-        let x_sum = self.data.present_cloned().iter().sum::<usize>();
+        use std::collections::BTreeMap;
+
+        let xs = self.data.present_cloned();
+        let mut counts: BTreeMap<usize, usize> = BTreeMap::new();
+        for x in xs.iter() {
+            counts.entry(*x).and_modify(|ct| *ct += 1).or_insert(1);
+        }
+
+        let k = counts.len();
+        let n = xs.len();
+        let p = (k as f64).recip();
+        let sum_sq_err_emp = counts
+            .values()
+            .map(|ct| {
+                let err = (*ct as f64).recip() - p;
+                err * err
+            })
+            .sum::<f64>();
 
         fn sum_sq(logws: &[f64]) -> f64 {
             logws.iter().fold(0.0, |acc, lw| {
@@ -649,8 +615,9 @@ impl GewekeSummarize for Column<usize, Sbd, Sb, SbdHyper> {
             .sum::<f64>()
             / kf;
 
-        GewekeColumnSummary::Categorical {
-            x_sum,
+        GewekeColumnSummary::Index {
+            k_data: k,
+            sum_sq_err_emp,
             sq_weight_mean,
             weight_mean,
             prior_alpha: if !settings.fixed_prior() {

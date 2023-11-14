@@ -20,19 +20,30 @@ struct Opt {
     pub no_priors: bool,
 }
 
+#[cfg(feature = "experimental")]
+const FTYPES: [FType; 4] = [
+    FType::Continuous,
+    FType::Count,
+    FType::Categorical,
+    FType::Index,
+];
+
+#[cfg(not(feature = "experimental"))]
+const FTYPES: [FType; 3] =
+    [FType::Continuous, FType::Count, FType::Categorical];
+
 fn main() {
     let opt = Opt::parse();
 
     println!("Running {} rows using {} algorithm", opt.nrows, opt.alg);
 
     let mut rng = Xoshiro256Plus::from_entropy();
-    let ftypes = vec![FType::Continuous, FType::Count, FType::Categorical];
 
     // The views's Geweke test settings require the number of rows in the
     // view (50), and the types of each column. Everything else is filled out
     // automatically.
     let settings = {
-        let mut settings = ViewGewekeSettings::new(opt.nrows, ftypes);
+        let mut settings = ViewGewekeSettings::new(opt.nrows, FTYPES.to_vec());
         settings.transitions = Vec::new();
         if !opt.no_row_reassign {
             settings

@@ -124,7 +124,6 @@ fn count_col_model<R: rand::Rng>(
 fn index_col_model<R: rand::Rng>(
     id: usize,
     srs: &Series,
-    k: usize,
     hyper_opt: Option<SbdHyper>,
     prior_opt: Option<Sb>,
     mut rng: &mut R,
@@ -135,13 +134,13 @@ fn index_col_model<R: rand::Rng>(
     let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
         (Some(hy), Some(pr)) => (hy, pr, true),
         (Some(hy), None) => {
-            let pr = hy.draw(k, rng);
+            let pr = hy.draw(rng);
             (hy, pr, false)
         }
         (None, Some(pr)) => (SbdHyper::default(), pr, true),
         (None, None) => {
             let hy = SbdHyper::default();
-            let pr = hy.draw(k, &mut rng);
+            let pr = hy.draw(&mut rng);
             (hy, pr, false)
         }
     };
@@ -291,15 +290,10 @@ pub fn df_to_col_models<R: rand::Rng>(
                 )
                 .map_err(DataParseError::Codebook),
                 #[cfg(feature = "experimental")]
-                ColType::Index { k, hyper, prior } => index_col_model(
-                    id,
-                    srs,
-                    *k,
-                    hyper.clone(),
-                    prior.clone(),
-                    rng,
-                )
-                .map_err(DataParseError::Codebook),
+                ColType::Index { hyper, prior } => {
+                    index_col_model(id, srs, hyper.clone(), prior.clone(), rng)
+                        .map_err(DataParseError::Codebook)
+                }
             };
 
             // If missing not at random, convert the column type

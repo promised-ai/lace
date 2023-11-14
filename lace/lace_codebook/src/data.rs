@@ -281,18 +281,13 @@ fn index_coltype(
     use lace_stats::experimental::sbd::SbdHyper;
     use lace_stats::rv::experimental::Sb;
 
-    let k = {
-        let k_max: u64 = srs.max().unwrap();
-        k_max as usize + 1
-    };
-
     let (hyper, prior) = if no_hypers {
-        (None, Some(Sb::new(0.5, k, None)))
+        (None, Some(Sb::new(0.5, None)))
     } else {
         (Some(SbdHyper::default()), None)
     };
 
-    Ok(ColType::Index { k, hyper, prior })
+    Ok(ColType::Index { hyper, prior })
 }
 
 fn uint_coltype(

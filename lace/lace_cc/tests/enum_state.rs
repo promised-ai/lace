@@ -298,7 +298,7 @@ mod tests {
                 fn test_fn() -> bool {
                     let mut rng = rand::thread_rng();
                     let err = state_enum_test(
-                        3,
+                        4,
                         3,
                         1,
                         10_000,
@@ -306,6 +306,13 @@ mod tests {
                         ColAssignAlg::$col_alg,
                         FType::$ftype,
                         &mut rng,
+                    );
+                    eprintln!(
+                        "{:?} [row: {:?}, col: {:?}] view err: {}",
+                        FType::$ftype,
+                        RowAssignAlg::$row_alg,
+                        ColAssignAlg::$col_alg,
+                        err
                     );
                     err < 0.01
                 }
@@ -421,5 +428,16 @@ mod tests {
         (state_enum_test_count_slice_gibbs, Count, Slice, Gibbs),
         (state_enum_test_count_sams_slice, Count, Sams, Slice),
         (state_enum_test_count_sams_gibbs, Count, Sams, Gibbs)
+    );
+
+    #[cfg(feature = "experimental")]
+    state_enum_test!(
+        // Index
+        (state_enum_test_index_gibbs_gibbs, Index, Gibbs, Gibbs),
+        (state_enum_test_index_slice_slice, Index, Slice, Slice),
+        (state_enum_test_index_gibbs_slice, Index, Gibbs, Slice),
+        (state_enum_test_index_slice_gibbs, Index, Slice, Gibbs),
+        (state_enum_test_index_sams_gibbs, Index, Sams, Gibbs),
+        (state_enum_test_index_sams_slice, Index, Sams, Slice)
     );
 }

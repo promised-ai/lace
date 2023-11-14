@@ -26,10 +26,10 @@ impl SbdHyper {
         })
     }
 
-    pub fn draw<R: rand::Rng>(&self, k: usize, rng: &mut R) -> Sb {
+    pub fn draw<R: rand::Rng>(&self, rng: &mut R) -> Sb {
         let seed: u64 = rng.gen();
         let alpha = self.gamma.draw(rng);
-        Sb::new(alpha, k, Some(seed))
+        Sb::new(alpha, Some(seed))
     }
 }
 
@@ -41,7 +41,7 @@ impl UpdatePrior<usize, Sbd, SbdHyper> for Sb {
         rng: &mut R,
     ) -> f64 {
         let ln_prior = |alpha: &f64| {
-            let sb = Sb::new(*alpha, 1, None);
+            let sb = Sb::new(*alpha, None);
             components
                 .iter()
                 .map(|cpnt| {

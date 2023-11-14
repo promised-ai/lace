@@ -231,12 +231,12 @@ fn gen_feature<R: rand::Rng>(
             ColModel::Categorical(col)
         }
         #[cfg(feature = "experimental")]
-        ColType::Index { k, .. } => {
+        ColType::Index { .. } => {
             use lace_stats::experimental::sbd::SbdHyper;
             use lace_stats::rv::experimental::{Sb, Sbd};
 
             let hyper = SbdHyper::default();
-            let prior: Sb = hyper.draw(k, rng);
+            let prior: Sb = hyper.draw(rng);
             let sbd: Sbd = prior.draw(rng);
             let data = {
                 let xs: Vec<usize> = sbd.sample(n_rows, rng);

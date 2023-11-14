@@ -102,6 +102,27 @@ pub fn gen_feature_ctor<R: rand::Rng>(
             }
             ctor
         }
+        #[cfg(feature = "experimental")]
+        FType::Index => {
+            use lace_stats::experimental::sbd::SbdHyper;
+            use lace_stats::rv::dist::Categorical;
+            use lace_stats::rv::experimental::Sb;
+
+            fn ctor<R: rand::Rng>(
+                id: usize,
+                n_rows: usize,
+                mut rng: &mut R,
+            ) -> ColModel {
+                let seed: u64 = rng.gen();
+                let cat = Categorical::uniform(4);
+                let hyper = SbdHyper::default();
+                let prior = Sb::new(1.0, Some(seed));
+                let xs: Vec<usize> = cat.sample(n_rows, &mut rng);
+                let data = SparseContainer::from(xs);
+                ColModel::Index(Column::new(id, data, prior, hyper))
+            }
+            ctor
+        }
         _ => panic!("unsupported ftype '{:?}' for view enum test", ftype),
     }
 }

@@ -29,8 +29,6 @@ use crate::traits::{
 };
 use lace_data::Datum;
 
-// #[cfg(feature = "experimental")]
-// use lace_stats::experimental::dp_discrete::{Dpd, DpdHyper, DpdPrior};
 #[cfg(feature = "experimental")]
 use lace_stats::experimental::sbd::SbdHyper;
 #[cfg(feature = "experimental")]

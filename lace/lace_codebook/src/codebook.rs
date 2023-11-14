@@ -522,10 +522,6 @@ pub enum ColType {
     #[cfg(feature = "experimental")]
     /// Index type
     Index {
-        /// The number of realized classes.
-        /// This is the starting point for the model. As data are removed,
-        /// added, or edited, k will change internally
-        k: usize,
         hyper: Option<SbdHyper>,
         prior: Option<Sb>,
     },
