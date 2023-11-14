@@ -32,9 +32,9 @@
      </div>
     <div>
         <strong>Installation</strong>: 
-        <a href='#'>Rust</a> | 
-        <a href='#'>Python</a> | 
-        <a href='#'>CLI</a>
+        <a href='#installation'>Rust</a> | 
+        <a href='#installation'>Python</a> | 
+        <a href='#installation'>CLI</a>
      </div>
     <div>
         <strong>Contents</strong>: 
@@ -165,7 +165,7 @@ Lace requires rust.
 
 To install the CLI:
 ```
-$ cargo install --locked lace
+$ cargo install --locked lace-cli
 ```
 
 To install pylace
