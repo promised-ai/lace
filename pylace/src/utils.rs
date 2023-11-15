@@ -13,7 +13,7 @@ use pyo3::exceptions::{
 };
 use pyo3::prelude::*;
 use pyo3::types::{
-    PyAny, PyBool, PyDict, PyFloat, PyInt, PyList, PySlice, PyString, PyTuple,
+    PyAny, PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyTuple,
 };
 
 use crate::df::{PyDataFrame, PySeries};
