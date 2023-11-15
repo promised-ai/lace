@@ -24,7 +24,7 @@ fn main() {
                 writeln!(file, "{},{}", ix, x).unwrap();
             });
 
-        Builder::new(DataSource::Csv(file.path().into()))
+        EngineBuilder::new(DataSource::Csv(file.path().into()))
             .with_nstates(2)
             .seed_from_u64(1337)
             .build()

@@ -7,7 +7,7 @@ use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
 use lace::{
-    AppendStrategy, Builder, Engine, HasStates, InsertDataActions,
+    AppendStrategy, Engine, EngineBuilder, HasStates, InsertDataActions,
     SupportExtension,
 };
 use lace_codebook::{Codebook, ValueMap};
@@ -33,7 +33,7 @@ fn animals_codebook_path() -> PathBuf {
 // tempfiles.
 #[cfg(feature = "formats")]
 fn engine_from_csv<P: Into<PathBuf>>(path: P) -> Engine {
-    Builder::new(DataSource::Csv(path.into()))
+    EngineBuilder::new(DataSource::Csv(path.into()))
         .with_nstates(2)
         .build()
         .unwrap()
@@ -228,7 +228,7 @@ fn cell_gibbs_smoke() {
 fn engine_build_without_flat_col_is_not_flat() {
     let path = animals_data_path();
     let df = lace_codebook::data::read_csv(path).unwrap();
-    let engine = Builder::new(DataSource::Polars(df))
+    let engine = EngineBuilder::new(DataSource::Polars(df))
         .with_nstates(8)
         .build()
         .unwrap();
@@ -1344,7 +1344,7 @@ mod insert_data {
             ..Default::default()
         };
 
-        let mut engine = Builder::new(DataSource::Empty).build().unwrap();
+        let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
         assert_eq!(engine.n_rows(), 0);
         assert_eq!(engine.n_cols(), 0);
 
@@ -1440,7 +1440,7 @@ mod insert_data {
             ..Default::default()
         };
 
-        let mut engine = Builder::new(DataSource::Empty).build().unwrap();
+        let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
         assert_eq!(engine.n_rows(), 0);
         assert_eq!(engine.n_cols(), 0);
 
@@ -1894,7 +1894,7 @@ mod insert_data {
             #[test]
             fn $fn_name() {
                 let mut engine =
-                    Builder::new(DataSource::Empty).build().unwrap();
+                    EngineBuilder::new(DataSource::Empty).build().unwrap();
                 let new_metadata = ColMetadataList::new(vec![
                     continuous_md("one".to_string()),
                     continuous_md("two".to_string()),
@@ -1972,7 +1972,7 @@ mod insert_data {
             #[test]
             fn $fn_name() {
                 let mut engine =
-                    Builder::new(DataSource::Empty).build().unwrap();
+                    EngineBuilder::new(DataSource::Empty).build().unwrap();
 
                 let new_metadata = ColMetadataList::new(vec![
                     continuous_md("one".to_string()),
