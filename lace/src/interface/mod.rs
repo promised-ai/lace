@@ -5,7 +5,7 @@ mod metadata;
 mod oracle;
 
 pub use engine::{
-    update_handler, AppendStrategy, BuildEngineError, Builder, Engine,
+    update_handler, AppendStrategy, BuildEngineError, Engine, EngineBuilder,
     InsertDataActions, InsertMode, OverwriteMode, Row, SupportExtension, Value,
     WriteMode,
 };

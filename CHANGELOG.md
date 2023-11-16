@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `Example` code into the `examples` feature flag (on by default)
 - Replaced instances of `once_cell::sync::OnceCell` with `syd::sync::OnceLock`
 - Renamed all files/methods with the name `feather` to `arrow`
+- Renamed `Builder` to `EngineBuilder`
+
+### Fixed
+
+- Fixed typo `UpdateHandler::finialize` is now `UpdateHandler::finalize`
 
 ## [python-0.4.1] - 2023-10-19
 

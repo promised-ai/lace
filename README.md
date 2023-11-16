@@ -28,7 +28,6 @@
         <a href='https://www.lace.dev/'>User guide</a> |
         <a href='https://docs.rs/lace/latest/lace/'>Rust API</a> |
         <a href='https://pylace.readthedocs.io/en/latest/'>Python API</a> |
-        <a href='#'>CLI</a>
      </div>
     <div>
         <strong>Installation</strong>: 
@@ -278,3 +277,7 @@ You can monitor the progress of the training using diagnostic plots
 Lace is licensed under the Business Source License v1.1, which restricts commercial use. See `LICENSE` for full details.
 
 If you would like a license for use in commercial please contact `lace@redpoll.ai`
+
+## Academic use
+
+Lace is free for academic use. Please cite lace according the the `CITATION.cff` metadata.

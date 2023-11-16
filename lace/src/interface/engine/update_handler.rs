@@ -45,7 +45,7 @@ use crate::EngineUpdateConfig;
 ///         self.timings.lock().unwrap().push(Instant::now());
 ///     }
 ///
-///     fn finialize(&mut self) {
+///     fn finalize(&mut self) {
 ///         let timings = self.timings.lock().unwrap();
 ///         let mean_time_between_updates =
 ///             timings.iter().zip(timings.iter().skip(1))
@@ -106,7 +106,7 @@ pub trait UpdateHandler: Clone + Send + Sync {
     ///
     /// This method is called when all updating is complete.
     /// Uses for this method include cleanup, report generation, etc.
-    fn finialize(&mut self) {}
+    fn finalize(&mut self) {}
 }
 
 macro_rules! impl_tuple {
@@ -151,9 +151,9 @@ macro_rules! impl_tuple {
             )||+
         }
 
-        fn finialize(&mut self) {
+        fn finalize(&mut self) {
             $(
-                self.$idx.finialize();
+                self.$idx.finalize();
             )+
         }
 
@@ -204,8 +204,8 @@ where
         false
     }
 
-    fn finialize(&mut self) {
-        self.iter_mut().for_each(|handler| handler.finialize());
+    fn finalize(&mut self) {
+        self.iter_mut().for_each(|handler| handler.finalize());
     }
 }
 
@@ -285,7 +285,7 @@ impl UpdateHandler for Timeout {
         }
     }
 
-    fn finialize(&mut self) {}
+    fn finalize(&mut self) {}
 }
 
 /// Limit the time each state can run for during an `Engine::update`.
@@ -427,7 +427,7 @@ impl UpdateHandler for ProgressBar {
         false
     }
 
-    fn finialize(&mut self) {
+    fn finalize(&mut self) {
         if let Self::Initialized { sender, handle } = std::mem::take(self) {
             std::mem::drop(sender);
 

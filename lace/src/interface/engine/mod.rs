@@ -3,7 +3,7 @@ mod data;
 pub mod error;
 pub mod update_handler;
 
-pub use builder::{BuildEngineError, Builder};
+pub use builder::{BuildEngineError, EngineBuilder};
 pub use data::{
     AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
@@ -1030,7 +1030,7 @@ impl Engine {
                 .collect::<Result<Vec<State>, _>>()?;
         }
         std::mem::drop(update_handlers);
-        update_handler.finialize();
+        update_handler.finalize();
 
         Ok(())
     }
@@ -1119,12 +1119,12 @@ mod tests {
                 false
             }
 
-            fn finialize(&mut self) {
+            fn finalize(&mut self) {
                 self.0.write().unwrap().insert("finalize".to_string());
             }
         }
 
-        let mut engine = Builder::new(animals_csv()).build().unwrap();
+        let mut engine = EngineBuilder::new(animals_csv()).build().unwrap();
 
         let called_methods = Arc::new(RwLock::new(HashSet::new()));
         let update_handler = TestingHandler(called_methods.clone());
@@ -1158,7 +1158,7 @@ mod tests {
     // It does not test that the StateTimeout successfully ends states that have gone over the duration
     #[test]
     fn state_timeout_update_handler() {
-        let mut engine = Builder::new(animals_csv()).build().unwrap();
+        let mut engine = EngineBuilder::new(animals_csv()).build().unwrap();
 
         let config = EngineUpdateConfig::new().default_transitions().n_iters(1);
 

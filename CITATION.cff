@@ -1,0 +1,38 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: 'Lace: Bayesian Tabular Analysis for Scientific Discovery'
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Baxter
+    family-names: Eaves
+    name-suffix: Jr
+    email: bax@redpoll.ai
+    affiliation: Redpoll
+  - given-names: Michael
+    family-names: Schmidt
+    email: schmidt@redpoll.ai
+    affiliation: Redpoll
+  - given-names: Ken
+    family-names: Swanson
+    email: ken.swanson@redpoll.ai
+    affiliation: Redpoll
+identifiers:
+  - type: url
+    value: 'https://github.com/promised-ai/lace'
+    description: Github repository
+repository-code: 'https://github.com/promised-ai/lace'
+url: 'https://lace.dev'
+abstract: >-
+  Lace is a probabilistic cross-categorization engine
+  written in rust.
+keywords:
+  - Bayesian
+  - Machine Learning
+license: BSL-1.1
+version: 0.5.0
+date-released: '2023-11-17'
