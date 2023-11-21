@@ -3,12 +3,10 @@ name = "lace_preprocess_mdbook_yaml"
 version = "0.1.1"
 authors = ["Promised AI"]
 edition = "2021"
-license = "SSPL-1.0"
+license = "BSL-1.1"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
 description = "Utility to check YAML serializations in the Lace MDBook"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
 name = "mdbook-lace-preprocess-yaml"
@@ -17,9 +15,9 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0"
 clap = "4.2"
-env_logger = "0.9"
-lace_codebook = { path = "../../lace/lace_codebook", version = "0.2.0" }
-lace_stats = { path = "../../lace/lace_stats", version = "0.1.1" }
+env_logger = "0.10"
+lace_codebook = { path = "../../lace/lace_codebook", version = "0.3.0" }
+lace_stats = { path = "../../lace/lace_stats", version = "0.1.5" }
 log = "0.4"
 mdbook = "0.4"
 pulldown-cmark = { version = "0.9", default-features = false }

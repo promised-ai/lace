@@ -716,7 +716,7 @@ class Engine:
         >>> engine[-3:, "flippers"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (3, 2)
         ┌────────┬──────────┐
-        │ Index  ┆ flippers │
+        │ index  ┆ flippers │
         │ ---    ┆ ---      │
         │ str    ┆ u8       │
         ╞════════╪══════════╡
@@ -823,7 +823,7 @@ class Engine:
         >>> engine[:7, "values"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (7, 2)
         ┌──────────────┬────────┐
-        │ Index        ┆ values │
+        │ index        ┆ values │
         │ ---          ┆ ---    │
         │ str          ┆ f64    │
         ╞══════════════╪════════╡
@@ -859,7 +859,7 @@ class Engine:
         >>> engine[:5, "fav_color"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (5, 2)
         ┌──────────────┬───────────┐
-        │ Index        ┆ fav_color │
+        │ index        ┆ fav_color │
         │ ---          ┆ ---       │
         │ str          ┆ str       │
         ╞══════════════╪═══════════╡
@@ -882,7 +882,7 @@ class Engine:
         >>> engine[:8, "times_watched_the_fifth_element"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (8, 2)
         ┌─────────────────┬─────────────────────────────────┐
-        │ Index           ┆ times_watched_the_fifth_element │
+        │ index           ┆ times_watched_the_fifth_element │
         │ ---             ┆ ---                             │
         │ str             ┆ u32                             │
         ╞═════════════════╪═════════════════════════════════╡
@@ -943,7 +943,7 @@ class Engine:
         *,
         timeout: Optional[int] = None,
         checkpoint: Optional[int] = None,
-        transitions: Optional[core.StateTransition] = None,
+        transitions: Optional[Union[str, List[core.StateTransition]]] = None,
         save_path: Optional[Union[str, bytes, PathLike]] = None,
         quiet: bool = False,
     ):
@@ -964,9 +964,14 @@ class Engine:
         checkpoint: int, optional
             The number of iterations between saves. If `save_path` is not
             supplied checkpoints do nothing.
-        transitions: List[StateTransition], optional
-            List of state transitions to perform. If `None` (default) a default
-            set is chosen.
+        transitions: str | List[StateTransition], optional
+            List of state transitions to perform.
+
+            Possible Values:
+            * If `None` (default) a defaultset is chosen.
+            * If one of "sams", "flat", or "fast" to use common sets of
+            transitions.
+            * If a list of `StateTransitions`, then that sequence will be used.
         save_path: pathlike, optional
             Where to save the metadata. If `None` (default) the engine is not
             saved. If `checkpoint` is provided, the `Engine` will be saved at
@@ -985,14 +990,26 @@ class Engine:
 
         >>> from lace import RowKernel, StateTransition
         >>> engine.update(
-        ...     100,
+        ...     5,
         ...     timeout=30,
         ...     transitions=[
         ...         StateTransition.row_assignment(RowKernel.slice()),
         ...         StateTransition.view_alphas(),
         ...     ],
         ... )
+
+        Use a common set of transitions by name, specifically "sams":
+
+        >>> engine.update(
+        ...     5,
+        ...     timeout=30,
+        ...     transitions="sams",
+        ... )
         """
+
+        if isinstance(transitions, str):
+            transitions = utils._get_common_transitions(transitions)
+
         return self.engine.update(
             n_iters,
             timeout=timeout,

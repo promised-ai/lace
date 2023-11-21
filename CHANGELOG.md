@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.5.0] - 2023-11-20
+
+### Added
+
+- Codebook.value_map fn and iterator
+
+### Changed
+
+- Added common transitions sets by name to `Engine.update` transition argument.
+
+## [rust-0.5.0] - 2023-11-20
+
+### Added
+
+- Lace can now be compiled to Wasm
+
+### Changed
+
+- Moved CLI into its own crate
+- Moved `DataSource` variants for Parquet, IPC (Arrow), and JSON data types into the `formats` feature flag.
+- Moved the `CtrlC` `UpdateHandler` into `ctrlc_handler` feature flag
+- Moved `Bencher` into the `bencher` feature flag
+- Moved `Example` code into the `examples` feature flag (on by default)
+- Replaced instances of `once_cell::sync::OnceCell` with `syd::sync::OnceLock`
+- Renamed all files/methods with the name `feather` to `arrow`
+- Renamed `Builder` to `EngineBuilder`
+
+### Fixed
+
+- Fixed typo `UpdateHandler::finialize` is now `UpdateHandler::finalize`
+
 ## [python-0.4.1] - 2023-10-19
 
 ### Fixed
@@ -152,7 +183,9 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.4.1...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.5.0...HEAD
+[python-0.5.0]: https://github.com/promised-ai/lace/compare/python-0.4.1...python-0.5.0
+[rust-0.5.0]: https://github.com/promised-ai/lace/compare/rust-0.4.1...rust-0.5.0
 [python-0.4.1]: https://github.com/promised-ai/lace/compare/python-0.4.0...python-0.4.1
 [rust-0.4.1]: https://github.com/promised-ai/lace/compare/rust-0.4.0...rust-0.4.1
 [python-0.4.0]: https://github.com/promised-ai/lace/compare/python-0.3.1...python-0.4.0

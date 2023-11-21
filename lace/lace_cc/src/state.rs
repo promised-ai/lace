@@ -242,14 +242,6 @@ impl State {
         self.loglike = self.loglike();
     }
 
-    // fn log_prior(&self) -> f64 {
-    //     self.views.iter().map(|view| {
-    //         view.ftrs.values().map(|ftr| {
-
-    //         })
-    //     })
-    // }
-
     fn reassign_rows<R: Rng>(
         &mut self,
         row_asgn_alg: RowAssignAlg,
@@ -559,10 +551,9 @@ impl State {
         let mut col_ixs: Vec<usize> = (0..self.n_cols()).collect();
         col_ixs.shuffle(rng);
 
-        self.loglike = col_ixs
-            .drain(..)
-            .map(|col_ix| self.reassign_col_gibbs(col_ix, draw_alpha, rng))
-            .sum::<f64>();
+        col_ixs.drain(..).for_each(|col_ix| {
+            self.reassign_col_gibbs(col_ix, draw_alpha, rng);
+        })
     }
 
     /// Gibbs column transition where column transition probabilities are pre-

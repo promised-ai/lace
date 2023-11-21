@@ -6,57 +6,11 @@ use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::Gamma;
-use polars::prelude::{
-    CsvReader, DataFrame, DataType, IpcReader, JsonFormat, JsonReader,
-    ParquetReader, SerReader, Series,
-};
+use polars::prelude::{CsvReader, DataFrame, DataType, SerReader, Series};
 use std::convert::TryFrom;
-use std::fs::File;
 use std::path::Path;
 
 pub const DEFAULT_CAT_CUTOFF: u8 = 20;
-
-pub fn read_parquet<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-    let mut file = File::open(path)?;
-    let df = ParquetReader::new(&mut file).finish()?;
-    Ok(df)
-}
-
-pub fn read_ipc<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-    let mut file = File::open(path)?;
-    let df = IpcReader::new(&mut file).finish()?;
-    Ok(df)
-}
-
-pub fn read_json<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-    let ext: String = path.as_ref().extension().map_or_else(
-        || String::from(""),
-        |ext| ext.to_string_lossy().to_lowercase(),
-    );
-
-    let format = match ext.as_str() {
-        "json" => JsonFormat::Json,
-        "jsonl" => JsonFormat::JsonLines,
-        _ => JsonFormat::JsonLines,
-    };
-
-    let mut file = File::open(path)?;
-
-    let df = JsonReader::new(&mut file)
-        .infer_schema_len(Some(1000))
-        .with_json_format(format)
-        .finish()?;
-
-    Ok(df)
-}
-
-pub fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-    let df = CsvReader::from_path(path.as_ref())?
-        .infer_schema(Some(1000))
-        .has_header(true)
-        .finish()?;
-    Ok(df)
-}
 
 #[macro_export]
 macro_rules! series_to_opt_vec {
@@ -494,24 +448,23 @@ pub fn df_to_codebook(
     })
 }
 
-macro_rules! codebook_from_fn {
-    ($fn_name: ident, $reader: ident) => {
-        pub fn $fn_name<P: AsRef<Path>>(
-            path: P,
-            cat_cutoff: Option<u8>,
-            alpha_prior_opt: Option<Gamma>,
-            no_hypers: bool,
-        ) -> Result<$crate::Codebook, $crate::CodebookError> {
-            let df = $reader(path).unwrap();
-            df_to_codebook(&df, cat_cutoff, alpha_prior_opt, no_hypers)
-        }
-    };
+pub fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
+    let df = CsvReader::from_path(path.as_ref())?
+        .infer_schema(Some(1000))
+        .has_header(true)
+        .finish()?;
+    Ok(df)
 }
 
-codebook_from_fn!(codebook_from_csv, read_csv);
-codebook_from_fn!(codebook_from_parquet, read_parquet);
-codebook_from_fn!(codebook_from_ipc, read_ipc);
-codebook_from_fn!(codebook_from_json, read_json);
+pub fn codebook_from_csv<P: AsRef<Path>>(
+    path: P,
+    cat_cutoff: Option<u8>,
+    alpha_prior_opt: Option<Gamma>,
+    no_hypers: bool,
+) -> Result<crate::Codebook, crate::CodebookError> {
+    let df = read_csv(path).unwrap();
+    df_to_codebook(&df, cat_cutoff, alpha_prior_opt, no_hypers)
+}
 
 #[cfg(test)]
 mod test {
@@ -547,37 +500,6 @@ mod test {
 
         let codebook =
             codebook_from_csv(file.path(), None, None, false).unwrap();
-
-        assert_eq!(codebook.col_metadata.len(), 5);
-        assert_eq!(codebook.row_names.len(), 5);
-
-        let cat_str = codebook.col_metadata.get("cat_str").unwrap().1;
-        let cat_int = codebook.col_metadata.get("cat_int").unwrap().1;
-        let count = codebook.col_metadata.get("count").unwrap().1;
-        let cts_int = codebook.col_metadata.get("cts_int").unwrap().1;
-        let cts_float = codebook.col_metadata.get("cts_float").unwrap().1;
-
-        assert!(cat_str.coltype.is_categorical());
-        assert!(cat_int.coltype.is_categorical());
-        assert!(count.coltype.is_count());
-        assert!(cts_int.coltype.is_continuous());
-        assert!(cts_float.coltype.is_continuous());
-    }
-
-    #[test]
-    fn codebook_with_all_types_inferse_correct_types_json() {
-        let data = r#"
-            {"id" : 0, "cat_str": "A", "cat_int": 1, "count": 0, "cts_int": -1, "cts_float": 1.0}
-            {"id" : 1, "cat_int": 0, "count": 256, "cts_int": 0, "cts_float": 2.0}
-            {"id" : 2, "cat_str": "B", "cat_int": 1, "count": 2, "cts_int": 12, "cts_float": 3.0}
-            {"id" : 3, "cat_str": "A", "cat_int": 1 }
-            {"id" : 4, "cat_str": "A", "count": 43, "cts_int": 3}
-        "#.to_string().replace(' ', "");
-
-        let file = write_to_tempfile(data.trim());
-
-        let codebook =
-            codebook_from_json(file.path(), None, None, false).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);

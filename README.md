@@ -1,6 +1,6 @@
 <div align=center>
     <img src='assets/lace.svg' width='250px'/>
-    <h3>Bayesian Tabular Data Analysis for Rust and Python</h3>
+    <h3>Lace: A Probabilistic Machine Learning tool for Scientific Discovery</h3>
 </div>
 
 </br>
@@ -28,13 +28,12 @@
         <a href='https://www.lace.dev/'>User guide</a> |
         <a href='https://docs.rs/lace/latest/lace/'>Rust API</a> |
         <a href='https://pylace.readthedocs.io/en/latest/'>Python API</a> |
-        <a href='#'>CLI</a>
      </div>
     <div>
         <strong>Installation</strong>: 
-        <a href='#'>Rust</a> | 
-        <a href='#'>Python</a> | 
-        <a href='#'>CLI</a>
+        <a href='#installation'>Rust</a> | 
+        <a href='#installation'>Python</a> | 
+        <a href='#installation'>CLI</a>
      </div>
     <div>
         <strong>Contents</strong>: 
@@ -165,7 +164,7 @@ Lace requires rust.
 
 To install the CLI:
 ```
-$ cargo install --locked lace
+$ cargo install --locked lace-cli
 ```
 
 To install pylace
@@ -275,8 +274,10 @@ You can monitor the progress of the training using diagnostic plots
 
 ## License
 
-Lace is licensed under Server Side Public License (SSPL), which is a copyleft
-license based on AGPL.
+Lace is licensed under the Business Source License v1.1, which restricts commercial use. See `LICENSE` for full details.
 
-If you would like a license for use in closed source code please contact
-`lace@redpoll.ai`
+If you would like a license for use in commercial please contact `lace@redpoll.ai`
+
+## Academic use
+
+Lace is free for academic use. Please cite lace according the the `CITATION.cff` metadata.

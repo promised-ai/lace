@@ -1,13 +1,12 @@
 use std::{
     collections::HashMap,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc::Sender,
-        Arc, Mutex, RwLock,
-    },
+    sync::{mpsc::Sender, Arc, Mutex, RwLock},
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+#[cfg(feature = "ctrlc_handler")]
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use lace_cc::state::State;
 
@@ -46,7 +45,7 @@ use crate::EngineUpdateConfig;
 ///         self.timings.lock().unwrap().push(Instant::now());
 ///     }
 ///
-///     fn finialize(&mut self) {
+///     fn finalize(&mut self) {
 ///         let timings = self.timings.lock().unwrap();
 ///         let mean_time_between_updates =
 ///             timings.iter().zip(timings.iter().skip(1))
@@ -107,7 +106,7 @@ pub trait UpdateHandler: Clone + Send + Sync {
     ///
     /// This method is called when all updating is complete.
     /// Uses for this method include cleanup, report generation, etc.
-    fn finialize(&mut self) {}
+    fn finalize(&mut self) {}
 }
 
 macro_rules! impl_tuple {
@@ -152,9 +151,9 @@ macro_rules! impl_tuple {
             )||+
         }
 
-        fn finialize(&mut self) {
+        fn finalize(&mut self) {
             $(
-                self.$idx.finialize();
+                self.$idx.finalize();
             )+
         }
 
@@ -205,23 +204,26 @@ where
         false
     }
 
-    fn finialize(&mut self) {
-        self.iter_mut().for_each(|handler| handler.finialize());
+    fn finalize(&mut self) {
+        self.iter_mut().for_each(|handler| handler.finalize());
     }
 }
 
 /// Handle Ctrl-C (sigint) signals by stopping the Engine.
+#[cfg(feature = "ctrlc_handler")]
 #[derive(Clone)]
 pub struct CtrlC {
     seen_sigint: Arc<AtomicBool>,
 }
 
+#[cfg(feature = "ctrlc_handler")]
 impl Default for CtrlC {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(feature = "ctrlc_handler")]
 impl CtrlC {
     /// Create a new `CtrlCHandler`
     pub fn new() -> Self {
@@ -237,6 +239,7 @@ impl CtrlC {
     }
 }
 
+#[cfg(feature = "ctrlc_handler")]
 impl UpdateHandler for CtrlC {
     fn global_init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {
     }
@@ -282,7 +285,7 @@ impl UpdateHandler for Timeout {
         }
     }
 
-    fn finialize(&mut self) {}
+    fn finalize(&mut self) {}
 }
 
 /// Limit the time each state can run for during an `Engine::update`.
@@ -424,7 +427,7 @@ impl UpdateHandler for ProgressBar {
         false
     }
 
-    fn finialize(&mut self) {
+    fn finalize(&mut self) {
         if let Self::Initialized { sender, handle } = std::mem::take(self) {
             std::mem::drop(sender);
 

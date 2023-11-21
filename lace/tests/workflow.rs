@@ -1,8 +1,8 @@
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::update_handler::Timeout;
-use lace::Builder;
 use lace::Engine;
+use lace::EngineBuilder;
 use lace_codebook::data::codebook_from_csv;
 use rand::SeedableRng;
 use std::io::Write;
@@ -58,7 +58,7 @@ fn satellites_csv_workflow() {
     let codebook =
         codebook_from_csv(path.as_path(), None, None, false).unwrap();
 
-    let mut engine: Engine = Builder::new(DataSource::Csv(path))
+    let mut engine: Engine = EngineBuilder::new(DataSource::Csv(path))
         .codebook(codebook)
         .with_nstates(4)
         .seed_from_u64(1776)
