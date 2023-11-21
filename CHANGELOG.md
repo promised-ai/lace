@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.5.0] - 2023-11-20
+
+### Added
+
+- Codebook.value_map fn and iterator
+
+### Changed
+
+- Added common transitions sets by name to `Engine.update` transition argument.
+
+## [rust-0.5.0] - 2023-11-20
+
 ### Added
 
 - Lace can now be compiled to Wasm
@@ -171,7 +183,9 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.4.1...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.5.0...HEAD
+[python-0.5.0]: https://github.com/promised-ai/lace/compare/python-0.4.1...python-0.5.0
+[rust-0.5.0]: https://github.com/promised-ai/lace/compare/rust-0.4.1...rust-0.5.0
 [python-0.4.1]: https://github.com/promised-ai/lace/compare/python-0.4.0...python-0.4.1
 [rust-0.4.1]: https://github.com/promised-ai/lace/compare/rust-0.4.0...rust-0.4.1
 [python-0.4.0]: https://github.com/promised-ai/lace/compare/python-0.3.1...python-0.4.0
