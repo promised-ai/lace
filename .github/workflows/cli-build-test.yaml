@@ -1,10 +1,6 @@
 name: 'CLI: Build and Test'
 
 on:
-  push:
-    branches:
-      - main
-      - master
   workflow_dispatch:
   pull_request:
     paths:
