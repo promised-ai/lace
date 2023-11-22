@@ -1,0 +1,27 @@
+name: 'Check CITATION.cff for correct format'
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+        - CITATION.cff
+        - lace/Cargo.toml
+
+jobs:
+    Validate-CITATION-cff:
+        runs-on: ubuntu-latest
+        name: Validate CITATION.cff
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+
+            - name: Validate CITATION.cff
+              uses: dieghernan/cff-validator@v3
+            
+            - name: Verify CITATION.cff version field
+              run: |
+                pip install cffconvert yq
+                CITATION_VERSION=$(cffconvert -f schema.org | jq -r .version)
+                LACE_VERSION=$(tomlq -r .package.version lace/Cargo.toml)
+                test "$CITATION_VERSION" = "$LACE_VERSION"
