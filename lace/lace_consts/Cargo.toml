@@ -1,9 +1,9 @@
 [package]
 name = "lace_consts"
-version = "0.1.4"
+version = "0.2.0"
 authors = ["Promied AI"]
 edition = "2021"
-license = "SSPL-1.0"
+license = "BUSL-1.1"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
 description = "Default constants for Lace"

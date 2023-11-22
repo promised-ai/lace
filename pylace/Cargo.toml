@@ -1,16 +1,16 @@
 [package]
 name = "pylace"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
-license = "SSPL-1.0"
+license = "BUSL-1.1"
 
 [lib]
 name = "lace"
 crate-type = ["cdylib"]
 
 [dependencies]
-lace = { path = "../lace", version="0.5.0" }
-lace_utils = { path = "../lace/lace_utils", version="0.1.2" }
+lace = { path = "../lace", version="0.5.1" }
+lace_utils = { path = "../lace/lace_utils", version="0.2.0" }
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
 pyo3 = { version = "0.19", features = ["extension-module"] }

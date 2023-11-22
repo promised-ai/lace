@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.5.1] - UNKNOWN
+
+### Changed
+
+- Updated all packages to have the correct SPDX for the Business Source License
+
+## [rust-0.5.1] - UNKNOWN
+
+### Changed
+
+- Updated all packages to have the correct SPDX for the Business Source License
+
 ## [python-0.5.0] - 2023-11-20
 
 ### Added
