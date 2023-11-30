@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import polars as pl
+import matplotlib.pyplot as plt
 
 from lace import Engine
 
@@ -209,7 +210,98 @@ def prediction_uncertainty(
     return fig
 
 
-if __name__ == "__main__":
-    import doctest
+def _get_xs(engine, cat_rows, view_cols, compute_ps=False):
+    xs = engine[cat_rows, view_cols]
+    if isinstance(xs, (int, float)):
+        xs = np.array(xs)
+        if compute_ps:
+            ps = [0.0]
+    else:
+        xs = xs[:, 1:]
+        if compute_ps:
+            ps = engine.logp(xs)
+        xs = xs.to_numpy()
 
-    doctest.testmod()
+    if compute_ps:
+        return xs, ps
+    else:
+        return xs
+
+def state(
+    engine: Engine,
+    state_ix: int,
+    missing_color = None,
+    cat_gap:int = 1,
+    view_gap:int = 1,
+    ax = None,
+):
+    if ax is None:
+        ax = plt.gca()
+
+    n_rows, n_cols = engine.shape
+    col_asgn = engine.column_assignment(state_ix)
+    row_asgns = engine.row_assignments(state_ix)
+
+    n_views = len(row_asgns)
+    max_cats = max(max(asgn) + 1 for asgn in row_asgns)
+
+    dim_col = n_cols + (n_views - 1) * view_gap
+    dim_row = n_rows + (max_cats - 1) * cat_gap
+
+    zs = np.zeros((dim_row, dim_col)) + 0.1
+
+    row_names = engine.index
+    col_names = engine.columns 
+
+    col_start = 0
+    for view_ix, row_asgn in enumerate(row_asgns):
+        row_start = 0
+        n_cats = max(row_asgn) + 1
+        view_len = sum(z == view_ix for z in col_asgn)
+        view_cols = [i for i, z in enumerate(col_asgn) if z == view_ix]
+
+        # sort columns within each view
+        ps = []
+        for col in view_cols:
+            ps.append(engine.logp(engine[col][:, 1:]).sum())
+        ixs = np.argsort(ps)[::-1]
+        view_cols = [view_cols[ix] for ix in ixs]
+
+        for i, col in enumerate(view_cols):
+            ax.text(col_start + i, -1, col_names[col], ha='center', va='bottom', rotation=90)
+
+        for cat_ix in range(n_cats):
+            cat_len = sum(z == cat_ix for z in row_asgn)
+            cat_rows = [i for i, z in enumerate(row_asgn) if z == cat_ix]
+
+            xs, ps = _get_xs(engine, cat_rows, view_cols, compute_ps=True)
+            ixs = np.argsort(ps)[::-1]
+            cat_rows = [cat_rows[ix] for ix in ixs]
+            xs = _get_xs(engine, cat_rows, view_cols)
+            zs[row_start:row_start+cat_len, col_start:col_start + view_len] = xs
+
+            # label rows
+            for i, row in enumerate(cat_rows):
+                ax.text(col_start-1, i + row_start, row_names[row], ha='right', va='center')
+
+            row_start += cat_len + cat_gap
+
+        col_start += view_len + view_gap
+
+
+    ax.matshow(zs, cmap='gray_r')
+
+
+
+if __name__ == "__main__":
+    from lace.examples import Animals
+
+    eng = Animals()
+    plt.figure(tight_layout=True, facecolor='#e8e8e8')
+    ax = plt.gca()
+    state(eng, 1, view_gap=15, ax=ax)
+    plt.axis('off')
+    plt.show()
+    # import doctest
+
+    # doctest.testmod()
