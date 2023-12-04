@@ -1,4 +1,4 @@
-"""Plottling utilities."""
+"""Plotting utilities"""
 
 from typing import Dict, Optional, Union
 
@@ -212,14 +212,36 @@ def prediction_uncertainty(
 
 def _get_xs(engine, cat_rows, view_cols, compute_ps=False):
     xs = engine[cat_rows, view_cols]
+
+    if xs is None:
+        if compute_ps:
+            return np.array([None]), [0.0]
+        else:
+            return np.array([None])
+
     if isinstance(xs, (int, float)):
         xs = np.array(xs)
         if compute_ps:
             ps = [0.0]
     else:
         xs = xs[:, 1:]
+
         if compute_ps:
-            ps = engine.logp(xs)
+            n_rows, n_cols = xs.shape
+            ps = []
+            for row_ix in range(n_rows):
+                row = xs[row_ix, :]
+                null_count = row.null_count()
+                to_drop = [c for c in row.columns if null_count[0, c] > 0]
+                k = n_cols - len(to_drop)
+                if k == 0:
+                    ps.append(float("-inf"))
+                    continue
+
+                row = row.drop(to_drop)
+                p = engine.logp(row) / k
+                ps.append(p)
+
         xs = xs.to_numpy()
 
     if compute_ps:
@@ -228,43 +250,52 @@ def _get_xs(engine, cat_rows, view_cols, compute_ps=False):
         return xs
 
 
+def _makenorm(cmap, missing_color, *, mapper=None, xlim=None):
+    if mapper is not None:
+
+        def _fn(val):
+            k = len(mapper) - 1
+            return mapper[val] / k
+
+    else:
+        xmin, xmax = xlim
+
+        def _fn(val):
+            return (val - xmin) / (xmax - xmin)
+
+    def _norm(val):
+        colormap = plt.cm._colormaps[cmap]
+        if pd.isnull(val):
+            return missing_color
+        else:
+            return np.array(colormap(_fn(val)))
+
+    return _norm
+
+
 def _get_colors(engine: Engine, *, cmap: str = "gray_r", missing_color=None):
     codebook = engine.codebook
 
     if missing_color is None:
-        missing_color = (1.0, 0.0, 0.2, 1.0)
+        missing_color = np.array([1.0, 0.0, 0.2, 1.0])
 
-    colors = {}
-    for col in engine.columns:
+    n_rows, n_cols = engine.shape
+    colors = np.zeros((n_rows, n_cols, 4))
+
+    for i, col in enumerate(engine.columns):
         ftype = engine.ftype(col)
         xs = engine[col][col]
         if ftype == "Categorical":
             valmap = codebook.value_map(col)
             mapper = {v: k for k, v in enumerate(valmap.values())}
-            k = len(mapper) - 1
 
-            def _inner_norm(val):
-                return mapper[val] / k
-
+            _norm = _makenorm(cmap, missing_color, mapper=mapper)
         else:
-            xmin = xs.min()
-            xmax = xs.max()
+            _norm = _makenorm(cmap, missing_color, xlim=(xs.min(), xs.max()))
 
-            def _inner_norm(val):
-                return (val - xmin) / (xmax - xmin)
+        colors[:, i] = np.array([_norm(x) for x in xs])
 
-        colormap = plt.cm.get_cmap(cmap)
-
-        def _norm(val):
-            if pd.isnull(val):
-                return missing_color
-            else:
-                return np.array(colormap(_inner_norm(val)))
-
-        colors[col] = [_norm(x) for x in xs]
-
-    df = pd.DataFrame(colors, index=engine.index)
-    return df[engine.columns]
+    return colors
 
 
 def state(
@@ -277,9 +308,92 @@ def state(
     view_gap: int = 1,
     show_index: bool = True,
     show_columns: bool = True,
+    min_height: int = 0,
+    min_width: int = 0,
     aspect=None,
     ax=None,
 ):
+    """
+    Plot a Lace state.
+
+    View are sorted from largest (most columns) to smallest. Within views,
+    columns are sorted from highest (left) to lowest total likelihood.
+    Categories are sorted from largest (most rows) to smallest. Within
+    categories, rows are sorted from highest (top) to lowest log likelihood.
+
+    Parameters
+    ----------
+    engine: Engine
+        The engine containing the states to plot
+    state_ix: int
+        The index of the state to plot
+    cmap: str, optional, default: gray_r
+        The color map to use for present data
+    missing_color: optional, default: red
+        The RGBA array representation ([float, float, float, float]) of the
+        color to use to represent missing data
+    cat_gap: int, optional, default: 1
+        The vertical spacing (in cells) between categories
+    view_gap: int, optional, default: 1
+        The horizontal spacing (in cell) between views
+    show_index: bool, default: True
+        If True (default), will show row names next to rows in each view
+    show_columns: bool, default: True
+        If True (default), will show columns names above each column
+    min_height: int, default: 0
+        The minimum height in cells of the state render. Padding will be added
+        to the lower part of the image.
+    min_width: int (default: 0)
+        The minimum width in cells of the state render. Padding will be added
+        to the right of the image.
+    aspect: {'equal', 'auto'} or float or None, default: None
+        matplotlib imshow aspect
+    ax: matplotlib.Axis, optional
+        The axis on which to plot
+
+    Examples
+    --------
+
+    Render an animals state
+
+    >>> import matplotlib.pyplot as plt
+    >>> from lace.examples import Animals
+    >>> from lace import plot
+    >>> engine = Animals()
+    >>> fig = plt.figure(tight_layout=True, facecolor="#00000000")
+    >>> ax = plt.gca()
+    >>> plot.state(
+    ...    engine,
+    ...    7,
+    ...    view_gap=13,
+    ...    cat_gap=3,
+    ...    ax=ax,
+    ... )
+    >>> _ = plt.axis("off")
+    >>> plt.show()
+
+
+    Render a satellites State, which has continuous, categorial and
+    missing data
+
+    >>> from lace.examples import Satellites
+    >>> engine = Satellites()
+    >>> fig = plt.figure(tight_layout=True, facecolor="#00000000")
+    >>> ax = plt.gca()
+    >>> plot.state(
+    ...    engine,
+    ...    1,
+    ...    view_gap=2,
+    ...    cat_gap=100,
+    ...    show_index=False,
+    ...    show_columns=False,
+    ...    ax=ax,
+    ...    cmap="YlGnBu",
+    ...    aspect="auto"
+    ... )
+    >>> _ = plt.axis("off")
+    >>> plt.show()
+    """
     if ax is None:
         ax = plt.gca()
 
@@ -310,14 +424,16 @@ def state(
     for view_ix in view_ixs:
         row_asgn = row_asgns[view_ix]
         row_start = 0
-        max(row_asgn) + 1
-        view_len = sum(z == view_ix for z in col_asgn)
         view_cols = [i for i, z in enumerate(col_asgn) if z == view_ix]
+        view_len = len(view_cols)
 
         # sort columns within each view
         ps = []
         for col in view_cols:
-            ps.append(engine.logp(engine[col][:, 1:]).sum())
+            xs = engine[col][:, 1:].drop_nulls()
+            if xs.shape[0] == 0:
+                ps.append(float("-inf"))
+            ps.append(engine.logp(xs).sum() / xs.shape[0])
         ixs = np.argsort(ps)[::-1]
         view_cols = [view_cols[ix] for ix in ixs]
 
@@ -332,19 +448,23 @@ def state(
                     rotation=90,
                 )
 
+        max(row_asgn) + 1
         cat_counts = np.bincount(row_asgn)
         cat_ixs = np.argsort(cat_counts)[::-1]
 
         for cat_ix in cat_ixs:
-            cat_len = sum(z == cat_ix for z in row_asgn)
             cat_rows = [i for i, z in enumerate(row_asgn) if z == cat_ix]
+            cat_len = len(cat_rows)
 
             xs, ps = _get_xs(engine, cat_rows, view_cols, compute_ps=True)
             ixs = np.argsort(ps)[::-1]
             cat_rows = [cat_rows[ix] for ix in ixs]
 
-            cs = colors.iloc[cat_rows, view_cols].values.tolist()
-            cs = np.asarray(cs, dtype=float)
+            cs = np.zeros((len(cat_rows), len(view_cols), 4))
+            for iix, i in enumerate(cat_rows):
+                for jix, j in enumerate(view_cols):
+                    cs[iix, jix] = colors[i, j]
+            # cs = colors[cat_rows, view_cols, :]
             zs[
                 row_start : row_start + cat_len,
                 col_start : col_start + view_len,
@@ -362,46 +482,36 @@ def state(
                     )
 
             ax.text(
-                col_start + view_counts[view_ix] / 2,
-                row_start + cat_counts[cat_ix],
+                col_start + view_counts[view_ix] / 2.0 - 0.5,
+                row_start + cat_counts[cat_ix] + cat_gap * 0.15,
                 f"$C_{{{cat_ix}}}$",
                 ha="center",
-                va="top",
+                va="center",
             )
 
             row_start += cat_len + cat_gap
 
         ax.text(
-            col_start + view_counts[view_ix] / 2,
+            col_start + view_counts[view_ix] / 2.0 - 0.5,
             dim_row + cat_gap,
             f"$V_{{{view_ix}}}$",
-            ha="center",
+            ha="left",
             va="top",
         )
         col_start += view_len + view_gap
 
-    ax.matshow(zs, cmap="gray_r", aspect=aspect)
+    if min_height > zs.shape[0]:
+        margin = min_height - zs.shape[0]
+        zs = np.vstack((zs, np.zeros((margin, zs.shape[1], 4))))
+
+    if min_width > zs.shape[1]:
+        margin = min_width - zs.shape[1]
+        zs = np.hstack((zs, np.zeros((zs.shape[0], margin, 4))))
+
+    ax.matshow(zs, aspect=aspect)
 
 
 if __name__ == "__main__":
-    from lace.examples import Animals
+    import doctest
 
-    eng = Animals()
-    # eng = Satellites()
-    plt.figure(tight_layout=True, facecolor="Gainsboro")
-    ax = plt.gca()
-    state(
-        eng,
-        1,
-        view_gap=15,
-        cat_gap=2,
-        ax=ax,
-        show_index=True,
-        show_columns=True,
-        cmap="cubehelix",
-    )
-    plt.axis("off")
-    plt.show()
-    # import doctest
-
-    # doctest.testmod()
+    doctest.testmod()
