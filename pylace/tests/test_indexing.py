@@ -22,6 +22,19 @@ def _random_index(n, strs):
         return random.choice(strs)
 
 
+@pytest.mark.parametrize("target", ["black", "swims", 12, 45])
+def test_single_index_consistency(target):
+    # for some reason, the order of the row indeices iterator was different
+    # each time we read in the metadata -- probably because of some random
+    # state initialization in a hashmap. Not sure why that would happen, but
+    # we fixed that particular issue.
+    a1 = Animals()
+    a2 = Animals()
+    xs = a1[target][:, 1]
+    ys = a2[target][:, 1]
+    assert all(x == y for x, y in zip(xs, ys))
+
+
 def tests_index_positive_int_tuple(animals):
     assert animals[0, 0] == 0
     assert animals[2, 3] == 0
