@@ -1,4 +1,4 @@
-"""Plotting utilities"""
+"""Plotting utilities."""
 
 from typing import Dict, Optional, Union
 
@@ -353,7 +353,6 @@ def state(
 
     Examples
     --------
-
     Render an animals state
 
     >>> import matplotlib.pyplot as plt
