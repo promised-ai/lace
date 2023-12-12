@@ -1,0 +1,39 @@
+name: 'Check CITATION.cff for correct format'
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - rust-*
+      - python-*
+
+jobs:
+    Validate-CITATION-cff:
+        runs-on: ubuntu-latest
+        name: Validate CITATION.cff
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+              with:
+                fetch-depth: 0
+
+            - name: Validate CITATION.cff
+              uses: dieghernan/cff-validator@v3
+
+            - name: Install Python dependencies
+              run: |
+                pip install cffconvert yq
+
+            - name: Verify CITATION.cff version field
+              run: |
+                CITATION_VERSION=$(cffconvert -f schema.org | jq -r .version)
+                LACE_VERSION=$(tomlq -r .package.version lace/Cargo.toml)
+                test "$CITATION_VERSION" = "$LACE_VERSION"
+
+            - name: Verify CITATION.cff date field
+              run: |
+                LAST_RELEASE=$(git describe --abbrev=0  --match="rust-*" --match="python-*" HEAD)
+                LAST_RELEASE_DATE=$(git cat-file -p $LAST_RELEASE:CITATION.cff | cffconvert -f schema.org | jq -r .datePublished)
+                CURRENT_RELEASE_DATE=$(cffconvert -f schema.org | jq -r .datePublished)
+                [[ "$BAR" > "$FOO" ]]

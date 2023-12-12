@@ -2,9 +2,6 @@ name: 'Rust: Build and Test'
 
 on:
   push:
-    branches:
-      - main
-      - master
     tags:
       - rust-*
   workflow_dispatch:

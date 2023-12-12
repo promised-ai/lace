@@ -1,17 +1,17 @@
 [package]
 name = "lace_stats"
-version = "0.1.5"
+version = "0.2.0"
 authors = ["Promised AI"]
 edition = "2021"
-license = "SSPL-1.0"
+license = "BUSL-1.1"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
 description = "Contains component model and hyperprior specifications"
 
 [dependencies]
-lace_utils = { path = "../lace_utils", version = "0.1.2" }
-lace_consts = { path = "../lace_consts", version = "0.1.4" }
-lace_data = { path = "../lace_data", version = "0.1.2" }
+lace_utils = { path = "../lace_utils", version = "0.2.0" }
+lace_consts = { path = "../lace_consts", version = "0.2.0" }
+lace_data = { path = "../lace_data", version = "0.2.0" }
 special = "0.10"
 rand = {version="0.8", features=["serde1"]}
 rand_xoshiro = "0.6"
