@@ -1,4 +1,4 @@
-use lace_utils::logsumexp;
+use lace_consts::rv::misc::logsumexp;
 use rand::Rng;
 
 /// Monte Carlo integration

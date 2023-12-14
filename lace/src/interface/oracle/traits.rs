@@ -12,11 +12,11 @@ use crate::interface::oracle::{
 use crate::interface::{CanOracle, Given};
 use lace_cc::feature::{FType, Feature};
 use lace_cc::state::{State, StateDiagnostics};
+use lace_consts::rv::misc::logsumexp;
 use lace_data::{Datum, SummaryStatistics};
 use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
 use lace_stats::rv::traits::Rv;
 use lace_stats::SampleError;
-use lace_utils::logsumexp;
 use rand::Rng;
 use rayon::prelude::*;
 use std::collections::BTreeSet;

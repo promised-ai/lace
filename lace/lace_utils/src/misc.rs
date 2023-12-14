@@ -167,26 +167,6 @@ pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
     xs.iter().cloned().minmax().expect("Empty slice")
 }
 
-/// Numerically stable `log(sum(exp(xs))`
-#[inline]
-pub fn logsumexp(xs: &[f64]) -> f64 {
-    if xs.is_empty() {
-        panic!("Empty container");
-    } else if xs.len() == 1 {
-        xs[0]
-    } else {
-        let maxval_res = xs.iter().max_by(|x, y| x.partial_cmp(y).unwrap());
-        let maxval = match maxval_res {
-            Some(val) => val,
-            None => panic!("Could not find maxval of {:?}", xs),
-        };
-        xs.iter()
-            .fold(0.0_f64, |acc, x| acc + (x - maxval).exp())
-            .ln()
-            + maxval
-    }
-}
-
 /// Perform ln(exp(x) + exp(y)) in a more numerically stable way
 ///
 /// # Examples
@@ -479,48 +459,6 @@ mod tests {
 
         assert_eq!(a, 1);
         assert_eq!(b, 1);
-    }
-
-    // logsumexp
-    // ---------
-    #[test]
-    fn logsumexp_on_vector_of_zeros() {
-        let xs: Vec<f64> = vec![0.0; 5];
-        // should be about log(5)
-        assert_relative_eq!(
-            logsumexp(&xs),
-            1.609_437_912_434_100_3,
-            epsilon = TOL
-        );
-    }
-
-    #[test]
-    fn logsumexp_on_random_values() {
-        let xs: Vec<f64> = vec![
-            0.304_153_86,
-            -0.070_722_96,
-            -1.042_870_19,
-            0.278_554_07,
-            -0.818_967_65,
-        ];
-        assert_relative_eq!(
-            logsumexp(&xs),
-            1.482_000_789_426_305_9,
-            epsilon = TOL
-        );
-    }
-
-    #[test]
-    fn logsumexp_returns_only_value_on_one_element_container() {
-        let xs: Vec<f64> = vec![0.304_153_86];
-        assert_relative_eq!(logsumexp(&xs), 0.304_153_86, epsilon = TOL);
-    }
-
-    #[test]
-    #[should_panic]
-    fn logsumexp_should_panic_on_empty() {
-        let xs: Vec<f64> = Vec::new();
-        logsumexp(&xs);
     }
 
     // bincount

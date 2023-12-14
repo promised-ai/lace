@@ -17,8 +17,9 @@ use crate::stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
 };
 use crate::stats::MixtureType;
+use lace_consts::rv::misc::logsumexp;
 use lace_data::{Category, Datum};
-use lace_utils::{argmax, logsumexp, transpose};
+use lace_utils::{argmax, transpose};
 
 use super::error::IndexError;
 use crate::interface::Given;
