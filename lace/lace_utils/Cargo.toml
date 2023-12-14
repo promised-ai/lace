@@ -1,9 +1,9 @@
 [package]
 name = "lace_utils"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Promised AI"]
 edition = "2021"
-license = "SSPL-1.0"
+license = "BUSL-1.1"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
 description = "Miscellaneous utilities for Lace and shared libraries"
