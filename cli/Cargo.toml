@@ -1,10 +1,10 @@
 [package]
 name = "lace-cli"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Promised AI"]
 edition = "2021"
 rust-version = "1.58.1"
-license-file = "LICENSE"
+license = "BUSL-1.1"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
 description = "A probabilistic cross-categorization engine"
