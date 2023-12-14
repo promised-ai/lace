@@ -1,6 +1,7 @@
 import itertools as it
 from typing import List, Optional, Union
 
+import numpy as np
 import pandas as pd
 import polars as pl
 from scipy.cluster.hierarchy import dendrogram, linkage
@@ -164,3 +165,20 @@ def _get_common_transitions(name: str) -> List[StateTransition]:
             f"{name} is not a valid transitions set name. valid options are: {keys_str}"
         )
     return transitions
+
+
+def predict_xs(
+    engine, target, given, *, n_points=1_000, mass=0.99
+) -> pl.Series:
+    ftype = engine.ftype(target)
+    if ftype == "Continuous":
+        xs = engine.simulate([target], given=given, n=10_000)
+        rm = (1.0 - mass) / 2
+        a = xs[target].quantile(rm)
+        b = xs[target].quantile(1.0 - rm)
+        xs = np.linspace(a, b, n_points)
+        return pl.Series(target, xs)
+    elif ftype == "Categorical":
+        return pl.Series(target, engine.engine.categorical_support(target))
+    else:
+        raise ValueError("unsupported ftype")

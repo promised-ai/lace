@@ -1,6 +1,6 @@
 """Plotting utilities."""
 
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,8 +8,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import polars as pl
+import seaborn as sns
 
-from lace import Engine
+from lace import Engine, analysis, utils
 
 
 def diagnostics(
@@ -82,30 +83,13 @@ def diagnostics(
     return fig
 
 
-def _predict_xs(
-    engine, target, given, *, n_points=1_000, range_stds=2.5
-) -> pl.Series:
-    ftype = engine.ftype(target)
-    if ftype == "Continuous":
-        xs = engine.simulate([target], given=given, n=10_000)
-        mean = xs[target].mean()
-        std = xs[target].std()
-        width = range_stds * std
-        xs = np.linspace(mean - width, mean + width, n_points)
-        return pl.Series(target, xs)
-    elif ftype == "Categorical":
-        return pl.Series(target, engine.engine.categorical_support(target))
-    else:
-        raise ValueError("unsupported ftype")
-
-
 def prediction_uncertainty(
     engine: Engine,
     target: Union[str, int],
     given: Optional[Dict[Union[str, int], object]] = None,
     xs: Optional[Union[pl.Series, pd.Series]] = None,
     n_points: int = 1_000,
-    range_stds: float = 3.0,
+    mass: float = 0.99,
 ):
     """
     Visualize prediction uncertainty.
@@ -165,8 +149,12 @@ def prediction_uncertainty(
     n_states = engine.n_states
 
     if xs is None:
-        xs = _predict_xs(
-            engine, target, given, n_points=n_points, range_stds=range_stds
+        xs = utils.predict_xs(
+            engine,
+            target,
+            given,
+            n_points=n_points,
+            mass=mass,
         )
 
     title = f"{target} uncertainty: {unc}"
@@ -508,6 +496,65 @@ def state(
         zs = np.hstack((zs, np.zeros((zs.shape[0], margin, 4))))
 
     ax.matshow(zs, aspect=aspect)
+
+
+def _colors_from_values(values, cmap):
+    # normalize the values to range [0, 1]
+    normalized = (values - min(values)) / (max(values) - min(values))
+    # convert to indices
+    indices = np.round(normalized * (len(values) - 1)).astype(np.int32)
+    # use the indices to get the colors
+    palette = sns.color_palette(cmap, len(values))
+    return np.array(palette).take(indices, axis=0)
+
+
+def prediction_explanation(
+    engine: "Engine",
+    target: Union[int, str],
+    given: dict[Union[str, int], Any],
+    *,
+    method: Optional[str] = None,
+    cmap=None,
+):
+    if method is None:
+        method = "ablative-err"
+
+    if cmap is None:
+        cmap = "picnic"
+
+    cols, imps = analysis.explain_prediction(
+        engine, target, given, method=method
+    )
+
+    srs = pd.Series(imps, index=cols, name=method)
+
+    srs = srs.sort_values(ascending=True)
+
+    colors = []
+    xmin = abs(srs.min())
+    xmax = srs.max()
+
+    for x in srs:
+        if x > 0:
+            colors.append(x / xmax)
+        else:
+            colors.append(x / xmin)
+
+    fig = px.bar(
+        srs,
+        text_auto=".2s",
+        color=colors,
+        color_continuous_scale=cmap,
+        orientation="h",
+    )
+    fig.add_vline(0)
+    fig.update_coloraxes(showscale=False)
+    fig.update_layout(
+        paper_bgcolor="rgba(0, 0, 0, 0)",
+        plot_bgcolor="rgba(0, 0, 0, 0)",
+    )
+
+    return srs, fig
 
 
 if __name__ == "__main__":

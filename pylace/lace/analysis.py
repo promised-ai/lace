@@ -9,6 +9,13 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 import polars as pl
 from tqdm import tqdm
 
+from lace import utils
+
+ABLATIVE_ERR = "ablative-err"
+ABLATIVE_DIST = "ablative-dist"
+PRED_EXPLAIN_METHODS = [ABLATIVE_ERR, ABLATIVE_DIST]
+
+
 if TYPE_CHECKING:
     from lace import Engine
 
@@ -423,6 +430,187 @@ def held_out_inconsistency(
         quiet=quiet,
     )
     return res
+
+
+def _explain_ablative_err(
+    engine: "Engine",
+    target: Union[int, str],
+    given: dict[Union[str, int], Any],
+):
+    xs = utils.predict_xs(engine, target, None, mass=0.995)
+
+    ftype = engine.ftype(target)
+    if ftype == "Categorial":
+        norm = 1.0 / len(xs)
+    elif ftype in ("Continuous", "Count"):
+        norm = xs[1] - xs[0]
+    else:
+        raise ValueError(f"Unupported FType `{ftype}`")
+
+    baseline = engine.logp(xs, given).exp()
+
+    cols = []
+    imps = []
+    for k in list(given.keys()):
+        # remove the value
+        val = given.pop(k)
+        ps = engine.logp(xs, given).exp()
+
+        err = (ps - baseline).sum() * norm
+
+        # put the value back
+        given[k] = val
+
+        cols.append(k)
+        imps.append(err)
+
+    return cols, imps
+
+
+def _explain_ablative_dist(
+    engine: "Engine",
+    target: Union[int, str],
+    given: dict[Union[str, int], Any],
+):
+    ftype = engine.ftype(target)
+    if ftype != "Continuous":
+        msg = (
+            "`ablative-dist` explanation only valid for Continuous targets"
+            f" but target `{target}` is `{ftype}`"
+        )
+        raise ValueError(msg)
+
+    cols = []
+    imps = []
+    for k in list(given.keys()):
+        baseline = engine.predict(target, given, with_uncertainty=False)
+
+        # remove the value
+        val = given.pop(k)
+
+        pred = engine.predict(target, given, with_uncertainty=False)
+
+        # put the value back
+        given[k] = val
+
+        cols.append(k)
+        imps.append(pred - baseline)
+
+    return cols, imps
+
+
+def explain_prediction(
+    engine: "Engine",
+    target: Union[int, str],
+    given: dict[Union[str, int], Any],
+    *,
+    method: Optional[str] = None,
+):
+    """
+    Explain the relevance of each predictor when predicting a target.
+
+    Parameters
+    ----------
+    engine: lace.Engine
+        The source engine
+    target: str, int
+        The target variable -- the variable to predict
+    given: Dict[index, value], optional
+        A dictionary mapping column indices/name to values, which specifies
+        conditions on the observations.
+    method: str, optional
+        The method to use for explanation. Can be FIXME
+
+    Returns
+    -------
+    cols: List[str]
+        The column names associated with each importance
+    imps: List[float]
+        The list of importances for each column
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from lace.examples import Satellites
+    >>> from lace.analysis import explain_prediction
+    >>> engine = Satellites()
+
+    Define a target
+
+    >>> target = 'Period_minutes'
+
+    We'll use a row from the data
+
+    >>> row = engine[5, :].to_dicts()[0]
+    >>> ix = row.pop('index')
+    >>> _ = row.pop(target)
+    >>> given = { k: v for k, v in row.items() if v is not None }
+
+    The default importance method, 'ablative-err', measures the error between
+    the baseline predictive distribution, and the distribution when a predictor
+    is dropped.
+
+    >>> cols, imps = explain_prediction(
+    ...     engine,
+    ...     target,
+    ...     given,
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    >>> pl.DataFrame({'col': cols, 'imp': imps})
+    shape: (18, 2)
+    ┌──────────────────────────────┬─────────────┐
+    │ col                          ┆ imp         │
+    │ ---                          ┆ ---         │
+    │ str                          ┆ f64         │
+    ╞══════════════════════════════╪═════════════╡
+    │ Country_of_Operator          ┆ 5.0932e-16  │
+    │ Users                        ┆ -3.1563e-14 │
+    │ Purpose                      ┆ -9.5636e-14 │
+    │ Class_of_Orbit               ┆ -1.8263e-15 │
+    │ …                            ┆ …           │
+    │ Launch_Site                  ┆ -2.8416e-15 │
+    │ Launch_Vehicle               ┆ 1.0704e-14  │
+    │ Source_Used_for_Orbital_Data ┆ -3.9301e-15 │
+    │ Inclination_radians          ┆ -9.6259e-15 │
+    └──────────────────────────────┴─────────────┘
+
+    Get the importances using the 'ablative-dist' method, which measures how
+    much the prediction would change if a predictor was dropped.
+
+    >>> cols, imps = explain_prediction(
+    ...     engine,
+    ...     target,
+    ...     given,
+    ...     method='ablative-dist'
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    >>> pl.DataFrame({'col': cols, 'imp': imps})
+    shape: (18, 2)
+    ┌──────────────────────────────┬───────────┐
+    │ col                          ┆ imp       │
+    │ ---                          ┆ ---       │
+    │ str                          ┆ f64       │
+    ╞══════════════════════════════╪═══════════╡
+    │ Country_of_Operator          ┆ -0.000109 │
+    │ Users                        ┆ 0.081289  │
+    │ Purpose                      ┆ 0.18938   │
+    │ Class_of_Orbit               ┆ 0.000133  │
+    │ …                            ┆ …         │
+    │ Launch_Site                  ┆ 0.003411  │
+    │ Launch_Vehicle               ┆ -0.018817 │
+    │ Source_Used_for_Orbital_Data ┆ 0.001454  │
+    │ Inclination_radians          ┆ 0.057333  │
+    └──────────────────────────────┴───────────┘
+    """
+    if method is None:
+        method = ABLATIVE_ERR
+
+    if method == ABLATIVE_ERR:
+        return _explain_ablative_err(engine, target, given)
+    elif method == ABLATIVE_DIST:
+        return _explain_ablative_dist(engine, target, given)
+    else:
+        raise ValueError(
+            f"Invalid method `{method}`, valid methods are {PRED_EXPLAIN_METHODS}"
+        )
 
 
 if __name__ == "__main__":
