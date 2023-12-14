@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `plot.state` function in pylace to render PCC states
+- Added `analysis.explain_prediction` in pylace to explain predictions
+- Added `plot.prediction_explanation` in pylace to render prediction explanations
 
 ### Changed
 
 - Updated all packages to have the correct SPDX for the Business Source License
+- Removed internal implimentation of `logsumexp` in favor of `rv::misc::logsumexp`
 
 ### Fixed
 
