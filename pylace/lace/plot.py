@@ -516,6 +516,64 @@ def prediction_explanation(
     method: Optional[str] = None,
     cmap=None,
 ):
+    """
+    Plot prediction explanations.
+
+    Parameters
+    ----------
+    engine: lace.Engine
+        The source engine
+    target: str, int
+        The target variable -- the variable to predict
+    given: Dict[index, value], optional
+        A dictionary mapping column indices/name to values, which specifies
+        conditions on the observations.
+    method: str, optional (default: 'ablative-err')
+        The method to use for explanation:
+        * 'ablative-err' (default): computes the different between p(y|X) and
+          p(x|X - xᵢ) for each predictor xᵢ in the `given`, X.
+        * 'ablative-dist': computed the error between the predictions (argmax)
+          of p(y|X) and p(x|X - xᵢ) for each predictor xᵢ in the `given`, X. Note
+          that this method does not support categorical targets.
+    cmap: plotly color_continuous_scale (default: 'picnic')
+        Argument forwarded to the `color_continuous_scale` argument of
+        plotly.bar.
+
+    Returns
+    -------
+    data: pandas.Series
+        The column importances
+    fig: plotly.Figure
+        The figure
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from lace.examples import Satellites
+    >>> from lace.plot import prediction_explanation
+    >>> engine = Satellites()
+
+    Define a target
+
+    >>> target = 'Period_minutes'
+
+    We'll use a row from the data
+
+    >>> row = engine[5, :].to_dicts()[0]
+    >>> ix = row.pop('index')
+    >>> _ = row.pop(target)
+    >>> given = { k: v for k, v in row.items() if v is not None }
+
+    Plot the explanation using the 'ablative-dist' method
+
+    >>> data, fig = prediction_explanation(
+    ...     engine,
+    ...     target,
+    ...     given,
+    ...     method='ablative-dist'
+    ... )
+    >>> fig.show()
+    """
     if method is None:
         method = "ablative-err"
 
@@ -552,6 +610,8 @@ def prediction_explanation(
     fig.update_layout(
         paper_bgcolor="rgba(0, 0, 0, 0)",
         plot_bgcolor="rgba(0, 0, 0, 0)",
+        xaxis_title=method,
+        yaxis_title="Predictor",
     )
 
     return srs, fig

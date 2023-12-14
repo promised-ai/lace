@@ -519,7 +519,12 @@ def explain_prediction(
         A dictionary mapping column indices/name to values, which specifies
         conditions on the observations.
     method: str, optional
-        The method to use for explanation. Can be FIXME
+        The method to use for explanation:
+        * 'ablative-err' (default): computes the different between p(y|X) and
+          p(x|X - xᵢ) for each predictor xᵢ in the `given`, X.
+        * 'ablative-dist': computed the error between the predictions (argmax)
+          of p(y|X) and p(x|X - xᵢ) for each predictor xᵢ in the `given`, X. Note
+          that this method does not support categorical targets.
 
     Returns
     -------
