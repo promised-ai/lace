@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `plot.state` function in pylace to render PCC states
+
 ### Changed
 
 - Updated all packages to have the correct SPDX for the Business Source License
+
+### Fixed
+
+- Fixed issue that would cause random row order when indexing pylace Engines by a single (column) index, e.g., engine['column'] would return the columns in a different order every time the engine was loaded
 
 ## [python-0.5.0] - 2023-11-20
 

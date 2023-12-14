@@ -137,8 +137,8 @@ impl RowNameList {
         .map(|row_name| self.row_names.push(row_name))
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<String, usize> {
-        self.index_lookup.iter()
+    pub fn iter(&self) -> std::iter::Enumerate<std::slice::Iter<String>> {
+        self.row_names.iter().enumerate()
     }
 
     pub fn remove(&mut self, row_name: &str) -> bool {

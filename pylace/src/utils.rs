@@ -155,7 +155,7 @@ impl<'s> TableIndex<'s> {
                 let row_ixs = codebook
                     .row_names
                     .iter()
-                    .map(|(a, &b)| (b, a.clone()))
+                    .map(|(a, b)| (a, b.clone()))
                     .collect();
 
                 let col_ixs = ixs.col_ixs(codebook)?;
@@ -406,7 +406,7 @@ impl Indexer {
     pub(crate) fn rows(codebook: &Codebook) -> Self {
         let mut to_ix: HashMap<String, usize> = HashMap::new();
         let mut to_name: HashMap<usize, String> = HashMap::new();
-        codebook.row_names.iter().for_each(|(name, &ix)| {
+        codebook.row_names.iter().for_each(|(ix, name)| {
             to_ix.insert(name.clone(), ix);
             to_name.insert(ix, name.clone());
         });
