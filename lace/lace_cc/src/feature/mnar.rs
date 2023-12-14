@@ -298,7 +298,7 @@ mod test {
         println!("{:?}", [f0, f1, f2, f3]);
 
         assert_relative_eq!(
-            lace_utils::logsumexp(&[f0, f1, f2, f3]).exp(),
+            lace_consts::rv::misc::logsumexp(&[f0, f1, f2, f3]).exp(),
             1.0,
             epsilon = 1e-10
         )

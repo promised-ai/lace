@@ -243,9 +243,6 @@ pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::*;
-
-    const TOL: f64 = 1E-10;
 
     // parse_result
     // ------------
