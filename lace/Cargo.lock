@@ -2418,9 +2418,9 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
 name = "rv"
-version = "0.16.1"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a691327d9f3658412647f7f4db49a684605ba0e13e9b24d2c6ba66d66bc69410"
+checksum = "9ad4c180111696893363158f59ee1b15500947365270b7460a432fc207f926bf"
 dependencies = [
  "doc-comment",
  "lru",
