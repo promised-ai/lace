@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from lace.examples import Animals
+from lace.examples import Animals, Satellites
 
 
 @pytest.fixture(scope="module")
@@ -10,6 +10,13 @@ def animals():
     animals = Animals()
     animals.df = animals.df.to_pandas().set_index("id")
     return animals
+
+
+@pytest.fixture(scope="module")
+def satellites():
+    satellites = Satellites()
+    satellites.df = satellites.df.to_pandas().set_index("ID")
+    return satellites
 
 
 def _random_index(n, strs):
@@ -122,6 +129,18 @@ def test_skip_col_slice_indexing_2(animals):
     assert columns[2] == animals.columns[3]
     assert columns[3] == animals.columns[2]
     assert columns[4] == animals.columns[1]
+
+
+@pytest.mark.parametrize("col_ix", ["Class_of_Orbit", 0])
+def test_column_index(satellites, col_ix):
+    data = satellites[col_ix]
+    assert data.shape == (satellites.shape[0], 2)
+
+
+@pytest.mark.parametrize("col_ix", ["Class_of_Orbit", 0])
+def test_column_index_with_slice_row(satellites, col_ix):
+    data = satellites[:, col_ix]
+    assert data.shape == (satellites.shape[0], 2)
 
 
 def test_tuple_index_fuzzy_smoke(animals):

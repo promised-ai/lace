@@ -1,10 +1,10 @@
-"""Tools for analysis of CrossCat results in Lace."""
+"""Tools for analysis of probabilistic cross-categorization results in Lace."""
 
 
 import enum
 import itertools as it
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 import polars as pl
 from tqdm import tqdm
@@ -41,6 +41,7 @@ class HoldOutFunc(enum.Enum):
 
     NegLogp = 0
     Inconsistency = 1
+    Uncertainty = 2
 
     def __repr__(self) -> str:
         """Return the canonical string representation of the object."""
@@ -48,6 +49,8 @@ class HoldOutFunc(enum.Enum):
             return "-logp"
         elif self == HoldOutFunc.Inconsistency:
             return "inconsistency"
+        elif self == HoldOutFunc.Uncertainty:
+            return "uncertainty"
         else:
             raise NotImplementedError
 
@@ -66,6 +69,8 @@ def _held_out_compute(
             return None
     elif fn == HoldOutFunc.Inconsistency:
         return engine.inconsistency(values, given=given)
+    elif fn == HoldOutFunc.Uncertainty:
+        return engine.predict(values, given=given)[1]
     else:
         raise ValueError(f"Invalid computation `{fn}`")
 
@@ -432,6 +437,379 @@ def held_out_inconsistency(
     return res
 
 
+def held_out_uncertainty(
+    engine: "Engine",
+    target: Union[str, int],
+    given: dict[Union[str, int], Any],
+    quiet: bool = False,
+    greedy: bool = True,
+) -> pl.DataFrame:
+    r"""
+    Compute prediction uncertainty while sequentially dropping given conditions.
+
+    Parameters
+    ----------
+    engine: Engine
+        The Engine used to compute inconsistency
+    target: str or int
+        The target column for prediction
+    given: dict[index, value], optional
+        A dictionary mapping column indices/name to values, which specifies
+        conditions on the observations.
+    quiet: bool
+        Prevent the display of a progress bar.
+    greedy: bool
+        Use a greedy algorithm which is faster but may be less optimal.
+
+    Returns
+    -------
+    polars.DataFrame
+        A DataFrame with a 'feature' column and a uncertainty column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from lace.examples import Satellites
+    >>> from lace.analysis import held_out_uncertainty
+    >>> satellites = Satellites()
+    >>> given = (
+    ...     satellites.df.to_pandas()
+    ...     .set_index("ID")
+    ...     .loc["Intelsat 903", :]
+    ...     .dropna()
+    ...     .to_dict()
+    ... )
+    >>> period = given.pop("Period_minutes")
+    >>> held_out_uncertainty(
+    ...     satellites,
+    ...     "Period_minutes",
+    ...     given,
+    ...     quiet=True,
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    shape: (19, 3)
+    ┌──────────────────────────────────┬─────────────────────────┬───────────┐
+    │ feature_rmed                     ┆ HoldOutFunc.Uncertainty ┆ keys_rmed │
+    │ ---                              ┆ ---                     ┆ ---       │
+    │ list[str]                        ┆ f64                     ┆ i64       │
+    ╞══════════════════════════════════╪═════════════════════════╪═══════════╡
+    │ null                             ┆ 0.543803                ┆ 0         │
+    │ ["Perigee_km"]                   ┆ 0.543803                ┆ 1         │
+    │ ["Source_Used_for_Orbital_Data"] ┆ 0.543799                ┆ 2         │
+    │ ["Class_of_Orbit"]               ┆ 0.5428                  ┆ 3         │
+    │ …                                ┆ …                       ┆ …         │
+    │ ["Purpose"]                      ┆ 0.440191                ┆ 15        │
+    │ ["Eccentricity"]                 ┆ 0.438648                ┆ 16        │
+    │ ["Inclination_radians"]          ┆ 0.44004                 ┆ 17        │
+    │ ["Apogee_km"]                    ┆ 1.443993                ┆ 18        │
+    └──────────────────────────────────┴─────────────────────────┴───────────┘
+
+    If we don't want to use the greedy search, we can enumerate, but we need to
+    be mindful that the number of conditions we must enumerate over is 2^n
+
+    >>> keys = sorted(list(given.keys()))
+    >>> _ = [given.pop(c) for c in keys[-10:]]
+    >>> held_out_uncertainty(
+    ...     satellites,
+    ...     "Period_minutes",
+    ...     given,
+    ...     quiet=True,
+    ...     greedy=False,
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    shape: (9, 3)
+    ┌───────────────────────────────────┬─────────────────────────┬───────────┐
+    │ feature_rmed                      ┆ HoldOutFunc.Uncertainty ┆ keys_rmed │
+    │ ---                               ┆ ---                     ┆ ---       │
+    │ list[str]                         ┆ f64                     ┆ i64       │
+    ╞═══════════════════════════════════╪═════════════════════════╪═══════════╡
+    │ null                              ┆ 0.579697                ┆ 0         │
+    │ ["Expected_Lifetime"]             ┆ 0.553909                ┆ 1         │
+    │ ["Class_of_Orbit", "Expected_Lif… ┆ 0.395509                ┆ 2         │
+    │ ["Class_of_Orbit", "Date_of_Laun… ┆ 0.38756                 ┆ 3         │
+    │ …                                 ┆ …                       ┆ …         │
+    │ ["Class_of_Orbit", "Country_of_O… ┆ 0.399052                ┆ 5         │
+    │ ["Class_of_Orbit", "Country_of_O… ┆ 0.41235                 ┆ 6         │
+    │ ["Class_of_Orbit", "Country_of_C… ┆ 0.44004                 ┆ 7         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 1.443993                ┆ 8         │
+    └───────────────────────────────────┴─────────────────────────┴───────────┘
+    """
+    search = (
+        HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
+    )
+
+    res = _held_out_base(
+        engine,
+        HoldOutFunc.Uncertainty,
+        search,
+        target,
+        deepcopy(given),
+        quiet=quiet,
+    )
+    return res
+
+
+def _attributable_holdout(
+    engine: "Engine",
+    fn: HoldOutFunc,
+    values,
+    given: dict[Union[str, int], Any],
+    quiet: bool = False,
+    greedy: bool = True,
+):
+    search = (
+        HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
+    )
+
+    fn_str = str(fn)
+
+    res = _held_out_base(
+        engine, fn, search, values, deepcopy(given), quiet=quiet
+    )
+
+    n_holdouts = res.shape[0]
+
+    if n_holdouts < 2:
+        return 0.0, res
+
+    area = 0.0
+    fn_max = res[fn_str][0]
+
+    fn_a = res[fn_str][1]
+    area += (fn_a / fn_max) / 2.0
+
+    n = 2
+
+    for i in range(2, n_holdouts):
+        fn_b = res[fn_str][i]
+
+        if fn_b > fn_max:
+            break
+
+        area += ((fn_max - fn_b) / fn_max) / 2.0
+        fn_a = fn_b
+        n += 1
+
+    if n <= 2:
+        return 0, res
+
+    return area / n, res
+
+
+def attributable_inconsistency(
+    engine: "Engine",
+    values,
+    given: dict[Union[str, int], Any],
+    quiet: bool = False,
+    greedy: bool = True,
+) -> Tuple[float, pl.DataFrame]:
+    r"""
+    Determine what fraction of inconsistency is attributable.
+
+    The fraction will be higher if dropping fewer predictor reduces
+    inconsistency quickly. The fraction will be 1 if one predictor drops
+    inconsistency to zero (this is unlikely to ever occur). The fraction will
+    be 0 if dropping predictors has no effect.
+
+    Parameters
+    ----------
+    engine: Engine
+        The Engine used to compute inconsistency
+    values: polars or pandas DataFrame or Series
+        The values over which to compute the inconsistency. Each row of the
+        DataFrame, or each entry of the Series, is an observation. Column
+        names (or the Series name) should correspond to names of features in
+        the table.
+    given: dict[index, value], optional
+        A dictionary mapping column indices/name to values, which specifies
+        conditions on the observations.
+    quiet: bool
+        Prevent the display of a progress bar.
+    greedy: bool
+        Use a greedy algorithm which is faster but may be less optimal.
+
+    Returns
+    -------
+    float
+        The fraction [0, 1] of the inconsistency that is attributable
+    polars.DataFrame
+        The result of held_out_inconsistency
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from lace.examples import Satellites
+    >>> from lace.analysis import attributable_inconsistency
+    >>> satellites = Satellites()
+    >>> given = (
+    ...     satellites.df.to_pandas()
+    ...     .set_index("ID")
+    ...     .loc["Intelsat 903", :]
+    ...     .dropna()
+    ...     .to_dict()
+    ... )
+    >>> period = given.pop("Period_minutes")
+    >>> frac, df = attributable_inconsistency(
+    ...     satellites,
+    ...     pl.Series("Period_minutes", [period]),
+    ...     given,
+    ...     quiet=True,
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    >>> frac
+    0.2930260843667006
+    """
+
+    return _attributable_holdout(
+        engine,
+        HoldOutFunc.Inconsistency,
+        values,
+        given,
+        quiet=quiet,
+        greedy=greedy,
+    )
+
+
+def attributable_neglogp(
+    engine: "Engine",
+    values,
+    given: dict[Union[str, int], Any],
+    quiet: bool = False,
+    greedy: bool = True,
+) -> Tuple[float, pl.DataFrame]:
+    r"""
+    Determine what fraction of surprisal (-log p) is attributable.
+
+    The fraction will be higher if dropping fewer predictor reduces surprisal
+    quickly. The fraction will be 1 if one predictor drops surprisal to zero
+    (this can never occur). The fraction will be 0 if dropping predictors has
+    no effect.
+
+    Parameters
+    ----------
+    engine: Engine
+        The Engine used to compute inconsistency
+    values: polars or pandas DataFrame or Series
+        The values over which to compute the -log p. Each row of the
+        DataFrame, or each entry of the Series, is an observation. Column
+        names (or the Series name) should correspond to names of features in
+        the table.
+    given: dict[index, value], optional
+        A dictionary mapping column indices/name to values, which specifies
+        conditions on the observations.
+    quiet: bool
+        Prevent the display of a progress bar.
+    greedy: bool
+        Use a greedy algorithm which is faster but may be less optimal.
+
+    Returns
+    -------
+    float
+        The fraction [0, 1] of the surprisal that is attributable
+    polars.DataFrame
+        The result of held_out_neglogp
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from lace.examples import Satellites
+    >>> from lace.analysis import attributable_neglogp
+    >>> satellites = Satellites()
+    >>> given = (
+    ...     satellites.df.to_pandas()
+    ...     .set_index("ID")
+    ...     .loc["Intelsat 903", :]
+    ...     .dropna()
+    ...     .to_dict()
+    ... )
+    >>> period = given.pop("Period_minutes")
+    >>> frac, df =  attributable_neglogp(
+    ...     satellites,
+    ...     pl.Series("Period_minutes", [period]),
+    ...     given,
+    ...     quiet=True,
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    >>> frac
+    0.29302608436670047
+    """
+
+    return _attributable_holdout(
+        engine,
+        HoldOutFunc.NegLogp,
+        values,
+        given,
+        quiet=quiet,
+        greedy=greedy,
+    )
+
+
+def attributable_uncertainty(
+    engine: "Engine",
+    target: Union[str, int],
+    given: dict[Union[str, int], Any],
+    quiet: bool = False,
+    greedy: bool = True,
+) -> Tuple[float, pl.DataFrame]:
+    r"""
+    Determine what fraction of uncertainty is attributable.
+
+    The fraction will be higher if dropping fewer predictor reduces uncertainty
+    quickly. The fraction will be 1 if one predictor drops uncertainty to zero
+    (this is unlikely). The fraction will be 0 if dropping predictors has no
+    effect.
+
+    Parameters
+    ----------
+    engine: Engine
+        The Engine used to compute inconsistency
+    target: str or int
+        The prediction target
+    given: dict[index, value], optional
+        A dictionary mapping column indices/name to values, which specifies
+        conditions on the observations.
+    quiet: bool
+        Prevent the display of a progress bar.
+    greedy: bool
+        Use a greedy algorithm which is faster but may be less optimal.
+
+    Returns
+    -------
+    float
+        The fraction [0, 1] of the uncertainty that is attributable
+    polars.DataFrame
+        The result of held_out_uncertainty
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from lace.examples import Satellites
+    >>> from lace.analysis import attributable_uncertainty
+    >>> satellites = Satellites()
+    >>> given = (
+    ...     satellites.df.to_pandas()
+    ...     .set_index("ID")
+    ...     .loc["Intelsat 903", :]
+    ...     .dropna()
+    ...     .to_dict()
+    ... )
+    >>> period = given.pop("Period_minutes")
+    >>> frac, df =  attributable_uncertainty(
+    ...     satellites,
+    ...     "Period_minutes",
+    ...     given,
+    ...     quiet=True,
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    >>> frac
+    0.09788266843531362
+    """
+
+    return _attributable_holdout(
+        engine,
+        HoldOutFunc.Uncertainty,
+        target,
+        given,
+        quiet=quiet,
+        greedy=greedy,
+    )
+
+
 def _explain_ablative_err(
     engine: "Engine",
     target: Union[int, str],
@@ -567,8 +945,8 @@ def explain_prediction(
     │ ---                          ┆ ---         │
     │ str                          ┆ f64         │
     ╞══════════════════════════════╪═════════════╡
-    │ Country_of_Operator          ┆ 5.0932e-16  │
-    │ Users                        ┆ -3.1563e-14 │
+    │ Country_of_Operator          ┆ 3.5216e-16  │
+    │ Users                        ┆ -3.1668e-14 │
     │ Purpose                      ┆ -9.5636e-14 │
     │ Class_of_Orbit               ┆ -1.8263e-15 │
     │ …                            ┆ …           │

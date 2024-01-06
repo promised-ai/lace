@@ -516,7 +516,7 @@ def prediction_explanation(
     method: Optional[str] = None,
     cmap=None,
 ):
-    """
+    r"""
     Plot prediction explanations.
 
     Parameters
