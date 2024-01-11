@@ -27,7 +27,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: "pylace/requirements-lint.txt"
       
@@ -97,12 +97,13 @@ jobs:
             3.9
             3.10
             3.11
+            3.12
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 --manifest-path pylace/Cargo.toml
+          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
           manylinux: auto
     
       - name: Install dev dependencies
@@ -141,12 +142,13 @@ jobs:
             3.9
             3.10
             3.11
+            3.12
           architecture: ${{ matrix.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 --manifest-path pylace/Cargo.toml
+          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
     
       - name: Install dev dependencies
         run: |
@@ -184,11 +186,12 @@ jobs:
             3.9
             3.10
             3.11
+            3.12
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 --manifest-path pylace/Cargo.toml
+          args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
 
       - name: Install dev dependencies
         if: ${{ matrix.target != 'aarch64' }}
@@ -227,7 +230,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install codedown
         run: npm install -g codedown
