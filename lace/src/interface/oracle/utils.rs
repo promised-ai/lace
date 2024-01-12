@@ -13,9 +13,7 @@ use crate::codebook::Codebook;
 use crate::stats::rv::dist::{
     Bernoulli, Categorical, Gaussian, Mixture, Poisson,
 };
-use crate::stats::rv::traits::{
-    Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
-};
+use crate::stats::rv::traits::{Entropy, Mode, QuadBounds, Rv, Variance};
 use crate::stats::MixtureType;
 use lace_consts::rv::misc::logsumexp;
 use lace_data::{Category, Datum};
@@ -1503,49 +1501,6 @@ pub fn count_predict(
 
 // Predictive uncertainty helpers
 // ------------------------------
-// Jensen-shannon-divergence for a mixture
-fn jsd<Fx>(mm: Mixture<Fx>) -> f64
-where
-    MixtureType: From<Mixture<Fx>>,
-    Fx: Entropy + Clone + std::fmt::Debug,
-{
-    let h_cpnts = mm
-        .weights()
-        .iter()
-        .zip(mm.components().iter())
-        .fold(0.0, |acc, (&w, cpnt)| w.mul_add(cpnt.entropy(), acc));
-
-    let mt: MixtureType = mm.into();
-    let h_mixture = mt.entropy();
-
-    h_mixture - h_cpnts
-}
-
-fn jsd_mixture<Fx>(mut components: Vec<Mixture<Fx>>) -> f64
-where
-    MixtureType: From<Mixture<Fx>>,
-{
-    // FIXME: we could do all this with the usual Rv Mixture functions if it
-    // wasn't for that damned Labeler type
-    let n_states = components.len() as f64;
-    let mut h_cpnts = 0_f64;
-    let mts: Vec<MixtureType> = components
-        .drain(..)
-        .map(|mm| {
-            let mt = MixtureType::from(mm);
-            // h_cpnts += mt.entropy();
-            h_cpnts += mt.entropy();
-            mt
-        })
-        .collect();
-
-    // let mt: MixtureType = mm.into();
-    let mm = MixtureType::combine(mts);
-    let h_mixture = mm.entropy();
-
-    h_mixture - h_cpnts / n_states
-}
-
 macro_rules! predunc_arm {
     ($states: expr, $col_ix: expr, $given_opt: expr, $cpnt_type: ty) => {{
         let mix_models: Vec<Mixture<$cpnt_type>> = $states
@@ -1567,7 +1522,8 @@ macro_rules! predunc_arm {
             })
             .collect();
 
-        jsd_mixture(mix_models)
+        $crate::stats::uncertainty::mixture_normed_tvd(&mix_models)
+        // jsd_mixture(mix_models)
     }};
 }
 
@@ -1590,7 +1546,7 @@ pub fn predict_uncertainty(
     }
 }
 
-pub(crate) fn mnar_uncertainty_jsd(
+pub(crate) fn mnar_uncertainty(
     states: &[&State],
     col_ix: usize,
     given: &Given<usize>,
@@ -1634,7 +1590,7 @@ pub(crate) fn mnar_uncertainty_jsd(
                 // compute time.
                 Bernoulli::new(p).unwrap()
             }
-            _ => panic!("Expected MNAR ColModel in MNAR uncertianty fn"),
+            _ => panic!("Expected MNAR ColModel in MNAR uncertainty fn"),
         })
         .collect::<Vec<Bernoulli>>();
 
@@ -1662,174 +1618,59 @@ pub(crate) fn mnar_uncertainty_jsd(
     h_mix - h_cpnt / kf
 }
 
-macro_rules! js_impunc_arm {
-    ($k: ident, $row_ix: ident, $states: ident, $ftr: ident, $variant: ident) => {{
+macro_rules! impunc_arm {
+    ($row_ix: ident, $col_ix: ident, $states: ident, $variant: ident) => {{
         let n_states = $states.len();
-        let col_ix = $ftr.id;
-        let mut cpnts = Vec::with_capacity(n_states);
-        cpnts.push($ftr.components[$k].fx.clone());
-        for i in 1..n_states {
-            let view_ix_s = $states[i].asgn.asgn[col_ix];
-            let view_s = &$states[i].views[view_ix_s];
-            let k_s = view_s.asgn.asgn[$row_ix];
-            match &view_s.ftrs[&col_ix] {
-                ColModel::$variant(ref ftr) => {
-                    cpnts.push(ftr.components[k_s].fx.clone());
-                }
-                ColModel::MissingNotAtRandom(
-                    $crate::cc::feature::MissingNotAtRandom { fx, .. },
-                ) => match &**fx {
-                    ColModel::$variant(ref ftr) => {
-                        cpnts.push(ftr.components[k_s].fx.clone());
-                    }
-                    cm => {
-                        panic!("Mismatched MNAR feature type: {}", cm.ftype())
-                    }
-                },
-                cm => panic!("Mismatched feature type: {}", cm.ftype()),
-            }
-        }
-        jsd(Mixture::uniform(cpnts).unwrap())
-    }};
-}
-
-pub fn js_impute_uncertainty(
-    states: &[State],
-    row_ix: usize,
-    col_ix: usize,
-) -> f64 {
-    fn inner(
-        col_model: &ColModel,
-        states: &[State],
-        row_ix: usize,
-        k: usize,
-    ) -> f64 {
-        match col_model {
-            ColModel::Continuous(ref ftr) => {
-                js_impunc_arm!(k, row_ix, states, ftr, Continuous)
-            }
-            ColModel::Categorical(ref ftr) => {
-                js_impunc_arm!(k, row_ix, states, ftr, Categorical)
-            }
-            ColModel::Count(ref ftr) => {
-                js_impunc_arm!(k, row_ix, states, ftr, Count)
-            }
-            ColModel::MissingNotAtRandom(_) => {
-                panic!("Inner should not reach MissingNotAtRandom")
-            }
-        }
-    }
-
-    let view_ix = states[0].asgn.asgn[col_ix];
-    let view = &states[0].views[view_ix];
-    let k = view.asgn.asgn[row_ix];
-    let col_model = &view.ftrs[&col_ix];
-    match col_model {
-        ColModel::MissingNotAtRandom(ref mnar) => {
-            inner(mnar.fx.as_ref(), states, row_ix, k)
-        }
-        _ => inner(col_model, states, row_ix, k),
-    }
-}
-
-macro_rules! kl_impunc_arm {
-    ($i: ident, $ki: ident, $locators: ident, $fi: ident, $states: ident, $variant: ident) => {{
-        let col_ix = $fi.id;
-        let mut partial_sum = 0.0;
-        let cpnt_i = &$fi.components[$ki].fx;
-        for (j, &(vj, kj)) in $locators.iter().enumerate() {
-            if $i != j {
-                let cm_j = &$states[j].views[vj].ftrs[&col_ix];
-                match cm_j {
-                    ColModel::$variant(ref fj) => {
-                        let cpnt_j = &fj.components[kj].fx;
-                        partial_sum += cpnt_i.kl(cpnt_j);
-                    }
+        let mixtures = (0..n_states)
+            .map(|state_ix| {
+                let view_ix = $states[state_ix].asgn.asgn[$col_ix];
+                let view = &$states[state_ix].views[view_ix];
+                let k = view.asgn.asgn[$row_ix];
+                match &view.ftrs[&$col_ix] {
+                    ColModel::$variant(ref ftr) => ftr.components[k].fx.clone(),
                     ColModel::MissingNotAtRandom(
                         $crate::cc::feature::MissingNotAtRandom { fx, .. },
                     ) => match &**fx {
-                        ColModel::$variant(ref fj) => {
-                            let cpnt_j = &fj.components[kj].fx;
-                            partial_sum += cpnt_i.kl(cpnt_j);
+                        ColModel::$variant(ref ftr) => {
+                            ftr.components[k].fx.clone()
                         }
-                        _ => panic!(
-                            "2nd mnar ColModel was incorrect type: {}",
-                            fx.ftype()
-                        ),
+                        cm => {
+                            panic!(
+                                "Mismatched MNAR feature type: {}",
+                                cm.ftype()
+                            )
+                        }
                     },
-                    _ => panic!(
-                        "2nd ColModel was incorrect type: {}",
-                        cm_j.ftype()
-                    ),
+                    cm => panic!("Mismatched feature type: {}", cm.ftype()),
                 }
-            }
-        }
-        partial_sum
+            })
+            .map(|cpnt| Mixture::uniform(vec![cpnt]).unwrap())
+            .collect::<Vec<_>>();
+
+        $crate::stats::uncertainty::mixture_normed_tvd(&mixtures)
     }};
 }
 
-pub fn kl_impute_uncertainty(
+pub fn impute_uncertainty(
     states: &[State],
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {
-    let locators: Vec<(usize, usize)> = states
-        .iter()
-        .map(|state| {
-            let view_ix = state.asgn.asgn[col_ix];
-            let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
-            (view_ix, cpnt_ix)
-        })
-        .collect();
-
-    fn inner(
-        col_model: &ColModel,
-        i: usize,
-        ki: usize,
-        locators: &[(usize, usize)],
-        states: &[State],
-    ) -> f64 {
-        use crate::cc::feature::MissingNotAtRandom;
-        match col_model {
-            ColModel::Continuous(ref fi) => {
-                kl_impunc_arm!(i, ki, locators, fi, states, Continuous)
-            }
-            ColModel::Categorical(ref fi) => {
-                kl_impunc_arm!(i, ki, locators, fi, states, Categorical)
-            }
-            ColModel::Count(ref fi) => {
-                kl_impunc_arm!(i, ki, locators, fi, states, Count)
-            }
-            ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
-                match &**fx {
-                    ColModel::Continuous(ref fi) => {
-                        kl_impunc_arm!(i, ki, locators, fi, states, Continuous)
-                    }
-                    ColModel::Categorical(ref fi) => {
-                        kl_impunc_arm!(i, ki, locators, fi, states, Categorical)
-                    }
-                    ColModel::Count(ref fi) => {
-                        kl_impunc_arm!(i, ki, locators, fi, states, Count)
-                    }
-                    _ => panic!("Mnar within mnar?"),
-                }
-            }
+    let ftype = states[0].ftype(col_ix);
+    match ftype {
+        FType::Continuous => {
+            impunc_arm!(row_ix, col_ix, states, Continuous)
+        }
+        FType::Categorical => {
+            impunc_arm!(row_ix, col_ix, states, Categorical)
+        }
+        FType::Count => {
+            impunc_arm!(row_ix, col_ix, states, Count)
+        }
+        f => {
+            panic!("Unsupported ftype: {:?}", f)
         }
     }
-
-    let mut kl_sum = 0.0;
-    for (i, &(vi, ki)) in locators.iter().enumerate() {
-        let col_model = &states[i].views[vi].ftrs[&col_ix];
-        kl_sum += match col_model {
-            ColModel::MissingNotAtRandom(mnar) => {
-                inner(mnar.fx.as_ref(), i, ki, &locators, states)
-            }
-            _ => inner(col_model, i, ki, &locators, states),
-        };
-    }
-
-    let n_states = states.len() as f64;
-    kl_sum / n_states.mul_add(n_states, -n_states)
 }
 
 #[cfg(test)]

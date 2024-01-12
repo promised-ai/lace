@@ -1746,7 +1746,7 @@ class Engine:
         self,
         col: Union[str, int],
         rows: Optional[List[Union[str, int]]] = None,
-        unc_type: Optional[str] = "js_divergence",
+        with_uncertainty: bool = True,
     ):
         r"""
         Impute (predict) the value of a cell(s) in the lace table.
@@ -1762,20 +1762,6 @@ class Engine:
         be returned, even if the value is most likely to be missing. Imputation
         forces the value of a cell to be present.
 
-        The following methods are used to compute uncertainty.
-
-          * unc_type='js_divergence' computes the Jensen-Shannon divergence
-            between the state imputation distributions.
-
-            .. math::
-              JS(X_1, X_2, ..., X_S)
-
-          * unc_type='pairwise_kl' computes the mean of the Kullback-Leibler
-            divergences between pairs of state imputation distributions.
-
-            .. math::
-              \frac{1}{S^2 - S} \sum_{i=1}^S \sum{j \in \{1,..,S\} \setminus i} KL(X_i | X_j)
-
         Parameters
         ----------
         col: column index
@@ -1783,14 +1769,8 @@ class Engine:
         rows: List[row index], optional
             Optional row indices to impute. If ``None`` (default), all the rows
             with missing values will be imputed
-        unc_type: str, optional
-            The type of uncertainty to compute. If ``None``, uncertainty will
-            not be computed. Acceptable values are:
-
-            - 'js_divergence' (default): The Jensen-Shannon divergence between the
-              imputation distributions in each state.
-            - 'pairwise_kl': The mean pairwise Kullback-Leibler divergence
-              between pairs of state imputation distributions.
+        with_uncertainty: bool, default: True
+            If True, compute and return the impute uncertainty
 
         Returns
         -------
@@ -1848,7 +1828,7 @@ class Engine:
 
         Uncertainty is optional
 
-        >>> engine.impute("Type_of_Orbit", unc_type=None)  # doctest: +NORMALIZE_WHITESPACE
+        >>> engine.impute("Type_of_Orbit", with_uncertainty=False)  # doctest: +NORMALIZE_WHITESPACE
         shape: (645, 2)
         ┌───────────────────────────────────┬─────────────────┐
         │ index                             ┆ Type_of_Orbit   │
@@ -1866,7 +1846,7 @@ class Engine:
         │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous │
         └───────────────────────────────────┴─────────────────┘
         """
-        return self.engine.impute(col, rows, unc_type)
+        return self.engine.impute(col, rows, with_uncertainty)
 
     def depprob(self, col_pairs: list):
         """
