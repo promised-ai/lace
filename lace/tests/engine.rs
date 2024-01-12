@@ -1650,9 +1650,9 @@ mod insert_data {
             .unwrap();
 
         // new categorical weights are assigned to log(0) by default.
-        // Weights are updated when inference is run. This becomes NaN when run
+        // Weights are updated when inference is run. This becomes Inf when run
         // through logsumexp.
-        assert!(surp.is_nan());
+        assert!(surp.is_infinite());
     }
 
     #[test]

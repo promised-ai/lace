@@ -12,11 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `plot.state` function in pylace to render PCC states
 - Added `analysis.explain_prediction` in pylace to explain predictions
 - Added `plot.prediction_explanation` in pylace to render prediction explanations
+- Added `analysis.held_out_uncertainty` in pylace
+- Added `analysis.attributable_[neglogp | inconsistrncy | uncertainty]` in pylace to quantify the amount of surprisal (neglogp), inconsistency, and uncertainty attributable to other features
 
 ### Changed
 
 - Updated all packages to have the correct SPDX for the Business Source License
 - Removed internal implimentation of `logsumexp` in favor of `rv::misc::logsumexp`
+- Update to rv 0.16.2
 
 ### Fixed
 

@@ -174,11 +174,11 @@ pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
 /// Is equivalent to `logsumexp(&vec![x, y])
 ///
 /// ```
-/// # use lace_utils::{logaddexp, logsumexp};
-/// let x = -0.00231;
-/// let y = -0.08484;
+/// # use lace_utils::logaddexp;
+/// let x = -0.00231_f64;
+/// let y = -0.08484_f64;
 ///
-/// let lse = logsumexp(&vec![x, y]);
+/// let lse = (x.exp() + y.exp()).ln();
 /// let lae = logaddexp(x, y);
 ///
 /// assert!((lse - lae).abs() < 1E-13);
