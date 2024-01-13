@@ -492,15 +492,15 @@ def held_out_uncertainty(
     │ ---                              ┆ ---                     ┆ ---       │
     │ list[str]                        ┆ f64                     ┆ i64       │
     ╞══════════════════════════════════╪═════════════════════════╪═══════════╡
-    │ null                             ┆ 0.543803                ┆ 0         │
-    │ ["Perigee_km"]                   ┆ 0.543803                ┆ 1         │
-    │ ["Source_Used_for_Orbital_Data"] ┆ 0.543799                ┆ 2         │
-    │ ["Class_of_Orbit"]               ┆ 0.5428                  ┆ 3         │
+    │ null                             ┆ 0.43212                 ┆ 0         │
+    │ ["Perigee_km"]                   ┆ 0.43212                 ┆ 1         │
+    │ ["Class_of_Orbit"]               ┆ 0.43212                 ┆ 2         │
+    │ ["Source_Used_for_Orbital_Data"] ┆ 0.431921                ┆ 3         │
     │ …                                ┆ …                       ┆ …         │
-    │ ["Purpose"]                      ┆ 0.440191                ┆ 15        │
-    │ ["Eccentricity"]                 ┆ 0.438648                ┆ 16        │
-    │ ["Inclination_radians"]          ┆ 0.44004                 ┆ 17        │
-    │ ["Apogee_km"]                    ┆ 1.443993                ┆ 18        │
+    │ ["Country_of_Operator"]          ┆ 0.054156                ┆ 15        │
+    │ ["Country_of_Contractor"]        ┆ 0.06069                 ┆ 16        │
+    │ ["Dry_Mass_kg"]                  ┆ 0.139502                ┆ 17        │
+    │ ["Inclination_radians"]          ┆ 0.089026                ┆ 18        │
     └──────────────────────────────────┴─────────────────────────┴───────────┘
 
     If we don't want to use the greedy search, we can enumerate, but we need to
@@ -521,15 +521,15 @@ def held_out_uncertainty(
     │ ---                               ┆ ---                     ┆ ---       │
     │ list[str]                         ┆ f64                     ┆ i64       │
     ╞═══════════════════════════════════╪═════════════════════════╪═══════════╡
-    │ null                              ┆ 0.579697                ┆ 0         │
-    │ ["Expected_Lifetime"]             ┆ 0.553909                ┆ 1         │
-    │ ["Class_of_Orbit", "Expected_Lif… ┆ 0.395509                ┆ 2         │
-    │ ["Class_of_Orbit", "Date_of_Laun… ┆ 0.38756                 ┆ 3         │
+    │ null                              ┆ 0.445501                ┆ 0         │
+    │ ["Expected_Lifetime"]             ┆ 0.437647                ┆ 1         │
+    │ ["Apogee_km", "Eccentricity"]     ┆ 0.05561                 ┆ 2         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 0.055283                ┆ 3         │
     │ …                                 ┆ …                       ┆ …         │
-    │ ["Class_of_Orbit", "Country_of_O… ┆ 0.399052                ┆ 5         │
-    │ ["Class_of_Orbit", "Country_of_O… ┆ 0.41235                 ┆ 6         │
-    │ ["Class_of_Orbit", "Country_of_C… ┆ 0.44004                 ┆ 7         │
-    │ ["Apogee_km", "Class_of_Orbit", … ┆ 1.443993                ┆ 8         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 0.057624                ┆ 5         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.0595                  ┆ 6         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.077359                ┆ 7         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.089026                ┆ 8         │
     └───────────────────────────────────┴─────────────────────────┴───────────┘
     """
     search = (
@@ -797,7 +797,7 @@ def attributable_uncertainty(
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     >>> frac
-    0.09788266843531362
+    0.1814171785207335
     """
 
     return _attributable_holdout(

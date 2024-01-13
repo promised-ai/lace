@@ -12,4 +12,4 @@ def test_animals():
     assert engine.shape == (50, 85)
     swim_cat, swim_unc = engine.predict("swims")
     assert swim_cat == 0
-    assert_almost_equal(swim_unc, 0.008287, 6)
+    assert_almost_equal(swim_unc, 0.04384630, 6)

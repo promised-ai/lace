@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated all packages to have the correct SPDX for the Business Source License
 - Removed internal implimentation of `logsumexp` in favor of `rv::misc::logsumexp`
 - Update to rv 0.16.2
+- Impute and prediction uncertainty are the mean total variation distance between each state's distribution and the average distribution divided by the potential max: `(n-1) / n`, where `n` is the number of states. This normalization is meant to ensure that the interpretation is the same regardless of the number of states -- zero is lowest, one is highest.
 
 ### Fixed
 

@@ -630,7 +630,7 @@ class Engine:
         │ ---   ┆ ---    ┆ ---         │
         │ str   ┆ u8     ┆ f64         │
         ╞═══════╪════════╪═════════════╡
-        │ pig   ┆ 0      ┆ 0.02385     │
+        │ pig   ┆ 0      ┆ 0.07593     │
         └───────┴────────┴─────────────┘
         """
         self.engine.edit_cell(row, col, value)
@@ -1694,6 +1694,10 @@ class Engine:
         """
         Predict a single target from a conditional distribution.
 
+        Uncertainty is the normalized mean total variation distance between
+        each state's predictive distribution and the average predictive
+        distribution.
+
         Parameters
         ----------
         target: column index
@@ -1721,18 +1725,18 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.predict("swims")
-        (0, 0.008287057807910558)
+        (0, 0.04384630488890182)
 
         Predict whether an animal swims given that it has flippers
 
         >>> animals.predict("swims", given={"flippers": 1})
-        (1, 0.05008037071634858)
+        (1, 0.09588592928237495)
 
         Let's confuse lace and see what happens to its uncertainty. Let's
         predict whether an non-water animal with flippers swims
 
         >>> animals.predict("swims", given={"flippers": 1, "water": 0})
-        (0, 0.32863593091906085)
+        (0, 0.36077426258767503)
 
         If you want to save time and you do not care about quantifying your
         epistemic uncertainty, you don't have to compute uncertainty.
@@ -1761,6 +1765,10 @@ class Engine:
         If the cell lies in a missing-not-at-random column, a value will always
         be returned, even if the value is most likely to be missing. Imputation
         forces the value of a cell to be present.
+
+        Uncertainty is the normalized mean total variation distance between
+        each state's imputation distribution and the average imputation
+        distribution.
 
         Parameters
         ----------
@@ -1802,15 +1810,15 @@ class Engine:
         │ ---                               ┆ ---             ┆ ---         │
         │ str                               ┆ str             ┆ f64         │
         ╞═══════════════════════════════════╪═════════════════╪═════════════╡
-        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.102337    │
-        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.445436    │
-        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.544273    │
-        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.445436    │
+        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.186415    │
+        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.360331    │
+        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.425853    │
+        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.360331    │
         │ …                                 ┆ …               ┆ …           │
-        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.445436    │
-        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.522895    │
-        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.445436    │
-        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.445436    │
+        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.360331    │
+        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.404823    │
+        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.360331    │
+        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.360331    │
         └───────────────────────────────────┴─────────────────┴─────────────┘
 
         Impute a defined set of rows
@@ -1822,8 +1830,8 @@ class Engine:
         │ ---           ┆ ---                    ┆ ---         │
         │ str           ┆ str                    ┆ f64         │
         ╞═══════════════╪════════════════════════╪═════════════╡
-        │ AAUSat-3      ┆ Technology Development ┆ 0.1918      │
-        │ Zhongxing 20A ┆ Communications         ┆ 0.191064    │
+        │ AAUSat-3      ┆ Technology Development ┆ 0.238355    │
+        │ Zhongxing 20A ┆ Communications         ┆ 0.129248    │
         └───────────────┴────────────────────────┴─────────────┘
 
         Uncertainty is optional
