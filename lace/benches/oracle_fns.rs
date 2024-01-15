@@ -283,6 +283,6 @@ criterion_group!(
     bench_draw,
     bench_impute,
     bench_predict,
-    bench_predict_continous,
+    bench_predict_continuous,
 );
 criterion_main!(oracle_benches);
