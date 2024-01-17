@@ -21,6 +21,7 @@ Mathematically, uncertainty is formalized as the Jensen-Shannon divergence (JSD)
 <div class=tabbed-blocks>
 
 ```python
+import pandas as pd
 from lace import examples, plot
 
 satellites = examples.Satellites()
@@ -42,14 +43,14 @@ To visualize a higher uncertainty prediction, well use `given` conditions from a
 <div class=tabbed-blocks>
 
 ```python
-given = sats["Intelsat 902", :].to_dicts()[0]
+given = satellites["Intelsat 902", :].to_dicts()[0]
 
 # remove all missing data
 given = { k: v for k, v in given.items() if not pd.isnull(v) }
 
 # remove the index and the target value
-_ = row.pop("index")
-_ = row.pop("Period_minutes")
+_ = given.pop("index")
+_ = given.pop("Period_minutes")
 
 plot.prediction_uncertainty(
   satellites,
