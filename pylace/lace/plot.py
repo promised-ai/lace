@@ -1,6 +1,7 @@
 """Plotting utilities."""
 
-from typing import Dict, Optional, Union
+from math import ceil
+from typing import Any, Dict, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,8 +9,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import polars as pl
+import seaborn as sns
 
-from lace import Engine
+from lace import Engine, analysis, utils
 
 
 def diagnostics(
@@ -82,30 +84,13 @@ def diagnostics(
     return fig
 
 
-def _predict_xs(
-    engine, target, given, *, n_points=1_000, range_stds=2.5
-) -> pl.Series:
-    ftype = engine.ftype(target)
-    if ftype == "Continuous":
-        xs = engine.simulate([target], given=given, n=10_000)
-        mean = xs[target].mean()
-        std = xs[target].std()
-        width = range_stds * std
-        xs = np.linspace(mean - width, mean + width, n_points)
-        return pl.Series(target, xs)
-    elif ftype == "Categorical":
-        return pl.Series(target, engine.engine.categorical_support(target))
-    else:
-        raise ValueError("unsupported ftype")
-
-
 def prediction_uncertainty(
     engine: Engine,
     target: Union[str, int],
     given: Optional[Dict[Union[str, int], object]] = None,
     xs: Optional[Union[pl.Series, pd.Series]] = None,
     n_points: int = 1_000,
-    range_stds: float = 3.0,
+    mass: float = 0.99,
 ):
     """
     Visualize prediction uncertainty.
@@ -165,8 +150,12 @@ def prediction_uncertainty(
     n_states = engine.n_states
 
     if xs is None:
-        xs = _predict_xs(
-            engine, target, given, n_points=n_points, range_stds=range_stds
+        xs = utils.predict_xs(
+            engine,
+            target,
+            given,
+            n_points=n_points,
+            mass=mass,
         )
 
     title = f"{target} uncertainty: {unc}"
@@ -304,8 +293,8 @@ def state(
     *,
     cmap: Optional[str] = None,
     missing_color=None,
-    cat_gap: int = 1,
-    view_gap: int = 1,
+    cat_gap: Union[float, int] = 0.1,
+    view_gap: Union[float, int] = 0.2,
     show_index: bool = True,
     show_columns: bool = True,
     min_height: int = 0,
@@ -332,10 +321,12 @@ def state(
     missing_color: optional, default: red
         The RGBA array representation ([float, float, float, float]) of the
         color to use to represent missing data
-    cat_gap: int, optional, default: 1
-        The vertical spacing (in cells) between categories
-    view_gap: int, optional, default: 1
-        The horizontal spacing (in cell) between views
+    cat_gap: int or float, default: 0.1
+        The vertical spacing (in cells if int or fraction of table height if
+        float) between categories
+    view_gap: int or float, default: 0.2
+        The horizontal spacing (in cells if int or fraction of table width if
+        float) between views
     show_index: bool, default: True
         If True (default), will show row names next to rows in each view
     show_columns: bool, default: True
@@ -361,16 +352,9 @@ def state(
     >>> engine = Animals()
     >>> fig = plt.figure(tight_layout=True, facecolor="#00000000")
     >>> ax = plt.gca()
-    >>> plot.state(
-    ...    engine,
-    ...    7,
-    ...    view_gap=13,
-    ...    cat_gap=3,
-    ...    ax=ax,
-    ... )
+    >>> plot.state(engine, 7, ax=ax)
     >>> _ = plt.axis("off")
     >>> plt.show()
-
 
     Render a satellites State, which has continuous, categorial and
     missing data
@@ -400,6 +384,17 @@ def state(
         cmap = "gray_r"
 
     n_rows, n_cols = engine.shape
+
+    if isinstance(cat_gap, float):
+        assert cat_gap >= 0.0
+        assert cat_gap <= 1.0
+        cat_gap = ceil(n_rows * cat_gap)
+
+    if isinstance(view_gap, float):
+        assert view_gap >= 0.0
+        assert view_gap <= 1.0
+        view_gap = ceil(n_cols * view_gap)
+
     col_asgn = engine.column_assignment(state_ix)
     row_asgns = engine.row_assignments(state_ix)
 
@@ -482,7 +477,7 @@ def state(
 
             ax.text(
                 col_start + view_counts[view_ix] / 2.0 - 0.5,
-                row_start + cat_counts[cat_ix] + cat_gap * 0.15,
+                row_start + cat_counts[cat_ix] + cat_gap * 0.25,
                 f"$C_{{{cat_ix}}}$",
                 ha="center",
                 va="center",
@@ -508,6 +503,125 @@ def state(
         zs = np.hstack((zs, np.zeros((zs.shape[0], margin, 4))))
 
     ax.matshow(zs, aspect=aspect)
+
+
+def _colors_from_values(values, cmap):
+    # normalize the values to range [0, 1]
+    normalized = (values - min(values)) / (max(values) - min(values))
+    # convert to indices
+    indices = np.round(normalized * (len(values) - 1)).astype(np.int32)
+    # use the indices to get the colors
+    palette = sns.color_palette(cmap, len(values))
+    return np.array(palette).take(indices, axis=0)
+
+
+def prediction_explanation(
+    engine: "Engine",
+    target: Union[int, str],
+    given: dict[Union[str, int], Any],
+    *,
+    method: Optional[str] = None,
+    cmap=None,
+):
+    r"""
+    Plot prediction explanations.
+
+    Parameters
+    ----------
+    engine: lace.Engine
+        The source engine
+    target: str, int
+        The target variable -- the variable to predict
+    given: Dict[index, value], optional
+        A dictionary mapping column indices/name to values, which specifies
+        conditions on the observations.
+    method: str, optional (default: 'ablative-err')
+        The method to use for explanation:
+        * 'ablative-err' (default): computes the different between p(y|X) and
+          p(x|X - xᵢ) for each predictor xᵢ in the `given`, X.
+        * 'ablative-dist': computed the error between the predictions (argmax)
+          of p(y|X) and p(x|X - xᵢ) for each predictor xᵢ in the `given`, X. Note
+          that this method does not support categorical targets.
+    cmap: plotly color_continuous_scale (default: 'picnic')
+        Argument forwarded to the `color_continuous_scale` argument of
+        plotly.bar.
+
+    Returns
+    -------
+    data: pandas.Series
+        The column importances
+    fig: plotly.Figure
+        The figure
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from lace.examples import Satellites
+    >>> from lace.plot import prediction_explanation
+    >>> engine = Satellites()
+
+    Define a target
+
+    >>> target = 'Period_minutes'
+
+    We'll use a row from the data
+
+    >>> row = engine[5, :].to_dicts()[0]
+    >>> ix = row.pop('index')
+    >>> _ = row.pop(target)
+    >>> given = { k: v for k, v in row.items() if v is not None }
+
+    Plot the explanation using the 'ablative-dist' method
+
+    >>> data, fig = prediction_explanation(
+    ...     engine,
+    ...     target,
+    ...     given,
+    ...     method='ablative-dist'
+    ... )
+    >>> fig.show()
+    """
+    if method is None:
+        method = "ablative-err"
+
+    if cmap is None:
+        cmap = "picnic"
+
+    cols, imps = analysis.explain_prediction(
+        engine, target, given, method=method
+    )
+
+    srs = pd.Series(imps, index=cols, name=method)
+
+    srs = srs.sort_values(ascending=True)
+
+    colors = []
+    xmin = abs(srs.min())
+    xmax = srs.max()
+
+    for x in srs:
+        if x > 0:
+            colors.append(x / xmax)
+        else:
+            colors.append(x / xmin)
+
+    fig = px.bar(
+        srs,
+        text_auto=".2s",
+        color=colors,
+        color_continuous_scale=cmap,
+        orientation="h",
+    )
+    fig.add_vline(0)
+    fig.update_coloraxes(showscale=False)
+    fig.update_layout(
+        paper_bgcolor="rgba(0, 0, 0, 0)",
+        plot_bgcolor="rgba(0, 0, 0, 0)",
+        xaxis_title=method,
+        yaxis_title="Predictor",
+    )
+
+    return srs, fig
 
 
 if __name__ == "__main__":

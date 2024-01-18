@@ -11,7 +11,7 @@ mod enum_test;
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use lace_utils::logsumexp;
+use lace_stats::rv::misc::logsumexp;
 use rand::Rng;
 
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};

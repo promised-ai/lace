@@ -1,6 +1,6 @@
 [package]
 name = "lace_codebook"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Promised.ai"]
 edition = "2021"
 license = "BUSL-1.1"
@@ -9,8 +9,8 @@ repository = "https://github.com/promised-ai/lace"
 description = "Contains the Lace codebook specification as well as utilities for generating defaults"
 
 [dependencies]
-lace_consts = { path = "../lace_consts", version = "0.2.0" }
-lace_stats = { path = "../lace_stats", version = "0.2.0" }
+lace_consts = { path = "../lace_consts", version = "0.2.1" }
+lace_stats = { path = "../lace_stats", version = "0.2.1" }
 lace_utils = { path = "../lace_utils", version = "0.2.0" }
 lace_data = { path = "../lace_data", version = "0.2.0" }
 serde = { version = "1", features = ["derive"] }

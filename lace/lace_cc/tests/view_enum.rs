@@ -5,7 +5,7 @@ mod enum_test;
 
 use std::collections::BTreeMap;
 
-use lace_utils::logsumexp;
+use lace_stats::rv::misc::logsumexp;
 use rand::Rng;
 
 use enum_test::{

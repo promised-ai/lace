@@ -10,10 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `plot.state` function in pylace to render PCC states
+- Added `analysis.explain_prediction` in pylace to explain predictions
+- Added `plot.prediction_explanation` in pylace to render prediction explanations
+- Added `analysis.held_out_uncertainty` in pylace
+- Added `analysis.attributable_[neglogp | inconsistrncy | uncertainty]` in pylace to quantify the amount of surprisal (neglogp), inconsistency, and uncertainty attributable to other features
 
 ### Changed
 
 - Updated all packages to have the correct SPDX for the Business Source License
+- Removed internal implimentation of `logsumexp` in favor of `rv::misc::logsumexp`
+- Update to rv 0.16.2
+- Impute and prediction uncertainty are the mean total variation distance between each state's distribution and the average distribution divided by the potential max: `(n-1) / n`, where `n` is the number of states. This normalization is meant to ensure that the interpretation is the same regardless of the number of states -- zero is lowest, one is highest.
+- Bump min rust version to `1.62` to support `f64::total_cmp`
 
 ### Fixed
 

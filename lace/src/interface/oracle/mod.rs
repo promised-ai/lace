@@ -83,38 +83,6 @@ impl MiComponents {
     }
 }
 
-/// The type of uncertainty to use for `Oracle.impute`
-#[derive(
-    Serialize,
-    Deserialize,
-    Debug,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash,
-)]
-#[serde(rename_all = "snake_case")]
-pub enum ImputeUncertaintyType {
-    /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
-    /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
-    PairwiseKl,
-    /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
-    /// number of distributions
-    JsDivergence,
-}
-
-/// The type of uncertainty to use for `Oracle.predict`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
-pub enum PredictUncertaintyType {
-    /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
-    /// number of distributions
-    JsDivergence,
-}
-
 /// The variant on conditional entropy to compute
 #[derive(
     Serialize,
@@ -407,22 +375,11 @@ mod tests {
     }
 
     #[test]
-    fn kl_impute_uncertainty_smoke() {
+    fn impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
-        let u =
-            oracle._impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
+        let u = oracle._impute_uncertainty(0, 1);
         assert!(u > 0.0);
-    }
-
-    #[test]
-    fn js_impute_uncertainty_smoke() {
-        let oracle = get_oracle_from_yaml();
-        let u = oracle._impute_uncertainty(
-            0,
-            1,
-            ImputeUncertaintyType::JsDivergence,
-        );
-        assert!(u > 0.0);
+        assert!(u < 1.0);
     }
 
     #[test]
@@ -430,6 +387,7 @@ mod tests {
         let oracle = get_oracle_from_yaml();
         let u = oracle._predict_uncertainty(0, &Given::Nothing, None);
         assert!(u > 0.0);
+        assert!(u < 1.0);
     }
 
     #[test]
@@ -438,6 +396,7 @@ mod tests {
         let given = Given::Conditions(vec![(1, Datum::Continuous(2.5))]);
         let u = oracle._predict_uncertainty(0, &given, None);
         assert!(u > 0.0);
+        assert!(u < 1.0);
     }
 
     #[test]

@@ -21,6 +21,7 @@ mod perm;
 pub mod prior;
 pub mod seq;
 mod simplex;
+pub mod uncertainty;
 
 mod sample_error;
 

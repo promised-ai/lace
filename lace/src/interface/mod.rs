@@ -14,9 +14,8 @@ pub use lace_metadata::latest::Metadata;
 pub use oracle::utils;
 
 pub use oracle::{
-    ConditionalEntropyType, DatalessOracle, ImputeUncertaintyType,
-    MiComponents, MiType, Oracle, OracleT, PredictUncertaintyType,
-    RowSimilarityVariant,
+    ConditionalEntropyType, DatalessOracle, MiComponents, MiType, Oracle,
+    OracleT, RowSimilarityVariant,
 };
 
 pub use given::Given;
