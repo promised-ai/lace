@@ -232,7 +232,7 @@ fn uint_coltype(
     cat_cutoff: Option<u8>,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    let x_max: u64 = srs.max()?.unwrap();
+    let x_max: u64 = srs.max().unwrap().unwrap();
     let maxval = cat_cutoff.unwrap_or(DEFAULT_CAT_CUTOFF) as u64;
     if x_max >= maxval {
         count_coltype(srs, no_hypers)
@@ -246,7 +246,7 @@ fn int_coltype(
     cat_cutoff: Option<u8>,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    let x_min: i64 = srs.min()?.unwrap();
+    let x_min: i64 = srs.min().unwrap().unwrap();
     if x_min < 0 {
         continuous_coltype(srs, no_hypers)
     } else {

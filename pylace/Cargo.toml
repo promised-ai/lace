@@ -13,11 +13,11 @@ lace = { path = "../lace", version="0.6.0" }
 lace_utils = { path = "../lace/lace_utils", version="0.2.0" }
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
-pyo3 = { version = "0.19", features = ["extension-module"] }
+pyo3 = { version = "0.20", features = ["extension-module"] }
 serde_json = "1.0.91"
 serde_yaml = "0.9.17"
-polars = "0.34"
-polars-arrow = "0.34.2"
+polars = "0.36"
+polars-arrow = "0.36.2"
 
 [package.metadata.maturin]
 name = "lace.core"

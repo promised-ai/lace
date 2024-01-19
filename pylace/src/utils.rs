@@ -206,12 +206,12 @@ pub(crate) fn coltype_to_ftype(col_type: &ColType) -> FType {
 
 pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
     let n_mc_samples: Option<usize> = dict
-        .get_item("n_mc_samples")
+        .get_item("n_mc_samples")?
         .map(|any| any.extract::<usize>())
         .transpose()?;
 
     let mi_type: Option<String> = dict
-        .get_item("mi_type")
+        .get_item("mi_type")?
         .map(|any| any.extract::<String>())
         .transpose()?;
 
@@ -223,11 +223,11 @@ pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
 
 pub(crate) fn rowsim_args_from_dict(dict: &PyDict) -> PyResult<RowsimArgs> {
     let col_weighted: Option<bool> = dict
-        .get_item("col_weighted")
+        .get_item("col_weighted")?
         .map(|any| any.extract::<bool>())
         .transpose()?;
 
-    let wrt: Option<&PyAny> = dict.get_item("wrt");
+    let wrt: Option<&PyAny> = dict.get_item("wrt")?;
 
     Ok(RowsimArgs {
         wrt,
