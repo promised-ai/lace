@@ -755,7 +755,10 @@ pub(crate) fn maybe_add_categories<R: RowIndex, C: ColumnIndex>(
                                     }
                                     Ok(())
                                 },
-                                (Datum::Missing, _) => Ok(()),
+                                (Datum::Missing, _) |
+                                (Datum::Categorical(Category::Bool(_)), ValueMap::Bool) => {
+                                    Ok(())
+                                },
                                 _ => {
                                     Err(
                                     InsertDataError::DatumIncompatibleWithColumn {
@@ -1064,9 +1067,13 @@ pub(crate) fn check_if_removes_row(
 
 #[cfg(test)]
 mod tests {
+    use crate::data::data_source;
+
     use super::*;
 
     use lace_codebook::{ColMetadata, ColType, ValueMap};
+    use lace_stats::prior::csd::CsdHyper;
+    use rand::SeedableRng;
 
     #[cfg(feature = "examples")]
     mod requiring_examples {
@@ -1695,5 +1702,65 @@ mod tests {
             }
             _ => panic!("should've been categorical with valmap"),
         };
+    }
+
+    #[test]
+    fn append_bool() {
+        let coltype = ColType::Categorical {
+            k: 2,
+            hyper: Some(CsdHyper::default()),
+            prior: None,
+            value_map: ValueMap::Bool,
+        };
+        let md0 = ColMetadata {
+            name: "bool_col".to_string(),
+            coltype: coltype.clone(),
+            notes: None,
+            missing_not_at_random: false,
+        };
+
+        let mut engine = Engine::new(
+            1,
+            Codebook::new(
+                "test".to_string(),
+                ColMetadataList::new(vec![]).unwrap(),
+            ),
+            data_source::DataSource::Empty,
+            0,
+            rand_xoshiro::Xoshiro256Plus::seed_from_u64(0x1234),
+        )
+        .unwrap();
+
+        // Insert once with specific metadata.
+        engine
+            .insert_data(
+                vec![(
+                    "abc",
+                    vec![(
+                        "bool_col",
+                        Datum::Categorical(Category::Bool(false)),
+                    )],
+                )
+                    .into()],
+                Some(ColMetadataList::new(vec![md0]).unwrap()),
+                WriteMode::unrestricted(),
+            )
+            .unwrap();
+
+        // Insert again without metadata for the bool column.
+        engine
+            .insert_data(
+                vec![(
+                    "def",
+                    vec![(
+                        "bool_col",
+                        Datum::Categorical(Category::Bool(false)),
+                    )],
+                )
+                    .into()],
+                None,
+                WriteMode::unrestricted(),
+            )
+            .unwrap();
     }
 }
