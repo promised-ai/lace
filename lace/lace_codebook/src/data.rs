@@ -156,8 +156,8 @@ macro_rules! series_to_opt_strings {
             polars::prelude::DataType::Float64 => {
                 sts_arm!($srs, f64).collect::<Vec<Option<String>>>()
             }
-            polars::prelude::DataType::Utf8 => {
-                sts_arm!($srs, utf8).collect::<Vec<Option<String>>>()
+            polars::prelude::DataType::String => {
+                sts_arm!($srs, str).collect::<Vec<Option<String>>>()
             }
             _ => {
                 return Err($crate::CodebookError::UnableToInferColumnType {
@@ -210,8 +210,8 @@ macro_rules! series_to_strings {
             polars::prelude::DataType::Float64 => {
                 sts_arm!($srs, f64).flatten().collect::<Vec<String>>()
             }
-            polars::prelude::DataType::Utf8 => {
-                sts_arm!($srs, utf8).flatten().collect::<Vec<String>>()
+            polars::prelude::DataType::String => {
+                sts_arm!($srs, str).flatten().collect::<Vec<String>>()
             }
             _ => {
                 return Err($crate::CodebookError::UnableToInferColumnType {
@@ -232,7 +232,7 @@ fn uint_coltype(
     cat_cutoff: Option<u8>,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    let x_max: u64 = srs.max().unwrap();
+    let x_max: u64 = srs.max()?.unwrap();
     let maxval = cat_cutoff.unwrap_or(DEFAULT_CAT_CUTOFF) as u64;
     if x_max >= maxval {
         count_coltype(srs, no_hypers)
@@ -246,7 +246,7 @@ fn int_coltype(
     cat_cutoff: Option<u8>,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    let x_min: i64 = srs.min().unwrap();
+    let x_min: i64 = srs.min()?.unwrap();
     if x_min < 0 {
         continuous_coltype(srs, no_hypers)
     } else {
@@ -319,7 +319,7 @@ fn string_categorical_coltype(
     } else {
         let unique: BTreeSet<String> = srs
             .unique()?
-            .utf8()?
+            .str()?
             .into_iter()
             .filter_map(|x| x.map(String::from))
             .collect();
@@ -370,7 +370,7 @@ pub fn series_to_colmd(
         DataType::Int64 => int_coltype(srs, cat_cutoff, no_hypers),
         DataType::Float32 => continuous_coltype(srs, no_hypers),
         DataType::Float64 => continuous_coltype(srs, no_hypers),
-        DataType::Utf8 => string_categorical_coltype(srs, no_hypers),
+        DataType::String => string_categorical_coltype(srs, no_hypers),
         DataType::Null => Err(CodebookError::BlankColumn {
             col_name: name.clone(),
         }),

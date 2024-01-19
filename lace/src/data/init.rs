@@ -140,7 +140,7 @@ fn categorical_col_model<R: rand::Rng>(
 ) -> Result<ColModel, CodebookError> {
     use polars::datatypes::DataType;
     let xs: Vec<Option<u8>> = match (value_map, srs.dtype()) {
-        (ValueMap::String(map), DataType::Utf8) => {
+        (ValueMap::String(map), DataType::String) => {
             crate::codebook::data::series_to_opt_strings!(srs)
                 .iter()
                 .map(|val| val.as_ref().map(|s| map.ix(s).unwrap() as u8))

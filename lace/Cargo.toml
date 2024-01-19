@@ -59,7 +59,7 @@ thiserror = "1.0.19"
 indicatif = "0.17.0"
 ctrlc = { version = "3.2.1", optional = true }
 flate2 = "1.0.23"
-polars = { version = "0.34", default_features=false, features=["csv", "dtype-i8", "dtype-i16", "dtype-u8", "dtype-u16"] }
+polars = { version = "0.36", default_features=false, features=["csv", "dtype-i8", "dtype-i16", "dtype-u8", "dtype-u16"] }
 
 [dev-dependencies]
 clap = { version = "4.3.17", features = ["derive"] }
