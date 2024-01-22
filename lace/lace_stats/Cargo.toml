@@ -15,18 +15,14 @@ lace_consts = { path = "../lace_consts", version = "0.2.1" }
 lace_data = { path = "../lace_data", version = "0.2.0" }
 special = "0.10"
 rand = {version="0.8", features=["serde1"]}
-rand_xoshiro = "0.6"
-itertools = "0.11"
+itertools = "0.12"
 serde = { version = "1", features = ["derive"] }
-regex = "1.6.0"
 thiserror = "1.0.11"
 
 [dev-dependencies]
 approx = "0.5.1"
 criterion = "0.5"
-maplit = "1"
 rand_distr = "0.4"
-serde_json = "1"
 
 [[bench]]
 name = "seq"

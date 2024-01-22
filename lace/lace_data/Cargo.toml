@@ -12,10 +12,7 @@ description = "Data definitions and data container definitions for Lace"
 lace_utils = { path = "../lace_utils", version = "0.2.0" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0.19"
-regex = "1"
 
 [dev-dependencies]
 approx = "0.5.1"
-rand = {version="0.8", features=["serde1"]}
-criterion = "0.5"
 serde_json = "1"
