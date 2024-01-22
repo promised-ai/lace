@@ -23,10 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated all packages to have the correct SPDX for the Business Source License
 - Changed to using total variation distance for uncertainty prediction (see docs)
+- Updated dependencies:
+  - `numpy`: 1.21 -> 1.26
+  - `polars`: 0.16.14 -> 0.20.5
+  - `scipy`: 1.7 -> 1.11
+  - `plotly`: 5.14 -> 5.18
+  - `pyarrow`: 11 -> 14
+- Added new dependencies: `seaborn`, `matplotlib`
 
 ### Fixed
 
 - Fixed issue that would cause random row order when indexing pylace Engines by a single (column) index, e.g., engine['column'] would return the columns in a different order every time the engine was loaded
+- Fixed bug in appending data with a boolean column
 
 ## [rust-0.6.0] - 2024-01-23
 
