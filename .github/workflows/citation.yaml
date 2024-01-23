@@ -33,7 +33,7 @@ jobs:
 
             - name: Verify CITATION.cff date field
               run: |
-                LAST_RELEASE=$(git describe --abbrev=0  --match="rust-*" --match="python-*" HEAD)
+                LAST_RELEASE=$(git describe --abbrev=0  --match="rust-*" --match="python-*" HEAD~1)
                 LAST_RELEASE_DATE=$(git cat-file -p $LAST_RELEASE:CITATION.cff | cffconvert -f schema.org | jq -r .datePublished)
                 CURRENT_RELEASE_DATE=$(cffconvert -f schema.org | jq -r .datePublished)
-                [[ "$BAR" > "$FOO" ]]
+                [[ ! "$CURRENT_RELEASE_DATE" < "$LAST_RELEASE_DATE" ]]
