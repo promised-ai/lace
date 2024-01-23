@@ -7,25 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.6.0] - 2024-01-23
+
 ### Added
 
-- Added `plot.state` function in pylace to render PCC states
-- Added `analysis.explain_prediction` in pylace to explain predictions
-- Added `plot.prediction_explanation` in pylace to render prediction explanations
-- Added `analysis.held_out_uncertainty` in pylace
-- Added `analysis.attributable_[neglogp | inconsistrncy | uncertainty]` in pylace to quantify the amount of surprisal (neglogp), inconsistency, and uncertainty attributable to other features
+- Added support for Python 3.12
+- Added `plot.state` function to render PCC states
+- Added `analysis.explain_prediction` to explain predictions
+- Added `plot.prediction_explanation` to render prediction explanations
+- Added `analysis.held_out_uncertainty`
+- Added `analysis.attributable_[neglogp | inconsistrncy | uncertainty]` to quantify the amount of surprisal (neglogp), inconsistency, and uncertainty attributable to other features
+- Added `utils.predict_xs`
+
+### Changed
+
+- Updated all packages to have the correct SPDX for the Business Source License
+- Changed to using total variation distance for uncertainty prediction (see docs)
+- Updated dependencies:
+  - `numpy`: 1.21 -> 1.26
+  - `polars`: 0.16.14 -> 0.20.5
+  - `scipy`: 1.7 -> 1.11
+  - `plotly`: 5.14 -> 5.18
+  - `pyarrow`: 11 -> 14
+- Added new dependencies: `seaborn`, `matplotlib`
+
+### Fixed
+
+- Fixed issue that would cause random row order when indexing pylace Engines by a single (column) index, e.g., engine['column'] would return the columns in a different order every time the engine was loaded
+- Fixed bug in appending data with a boolean column
+
+## [rust-0.6.0] - 2024-01-23
 
 ### Changed
 
 - Updated all packages to have the correct SPDX for the Business Source License
 - Removed internal implimentation of `logsumexp` in favor of `rv::misc::logsumexp`
-- Update to rv 0.16.2
-- Impute and prediction uncertainty are the mean total variation distance between each state's distribution and the average distribution divided by the potential max: `(n-1) / n`, where `n` is the number of states. This normalization is meant to ensure that the interpretation is the same regardless of the number of states -- zero is lowest, one is highest.
+- Changed to using total variation distance for uncertainty prediction (see docs)
 - Bump min rust version to `1.62` to support `f64::total_cmp`
+- Update to rv 0.16.2
+- Update to Polars 0.36
 
 ### Fixed
 
-- Fixed issue that would cause random row order when indexing pylace Engines by a single (column) index, e.g., engine['column'] would return the columns in a different order every time the engine was loaded
+- Fixed bug in appending data with a boolean column
 
 ## [python-0.5.0] - 2023-11-20
 
@@ -203,7 +227,9 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.5.0...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.6.0...HEAD
+[python-0.6.0]: https://github.com/promised-ai/lace/compare/python-0.5.0...python-0.6.0
+[rust-0.6.0]: https://github.com/promised-ai/lace/compare/rust-0.5.0...rust-0.6.0
 [python-0.5.0]: https://github.com/promised-ai/lace/compare/python-0.4.1...python-0.5.0
 [rust-0.5.0]: https://github.com/promised-ai/lace/compare/rust-0.4.1...rust-0.5.0
 [python-0.4.1]: https://github.com/promised-ai/lace/compare/python-0.4.0...python-0.4.1
