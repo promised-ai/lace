@@ -1746,6 +1746,57 @@ class Engine:
         """
         return self.engine.predict(target, given, state_ixs, with_uncertainty)
 
+    def variability(
+        self,
+        target: Union[str, int],
+        given: Optional[Dict[Union[str, int], object]] = None,
+        state_ixs: Optional[List[int]] = None,
+    ):
+        """
+        Return the variability of a conditional distribution.
+
+        "Variability" is variance for target types with defined mean and
+        variance and is entropy otherwise.
+
+        Parameters
+        ----------
+        target: column index
+            The column for which to return the variability
+        given: Dict[column index, value], optional
+            Column -> Value dictionary describing observations. Note that
+            columns can either be indices (int) or names (str)
+        state_ixs: List[int], optional
+            An optional list specifying which states should be used in the
+            computation. If `None` (default), use all states.
+
+        Returns
+        -------
+        float
+            The variance or entropy (for categorical targets)
+
+        Examples
+        --------
+        Compute the variance of the Period_minutes column unconditioned
+
+        >>> from lace.examples import Satellites
+        >>> sats = Satellites()
+        >>> sats.variability("Period_minutes")
+        691324.3941953736
+
+        Compute the variance of Period_minutes for geosynchronous satellite
+
+        >>> sats.variability("Period_minutes", given={"Class_of_Orbit": "GEO"})
+        136818.61181890886
+
+        Compute the entropy of Class_of_orbit
+
+        >>> sats.variability("Class_of_Orbit")
+        0.9362550555890782
+        >>> sats.variability("Class_of_Orbit", given={"Period_minutes": 1440.0})
+        0.01569677151657056
+        """
+        return self.engine.variability(target, given, state_ixs)
+
     def impute(
         self,
         col: Union[str, int],

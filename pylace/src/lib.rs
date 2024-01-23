@@ -953,6 +953,22 @@ impl CoreEngine {
         }
     }
 
+    #[pyo3(signature=(target, given=None, state_ixs=None))]
+    fn variability(
+        &self,
+        target: &PyAny,
+        given: Option<&PyDict>,
+        state_ixs: Option<Vec<usize>>,
+    ) -> PyResult<f64> {
+        let col_ix = value_to_index(target, &self.col_indexer)?;
+        let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
+        let val = self
+            .engine
+            .variability(col_ix, &given, state_ixs.as_deref())
+            .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
+        Ok(val.into())
+    }
+
     /// Forward the Markov chains
     ///
     /// Parameters

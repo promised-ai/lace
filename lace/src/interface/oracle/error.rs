@@ -179,6 +179,17 @@ pub enum PredictError {
     GivenError(#[from] GivenError),
 }
 
+/// Describes errors that can occur from bad inputs to `Oracle::variability`
+#[derive(Debug, Clone, PartialEq, Error)]
+pub enum VariabilityError {
+    /// The target column index is out of bounds
+    #[error("Target index error in predict query: {0}")]
+    IndexError(#[from] IndexError),
+    /// The Given is invalid
+    #[error("Invalid predict 'given' argument: {0}")]
+    GivenError(#[from] GivenError),
+}
+
 /// Describes errors that arise from invalid predict uncertainty arguments
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum PredictUncertaintyError {
@@ -192,7 +203,7 @@ pub enum PredictUncertaintyError {
 
 /// Describes errors from incompatible `col_max_logp` caches
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
-pub enum ColumnMaxiumLogPError {
+pub enum ColumnMaximumLogPError {
     /// The state indices used to compute the cache do not match those passed to the function.
     #[error("The state indices used to compute the cache do not match those passed to the function.")]
     InvalidStateIndices,
@@ -247,7 +258,7 @@ pub enum LogpError {
     #[error("Invalid logp 'given' argument: {0}")]
     GivenError(#[from] GivenError),
     #[error("Invalid `col_max_logps` argument: {0}")]
-    ColumnMaxiumLogPError(#[from] ColumnMaxiumLogPError),
+    ColumnMaximumLogPError(#[from] ColumnMaximumLogPError),
 }
 
 /// Describes errors from bad inputs to Oracle::simulate
