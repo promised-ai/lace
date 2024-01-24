@@ -5,7 +5,6 @@ on:
   push:
     tags:
       - rust-*
-      - python-*
 
 jobs:
     Validate-CITATION-cff:
@@ -33,7 +32,10 @@ jobs:
 
             - name: Verify CITATION.cff date field
               run: |
-                LAST_RELEASE=$(git describe --abbrev=0  --match="rust-*" --match="python-*" HEAD~1)
+                LAST_RELEASE=$(git describe --abbrev=0  --match="rust-*" HEAD~1)
+                echo $LAST_RELEASE
                 LAST_RELEASE_DATE=$(git cat-file -p $LAST_RELEASE:CITATION.cff | cffconvert -f schema.org | jq -r .datePublished)
                 CURRENT_RELEASE_DATE=$(cffconvert -f schema.org | jq -r .datePublished)
-                [[ ! "$CURRENT_RELEASE_DATE" < "$LAST_RELEASE_DATE" ]]
+                echo $CURRENT_RELEASE_DATE $LAST_RELEASE_DATE
+                # Verify that the release date was updated since the last release
+                [[ "$CURRENT_RELEASE_DATE" > "$LAST_RELEASE_DATE" ]]
