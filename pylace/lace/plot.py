@@ -42,7 +42,8 @@ def diagnostics(
 
     >>> from lace.examples import Satellites
     >>> from lace.plot import diagnostics
-    >>> diagnostics(Satellites(), log_x=True).show()
+    >>> diagnostics(Satellites(), log_x=True).show()  # doctest:+ELLIPSIS
+    {...}
     """
     diag = engine.diagnostics(name)
     step = np.arange(diag.shape[0])
@@ -122,7 +123,8 @@ def prediction_uncertainty(
     ...     "Period_minutes",
     ...     given={"Class_of_Orbit": "GEO"},
     ... )
-    >>> fig.show()
+    >>> fig.show()  # doctest:+ELLIPSIS
+    {...}
 
     Narrow down the range for visualization
 
@@ -134,7 +136,8 @@ def prediction_uncertainty(
     ...     given={"Class_of_Orbit": "GEO"},
     ...     xs=pl.Series("Period_minutes", np.linspace(1350, 1500, 500)),
     ... )
-    >>> fig.show()
+    >>> fig.show()  # doctest:+ELLIPSIS
+    {...}
 
     Visualize uncertainty for a categorical target
 
@@ -143,7 +146,8 @@ def prediction_uncertainty(
     ...     "Class_of_Orbit",
     ...     given={"Period_minutes": 1326.0},
     ... )
-    >>> fig.show()
+    >>> fig.show()  # doctest:+ELLIPSIS
+    {...}
     """
     pred, unc = engine.predict(target, given=given)
 
@@ -579,7 +583,8 @@ def prediction_explanation(
     ...     given,
     ...     method='ablative-dist'
     ... )
-    >>> fig.show()
+    >>> fig.show()  # doctest:+ELLIPSIS
+    {...}
     """
     if method is None:
         method = "ablative-err"
@@ -622,9 +627,3 @@ def prediction_explanation(
     )
 
     return srs, fig
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

@@ -1234,7 +1234,8 @@ class Engine:
         ...         xaxis_title='Period_minutes',
         ...         yaxis_title='f(Period)',
         ...     ) \
-        ...     .show()
+        ...     .show()  # doctest: +ELLIPSIS
+        {...}
         """
         srs = (
             self.engine.logp_scaled(values, given, state_ixs)
@@ -2194,7 +2195,7 @@ class Engine:
         │ wolf  ┆ rat   ┆ 0.71689  │
         │ wolf  ┆ otter ┆ 0.492262 │
         │ rat   ┆ wolf  ┆ 0.71689  │
-        │ …     ┆ …     ┆ …        │
+        │ rat   ┆ rat   ┆ 1.0      │
         │ rat   ┆ otter ┆ 0.613095 │
         │ otter ┆ wolf  ┆ 0.492262 │
         │ otter ┆ rat   ┆ 0.613095 │
@@ -2218,7 +2219,7 @@ class Engine:
         │ wolf  ┆ rat   ┆ 0.642647 │
         │ wolf  ┆ otter ┆ 0.302206 │
         │ rat   ┆ wolf  ┆ 0.642647 │
-        │ …     ┆ …     ┆ …        │
+        │ rat   ┆ rat   ┆ 1.0      │
         │ rat   ┆ otter ┆ 0.491176 │
         │ otter ┆ wolf  ┆ 0.302206 │
         │ otter ┆ rat   ┆ 0.491176 │
@@ -2302,7 +2303,8 @@ class Engine:
         >>> animals = Animals()
         >>> animals.clustermap(
         ...     "depprob", zmin=0, zmax=1, color_continuous_scale="greys"
-        ... ).figure.show()
+        ... ).figure.show() # doctest:+ELLIPSIS
+        {...}
 
         Use the ``fn_kwargs`` keyword argument to pass keyword arguments to the
         target function.
@@ -2313,7 +2315,8 @@ class Engine:
         ...     zmax=1,
         ...     color_continuous_scale="greys",
         ...     fn_kwargs={"wrt": ["swims"]},
-        ... ).figure.show()
+        ... ).figure.show() # doctest:+ELLIPSIS
+        {...}
         """
         if fn_kwargs is None:
             fn_kwargs = {}
@@ -2333,9 +2336,3 @@ class Engine:
             return ClusterMap(df, linkage, fig)
         else:
             return ClusterMap(df, linkage)
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()
