@@ -22,7 +22,7 @@ graph TD;
 </div>
 </center>
 
- all three columns will be in the same view since Z is dependent on both X and Y, so there will be a high dependence probability between X and Y even though they are statistically dependent, but they are dependent given Z.
+ all three columns will be in the same view since Z is dependent on both X and Y, so there will be a high dependence probability between X and Y even though they are statistically independent, but they are dependent given Z.
 
 Dependence probability is the go-to for structure modeling because it is fast to compute and well-behaved for all data. If you need more information about the strength of dependencies, use mutual information.
 
