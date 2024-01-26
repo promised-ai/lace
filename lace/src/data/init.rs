@@ -287,17 +287,14 @@ pub fn df_to_col_models<R: rand::Rng>(
         })
         .collect::<Result<_, DataParseError>>()?;
 
-    if col_models
-        .iter()
-        .any(|cm| cm.len() != codebook.row_names.len())
-    {
-        dbg!(
-            col_models.iter().map(|cm| cm.len()).collect::<Vec<_>>(),
-            codebook.row_names.len()
-        );
-        // FIXME!
-        // return Err(CsvParseError::CodebookAndDataRowMismatch);
+    let n_codebook_rows = codebook.row_names.len();
+    if let Some(cm) = col_models.iter().find(|cm| cm.len() != n_codebook_rows) {
+        return Err(DataParseError::CodebookAndDataRowsMismatch {
+            n_codebook_rows,
+            n_data_rows: cm.len(),
+        });
     }
+
     Ok((codebook, col_models))
 }
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `DataParseError::CodebookAndDataRowsMismatch` variant for when the number of rows in the codebook and the number of rows in the data do not match.
+
+### Fixed
+- Initializing an engine with a codebook that has a different number of rows than the data will result in an error instead of printing a bunch on nonsense.
+
 ## [python-0.6.0] - 2024-01-23
 
 ### Added
