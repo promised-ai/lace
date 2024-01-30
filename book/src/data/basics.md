@@ -3,7 +3,7 @@
 Compared with many other machine learning tools, lace has very few requirements
 for data: data columns may be integer, continuous, or categorical string types;
 empty cells do not not need to be filled in; and the table must contain a
-string row index column labeled `ID`.
+string row index column labeled `ID` or `Index` (case-insensitive).
 
 ## Supported data types for inference
 
@@ -57,7 +57,7 @@ Lace currently accepts the following data formats
 - CSV
 - CSV.gz (gzipped CSV)
 - Parquet
-- IPC (feather v2)
+- IPC (Apache Arrow v2)
 - JSON (as output by the pandas function `df.to_json('mydata.json)`)
 - JSON Lines
 

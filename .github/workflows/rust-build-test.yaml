@@ -2,9 +2,6 @@ name: 'Rust: Build and Test'
 
 on:
   push:
-    branches:
-      - main
-      - master
     tags:
       - rust-*
   workflow_dispatch:
@@ -107,6 +104,7 @@ jobs:
           workspaces: . -> lace/target
     
       - name: Regen Examples
+        working-directory: cli
         env:
           RUSTFLAGS: -C debuginfo=0
         run: cargo run -- regen-examples
@@ -114,7 +112,7 @@ jobs:
       - name: Run tests
         env:
           RUSTFLAGS: -C debuginfo=0
-        run: cargo test 
+        run: cargo test --all-features
 
   # semver-checks:
   #   runs-on: ubuntu-latest
@@ -217,7 +215,7 @@ jobs:
           test "$DEPLOYING_VERSION" = "$MAIN_VERSION"
       - name: Install dependencies
         run: cargo install cargo-crate
-      - name: Publish Updated Crates to Crates.io
+      - name: Publish Updated Library Crates to Crates.io
         working-directory: lace
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
@@ -239,3 +237,14 @@ jobs:
               cargo publish --token "${CRATES_TOKEN}" -p $PACKAGE_NAME
             fi
           done
+      - name: Publish Updated CLI Crate to Crates.io
+        working-directory: cli
+        env:
+          CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
+        run: |
+          PACKAGE_VERSION=$(tomlq .package.version Cargo.toml)
+          ALREADY_PUBLISHED=$(cargo crate info lace-cli --json --max-versions 100 | jq '[.krate.versions[].num] | any(. == '$PACKAGE_VERSION')')
+          if [ "$ALREADY_PUBLISHED" == 'false' ]
+          then
+            cargo publish --token "${CRATES_TOKEN}" -p lace-cli
+          fi

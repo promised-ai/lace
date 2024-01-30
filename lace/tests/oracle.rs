@@ -1580,7 +1580,7 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.impute(4, 1, None),
+                    oracle.impute(4, 1, false),
                     Err(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
                         row_ix: 4,
@@ -1593,7 +1593,7 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.impute(1, 3, None),
+                    oracle.impute(1, 3, false),
                     Err(IndexError::ColumnIndexOutOfBounds {
                         n_cols: 3,
                         col_ix: 3,
@@ -1614,7 +1614,7 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.predict(3, &Given::<usize>::Nothing, None, None),
+                    oracle.predict(3, &Given::<usize>::Nothing, false, None),
                     Err(PredictError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
                             n_cols: 3,
@@ -1632,7 +1632,7 @@ macro_rules! oracle_test {
                     oracle.predict(
                         1,
                         &Given::Conditions(vec![(3, Datum::Continuous(1.2))]),
-                        None,
+                        false,
                         None
                     ),
                     Err(PredictError::GivenError(GivenError::IndexError(
@@ -1655,7 +1655,7 @@ macro_rules! oracle_test {
                             0,
                             Datum::Categorical(1_u8.into())
                         )]),
-                        None,
+                        false,
                         None,
                     ),
                     Err(PredictError::GivenError(GivenError::IndexError(
@@ -1676,7 +1676,7 @@ macro_rules! oracle_test {
                     oracle.predict(
                         0,
                         &Given::Conditions(vec![(0, Datum::Continuous(2.1))]),
-                        None,
+                        false,
                         None
                     ),
                     Err(PredictError::GivenError(

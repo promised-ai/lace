@@ -225,6 +225,54 @@ impl CountHyper {
 #[derive(Clone, Debug)]
 pub struct ValueMap(lace::codebook::ValueMap);
 
+#[pyclass]
+pub struct ValueMapIterator {
+    inner: lace::codebook::ValueMap,
+    ix: usize,
+}
+
+#[pymethods]
+impl ValueMapIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        use lace::codebook::ValueMap as Vm;
+        match slf.inner {
+            Vm::String(ref map) => {
+                if slf.ix >= map.len() {
+                    None
+                } else {
+                    let s = map.category(slf.ix);
+                    slf.ix += 1;
+                    Some(s.into_py(slf.py()))
+                }
+            }
+            Vm::U8(k) => {
+                if slf.ix >= k {
+                    None
+                } else {
+                    let c = slf.ix.into_py(slf.py());
+                    slf.ix += 1;
+                    Some(c)
+                }
+            }
+            Vm::Bool => {
+                if slf.ix == 0 {
+                    slf.ix += 1;
+                    Some(false.into_py(slf.py()))
+                } else if slf.ix == 1 {
+                    slf.ix += 1;
+                    Some(true.into_py(slf.py()))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
 #[pymethods]
 impl ValueMap {
     /// Create a map of ``k`` unsigned integers
@@ -272,6 +320,15 @@ impl ValueMap {
             }
             Vm::Bool => String::from("ValueMap (bool)"),
         }
+    }
+
+    fn values(slf: PyRef<'_, Self>) -> PyResult<Py<ValueMapIterator>> {
+        let iter = ValueMapIterator {
+            inner: slf.0.clone(),
+            ix: 0,
+        };
+
+        Py::new(slf.py(), iter)
     }
 }
 
@@ -420,6 +477,16 @@ impl ColumnMetadata {
 
     pub fn __repr__(&self) -> PyResult<String> {
         newtype_json_repr!(self)
+    }
+
+    #[getter]
+    pub fn value_map(&self) -> Option<ValueMap> {
+        match self.0.coltype {
+            ColType::Categorical { ref value_map, .. } => {
+                Some(ValueMap(value_map.clone()))
+            }
+            _ => None,
+        }
     }
 }
 

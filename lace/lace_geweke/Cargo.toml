@@ -1,16 +1,16 @@
 [package]
 name = "lace_geweke"
-version = "0.1.2"
+version = "0.2.1"
 authors = ["Promised AI"]
 edition = "2021"
-license = "SSPL-1.0"
+license = "BUSL-1.1"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
 description = "Geweke tester for Lace"
 
 [dependencies]
-lace_stats = { path = "../lace_stats", version = "0.1.2" }
-lace_utils = { path = "../lace_utils", version = "0.1.2" }
+lace_stats = { path = "../lace_stats", version = "0.2.1" }
+lace_utils = { path = "../lace_utils", version = "0.2.0" }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9.4"
 indicatif = "0.17"

@@ -4,6 +4,7 @@ use lace_metadata::SerializedType;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct SaveEngineConfig {
     pub path: std::path::PathBuf,
     pub ser_type: SerializedType,

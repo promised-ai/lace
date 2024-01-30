@@ -176,7 +176,7 @@ fn categorical_col_model<R: rand::Rng>(
 ) -> Result<ColModel, CodebookError> {
     use polars::datatypes::DataType;
     let xs: Vec<Option<u8>> = match (value_map, srs.dtype()) {
-        (ValueMap::String(map), DataType::Utf8) => {
+        (ValueMap::String(map), DataType::String) => {
             crate::codebook::data::series_to_opt_strings!(srs)
                 .iter()
                 .map(|val| val.as_ref().map(|s| map.ix(s).unwrap() as u8))
@@ -335,17 +335,14 @@ pub fn df_to_col_models<R: rand::Rng>(
         })
         .collect::<Result<_, DataParseError>>()?;
 
-    if col_models
-        .iter()
-        .any(|cm| cm.len() != codebook.row_names.len())
-    {
-        dbg!(
-            col_models.iter().map(|cm| cm.len()).collect::<Vec<_>>(),
-            codebook.row_names.len()
-        );
-        // FIXME!
-        // return Err(CsvParseError::CodebookAndDataRowMismatch);
+    let n_codebook_rows = codebook.row_names.len();
+    if let Some(cm) = col_models.iter().find(|cm| cm.len() != n_codebook_rows) {
+        return Err(DataParseError::CodebookAndDataRowsMismatch {
+            n_codebook_rows,
+            n_data_rows: cm.len(),
+        });
     }
+
     Ok((codebook, col_models))
 }
 

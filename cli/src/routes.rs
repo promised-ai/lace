@@ -5,7 +5,7 @@ use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
 use lace::stats::rv::dist::Gamma;
 use lace::update_handler::{CtrlC, ProgressBar, Timeout};
-use lace::{Builder, Engine};
+use lace::{Engine, EngineBuilder};
 
 use crate::opt;
 
@@ -85,7 +85,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
         return 1;
     };
 
-    let mut builder = Builder::new(data_source)
+    let mut builder = EngineBuilder::new(data_source)
         .with_nstates(cmd.nstates)
         .id_offset(cmd.id_offset);
 
@@ -216,7 +216,7 @@ macro_rules! codebook_from {
             return 1;
         }
 
-        let codebook = match lace::codebook::data::$fn(
+        let codebook = match lace::codebook::formats::$fn(
             $path,
             Some($cmd.category_cutoff),
             Some(alpha_prior),

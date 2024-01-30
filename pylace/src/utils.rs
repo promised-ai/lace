@@ -13,7 +13,7 @@ use pyo3::exceptions::{
 };
 use pyo3::prelude::*;
 use pyo3::types::{
-    PyAny, PyBool, PyDict, PyFloat, PyInt, PyList, PySlice, PyString, PyTuple,
+    PyAny, PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyTuple,
 };
 
 use crate::df::{PyDataFrame, PySeries};
@@ -90,7 +90,7 @@ fn slice_ixs(n: usize, slice: &PySlice) -> PyResult<Vec<IntOrString>> {
     let slice_ixs = slice.indices(n as c_long)?;
     let mut current = slice_ixs.start;
     let mut ixs = Vec::new();
-    while current != slice_ixs.stop {
+    while (ixs.len() as isize) < slice_ixs.slicelength {
         ixs.push(IntOrString::Int(current));
         current += slice_ixs.step;
     }
@@ -127,7 +127,7 @@ impl<'s> PyIndex<'s> {
                 ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
             }
             Self::Slice(slice) => {
-                let n = codebook.row_names.len();
+                let n = codebook.n_cols();
                 let ixs = slice_ixs(n, slice)?;
                 ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
             }
@@ -155,7 +155,7 @@ impl<'s> TableIndex<'s> {
                 let row_ixs = codebook
                     .row_names
                     .iter()
-                    .map(|(a, &b)| (b, a.clone()))
+                    .map(|(a, b)| (a, b.clone()))
                     .collect();
 
                 let col_ixs = ixs.col_ixs(codebook)?;
@@ -207,12 +207,12 @@ pub(crate) fn coltype_to_ftype(col_type: &ColType) -> FType {
 
 pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
     let n_mc_samples: Option<usize> = dict
-        .get_item("n_mc_samples")
+        .get_item("n_mc_samples")?
         .map(|any| any.extract::<usize>())
         .transpose()?;
 
     let mi_type: Option<String> = dict
-        .get_item("mi_type")
+        .get_item("mi_type")?
         .map(|any| any.extract::<String>())
         .transpose()?;
 
@@ -224,11 +224,11 @@ pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
 
 pub(crate) fn rowsim_args_from_dict(dict: &PyDict) -> PyResult<RowsimArgs> {
     let col_weighted: Option<bool> = dict
-        .get_item("col_weighted")
+        .get_item("col_weighted")?
         .map(|any| any.extract::<bool>())
         .transpose()?;
 
-    let wrt: Option<&PyAny> = dict.get_item("wrt");
+    let wrt: Option<&PyAny> = dict.get_item("wrt")?;
 
     Ok(RowsimArgs {
         wrt,
@@ -414,7 +414,7 @@ impl Indexer {
     pub(crate) fn rows(codebook: &Codebook) -> Self {
         let mut to_ix: HashMap<String, usize> = HashMap::new();
         let mut to_name: HashMap<usize, String> = HashMap::new();
-        codebook.row_names.iter().for_each(|(name, &ix)| {
+        codebook.row_names.iter().for_each(|(ix, name)| {
             to_ix.insert(name.clone(), ix);
             to_name.insert(ix, name.clone());
         });

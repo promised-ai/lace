@@ -573,7 +573,7 @@ class Engine:
         │ ---   ┆ ---    ┆ ---         │
         │ str   ┆ u8     ┆ f64         │
         ╞═══════╪════════╪═════════════╡
-        │ pig   ┆ 0      ┆ 0.02385     │
+        │ pig   ┆ 0      ┆ 0.07593     │
         └───────┴────────┴─────────────┘
         """
         self.engine.edit_cell(row, col, value)
@@ -659,7 +659,7 @@ class Engine:
         >>> engine[-3:, "flippers"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (3, 2)
         ┌────────┬──────────┐
-        │ Index  ┆ flippers │
+        │ index  ┆ flippers │
         │ ---    ┆ ---      │
         │ str    ┆ u8       │
         ╞════════╪══════════╡
@@ -766,7 +766,7 @@ class Engine:
         >>> engine[:7, "values"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (7, 2)
         ┌──────────────┬────────┐
-        │ Index        ┆ values │
+        │ index        ┆ values │
         │ ---          ┆ ---    │
         │ str          ┆ f64    │
         ╞══════════════╪════════╡
@@ -802,7 +802,7 @@ class Engine:
         >>> engine[:5, "fav_color"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (5, 2)
         ┌──────────────┬───────────┐
-        │ Index        ┆ fav_color │
+        │ index        ┆ fav_color │
         │ ---          ┆ ---       │
         │ str          ┆ str       │
         ╞══════════════╪═══════════╡
@@ -825,7 +825,7 @@ class Engine:
         >>> engine[:8, "times_watched_the_fifth_element"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (8, 2)
         ┌─────────────────┬─────────────────────────────────┐
-        │ Index           ┆ times_watched_the_fifth_element │
+        │ index           ┆ times_watched_the_fifth_element │
         │ ---             ┆ ---                             │
         │ str             ┆ u32                             │
         ╞═════════════════╪═════════════════════════════════╡
@@ -886,7 +886,7 @@ class Engine:
         *,
         timeout: Optional[int] = None,
         checkpoint: Optional[int] = None,
-        transitions: Optional[core.StateTransition] = None,
+        transitions: Optional[Union[str, List[core.StateTransition]]] = None,
         save_path: Optional[Union[str, bytes, PathLike]] = None,
         quiet: bool = False,
     ):
@@ -907,9 +907,14 @@ class Engine:
         checkpoint: int, optional
             The number of iterations between saves. If `save_path` is not
             supplied checkpoints do nothing.
-        transitions: List[StateTransition], optional
-            List of state transitions to perform. If `None` (default) a default
-            set is chosen.
+        transitions: str | List[StateTransition], optional
+            List of state transitions to perform.
+
+            Possible Values:
+            * If `None` (default) a defaultset is chosen.
+            * If one of "sams", "flat", or "fast" to use common sets of
+            transitions.
+            * If a list of `StateTransitions`, then that sequence will be used.
         save_path: pathlike, optional
             Where to save the metadata. If `None` (default) the engine is not
             saved. If `checkpoint` is provided, the `Engine` will be saved at
@@ -928,14 +933,26 @@ class Engine:
 
         >>> from lace import RowKernel, StateTransition
         >>> engine.update(
-        ...     100,
+        ...     5,
         ...     timeout=30,
         ...     transitions=[
         ...         StateTransition.row_assignment(RowKernel.slice()),
         ...         StateTransition.view_alphas(),
         ...     ],
         ... )
+
+        Use a common set of transitions by name, specifically "sams":
+
+        >>> engine.update(
+        ...     5,
+        ...     timeout=30,
+        ...     transitions="sams",
+        ... )
         """
+
+        if isinstance(transitions, str):
+            transitions = utils._get_common_transitions(transitions)
+
         return self.engine.update(
             n_iters,
             timeout=timeout,
@@ -1620,6 +1637,10 @@ class Engine:
         """
         Predict a single target from a conditional distribution.
 
+        Uncertainty is the normalized mean total variation distance between
+        each state's predictive distribution and the average predictive
+        distribution.
+
         Parameters
         ----------
         target: column index
@@ -1647,18 +1668,18 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.predict("swims")
-        (0, 0.008287057807910558)
+        (0, 0.04384630488890182)
 
         Predict whether an animal swims given that it has flippers
 
         >>> animals.predict("swims", given={"flippers": 1})
-        (1, 0.05008037071634858)
+        (1, 0.09588592928237495)
 
         Let's confuse lace and see what happens to its uncertainty. Let's
         predict whether an non-water animal with flippers swims
 
         >>> animals.predict("swims", given={"flippers": 1, "water": 0})
-        (0, 0.32863593091906085)
+        (0, 0.36077426258767503)
 
         If you want to save time and you do not care about quantifying your
         epistemic uncertainty, you don't have to compute uncertainty.
@@ -1672,7 +1693,7 @@ class Engine:
         self,
         col: Union[str, int],
         rows: Optional[List[Union[str, int]]] = None,
-        unc_type: Optional[str] = "js_divergence",
+        with_uncertainty: bool = True,
     ):
         r"""
         Impute (predict) the value of a cell(s) in the lace table.
@@ -1688,19 +1709,9 @@ class Engine:
         be returned, even if the value is most likely to be missing. Imputation
         forces the value of a cell to be present.
 
-        The following methods are used to compute uncertainty.
-
-          * unc_type='js_divergence' computes the Jensen-Shannon divergence
-            between the state imputation distributions.
-
-            .. math::
-              JS(X_1, X_2, ..., X_S)
-
-          * unc_type='pairwise_kl' computes the mean of the Kullback-Leibler
-            divergences between pairs of state imputation distributions.
-
-            .. math::
-              \frac{1}{S^2 - S} \sum_{i=1}^S \sum{j \in \{1,..,S\} \setminus i} KL(X_i | X_j)
+        Uncertainty is the normalized mean total variation distance between
+        each state's imputation distribution and the average imputation
+        distribution.
 
         Parameters
         ----------
@@ -1709,14 +1720,8 @@ class Engine:
         rows: List[row index], optional
             Optional row indices to impute. If ``None`` (default), all the rows
             with missing values will be imputed
-        unc_type: str, optional
-            The type of uncertainty to compute. If ``None``, uncertainty will
-            not be computed. Acceptable values are:
-
-            - 'js_divergence' (default): The Jensen-Shannon divergence between the
-              imputation distributions in each state.
-            - 'pairwise_kl': The mean pairwise Kullback-Leibler divergence
-              between pairs of state imputation distributions.
+        with_uncertainty: bool, default: True
+            If True, compute and return the impute uncertainty
 
         Returns
         -------
@@ -1748,15 +1753,15 @@ class Engine:
         │ ---                               ┆ ---             ┆ ---         │
         │ str                               ┆ str             ┆ f64         │
         ╞═══════════════════════════════════╪═════════════════╪═════════════╡
-        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.102337    │
-        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.445436    │
-        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.544273    │
-        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.445436    │
+        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.186415    │
+        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.360331    │
+        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.425853    │
+        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.360331    │
         │ …                                 ┆ …               ┆ …           │
-        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.445436    │
-        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.522895    │
-        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.445436    │
-        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.445436    │
+        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.360331    │
+        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.404823    │
+        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.360331    │
+        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.360331    │
         └───────────────────────────────────┴─────────────────┴─────────────┘
 
         Impute a defined set of rows
@@ -1768,13 +1773,13 @@ class Engine:
         │ ---           ┆ ---                    ┆ ---         │
         │ str           ┆ str                    ┆ f64         │
         ╞═══════════════╪════════════════════════╪═════════════╡
-        │ AAUSat-3      ┆ Technology Development ┆ 0.1918      │
-        │ Zhongxing 20A ┆ Communications         ┆ 0.191064    │
+        │ AAUSat-3      ┆ Technology Development ┆ 0.238355    │
+        │ Zhongxing 20A ┆ Communications         ┆ 0.129248    │
         └───────────────┴────────────────────────┴─────────────┘
 
         Uncertainty is optional
 
-        >>> engine.impute("Type_of_Orbit", unc_type=None)  # doctest: +NORMALIZE_WHITESPACE
+        >>> engine.impute("Type_of_Orbit", with_uncertainty=False)  # doctest: +NORMALIZE_WHITESPACE
         shape: (645, 2)
         ┌───────────────────────────────────┬─────────────────┐
         │ index                             ┆ Type_of_Orbit   │
@@ -1792,7 +1797,7 @@ class Engine:
         │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous │
         └───────────────────────────────────┴─────────────────┘
         """
-        return self.engine.impute(col, rows, unc_type)
+        return self.engine.impute(col, rows, with_uncertainty)
 
     def depprob(self, col_pairs: list):
         """

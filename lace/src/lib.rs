@@ -147,6 +147,13 @@
 //!     RowSimilarityVariant::ViewWeighted,
 //! ).unwrap();
 //! ```
+//!
+//! # Feature flags
+//! - `formats`: create `Engine`s and `Codebook`s from IPC, CSV, JSON, and
+//!   Parquet data files
+//! - `bencher`: Build benchmarking utilities
+//! - `ctrc_handler`: enables and update handler than captures Ctrl+C
+//!
 #![warn(unused_extern_crates)]
 #![warn(
     clippy::all,
@@ -159,11 +166,16 @@
     clippy::perf
 )]
 
+#[cfg(feature = "bencher")]
 pub mod bencher;
+
 pub mod config;
 pub mod data;
 pub mod defaults;
+
+#[cfg(feature = "examples")]
 pub mod examples;
+
 mod interface;
 pub mod misc;
 pub mod optimize;
@@ -181,12 +193,11 @@ pub mod utils {
 }
 
 pub use interface::{
-    update_handler, AppendStrategy, BuildEngineError, Builder,
-    ConditionalEntropyType, DatalessOracle, Engine, Given, HasData, HasStates,
-    ImputeUncertaintyType, InsertDataActions, InsertMode, LatentColumnType,
-    Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
-    PredictUncertaintyType, Row, RowSimilarityVariant, SupportExtension, Value,
-    WriteMode,
+    update_handler, AppendStrategy, BuildEngineError, ConditionalEntropyType,
+    DatalessOracle, Engine, EngineBuilder, Given, HasData, HasStates,
+    InsertDataActions, InsertMode, LatentColumnType, Metadata, MiComponents,
+    MiType, Oracle, OracleT, OverwriteMode, Row, RowSimilarityVariant,
+    SupportExtension, Value, WriteMode,
 };
 
 #[cfg(feature = "experimental")]

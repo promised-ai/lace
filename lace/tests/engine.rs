@@ -7,7 +7,7 @@ use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
 use lace::{
-    AppendStrategy, Builder, Engine, HasStates, InsertDataActions,
+    AppendStrategy, Engine, EngineBuilder, HasStates, InsertDataActions,
     SupportExtension,
 };
 use lace_codebook::{Codebook, ValueMap};
@@ -31,8 +31,9 @@ fn animals_codebook_path() -> PathBuf {
 
 // TODO: Don't use tiny test files, generate them in code from raw strings and
 // tempfiles.
+#[cfg(feature = "formats")]
 fn engine_from_csv<P: Into<PathBuf>>(path: P) -> Engine {
-    Builder::new(DataSource::Csv(path.into()))
+    EngineBuilder::new(DataSource::Csv(path.into()))
         .with_nstates(2)
         .build()
         .unwrap()
@@ -67,14 +68,15 @@ fn zero_states_to_new_causes_error() {
         serde_yaml::from_slice(data.as_bytes()).unwrap()
     };
     let rng = Xoshiro256Plus::from_entropy();
-    match Engine::new(0, codebook, DataSource::Csv(animals_data_path()), 0, rng)
-    {
+    let df = lace_codebook::data::read_csv(animals_data_path()).unwrap();
+    match Engine::new(0, codebook, DataSource::Polars(df), 0, rng) {
         Err(lace::error::NewEngineError::ZeroStatesRequested) => (),
         Err(_) => panic!("wrong error"),
         Ok(_) => panic!("Failed to catch zero states error"),
     }
 }
 
+#[cfg(feature = "formats")]
 #[test]
 fn save_run_load_run_should_add_iterations() {
     let dir = tempfile::TempDir::new().unwrap();
@@ -225,13 +227,16 @@ fn cell_gibbs_smoke() {
 
 #[test]
 fn engine_build_without_flat_col_is_not_flat() {
-    let engine = Builder::new(DataSource::Csv(animals_data_path()))
+    let path = animals_data_path();
+    let df = lace_codebook::data::read_csv(path).unwrap();
+    let engine = EngineBuilder::new(DataSource::Polars(df))
         .with_nstates(8)
         .build()
         .unwrap();
     assert!(engine.states.iter().any(|state| state.n_views() > 1));
 }
 
+#[cfg(not(feature = "formats"))]
 #[cfg(test)]
 mod prior_in_codebook {
     use super::*;
@@ -243,7 +248,7 @@ mod prior_in_codebook {
     use std::convert::TryInto;
     use std::io::Write;
 
-    // Generate a two-column codebook ('x' and 'y'). The x column will alyways
+    // Generate a two-column codebook ('x' and 'y'). The x column will always
     // have a hyper for the x column, but will have a prior defined if set_prior
     // is true. The y column will have neither a prior or hyper defined.
     fn gen_codebook(n_rows: usize, set_prior: bool) -> Codebook {
@@ -1528,7 +1533,7 @@ mod insert_data {
             ..Default::default()
         };
 
-        let mut engine = Builder::new(DataSource::Empty).build().unwrap();
+        let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
         assert_eq!(engine.n_rows(), 0);
         assert_eq!(engine.n_cols(), 0);
 
@@ -1625,7 +1630,7 @@ mod insert_data {
             ..Default::default()
         };
 
-        let mut engine = Builder::new(DataSource::Empty).build().unwrap();
+        let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
         assert_eq!(engine.n_rows(), 0);
         assert_eq!(engine.n_cols(), 0);
 
@@ -1835,9 +1840,9 @@ mod insert_data {
             .unwrap();
 
         // new categorical weights are assigned to log(0) by default.
-        // Weights are updated when inference is run. This becomes NaN when run
+        // Weights are updated when inference is run. This becomes Inf when run
         // through logsumexp.
-        assert!(surp.is_nan());
+        assert!(surp.is_infinite());
     }
 
     #[test]
@@ -2080,7 +2085,7 @@ mod insert_data {
             #[test]
             fn $fn_name() {
                 let mut engine =
-                    Builder::new(DataSource::Empty).build().unwrap();
+                    EngineBuilder::new(DataSource::Empty).build().unwrap();
                 let new_metadata = ColMetadataList::new(vec![
                     continuous_md("one".to_string()),
                     continuous_md("two".to_string()),
@@ -2158,7 +2163,7 @@ mod insert_data {
             #[test]
             fn $fn_name() {
                 let mut engine =
-                    Builder::new(DataSource::Empty).build().unwrap();
+                    EngineBuilder::new(DataSource::Empty).build().unwrap();
 
                 let new_metadata = ColMetadataList::new(vec![
                     continuous_md("one".to_string()),
@@ -2810,7 +2815,9 @@ mod remove_data {
     }
 }
 
-mod latent {
+#[cfg(feature = "formats")]
+#[cfg(test)]
+mod prior_in_codebook {
     use super::*;
     use lace::{Given, LatentColumnType, OracleT};
     use lace_consts::rv::prelude::NormalInvChiSquared;
@@ -2826,13 +2833,7 @@ mod latent {
                 ),
             )
             .unwrap();
-        let (_x, _unc) = engine
-            .impute(
-                "otter",
-                "z",
-                Some(lace::ImputeUncertaintyType::JsDivergence),
-            )
-            .unwrap();
+        let (_x, _unc) = engine.impute("otter", "z", true).unwrap();
     }
 
     #[test]
@@ -2846,13 +2847,7 @@ mod latent {
                 ),
             )
             .unwrap();
-        let (_x, _unc) = engine
-            .impute(
-                "otter",
-                "z",
-                Some(lace::ImputeUncertaintyType::JsDivergence),
-            )
-            .unwrap();
+        let (_x, _unc) = engine.impute("otter", "z", true).unwrap();
     }
 
     #[test]
@@ -2867,14 +2862,7 @@ mod latent {
             )
             .unwrap();
         let nothing: Given<usize> = Given::Nothing;
-        let (_x, _unc) = engine
-            .predict(
-                "z",
-                &nothing,
-                Some(lace::PredictUncertaintyType::JsDivergence),
-                None,
-            )
-            .unwrap();
+        let (_x, _unc) = engine.predict("z", &nothing, true, None).unwrap();
     }
 }
 

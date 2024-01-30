@@ -94,7 +94,8 @@ fn load_mnist<P: AsRef<Path>>(src: P, subsample: Option<usize>) -> MnistData {
             .unwrap();
 
         if let Some(n) = subsample {
-            train_data = train_data.sample_n(n, false, false, None).unwrap();
+            train_data =
+                train_data.sample_n_literal(n, false, false, None).unwrap();
         };
 
         let train_labels = train_data.drop_in_place("label").unwrap();

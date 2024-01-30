@@ -83,38 +83,6 @@ impl MiComponents {
     }
 }
 
-/// The type of uncertainty to use for `Oracle.impute`
-#[derive(
-    Serialize,
-    Deserialize,
-    Debug,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash,
-)]
-#[serde(rename_all = "snake_case")]
-pub enum ImputeUncertaintyType {
-    /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
-    /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
-    PairwiseKl,
-    /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
-    /// number of distributions
-    JsDivergence,
-}
-
-/// The type of uncertainty to use for `Oracle.predict`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
-pub enum PredictUncertaintyType {
-    /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
-    /// number of distributions
-    JsDivergence,
-}
-
 /// The variant on conditional entropy to compute
 #[derive(
     Serialize,
@@ -408,22 +376,11 @@ mod tests {
     }
 
     #[test]
-    fn kl_impute_uncertainty_smoke() {
+    fn impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
-        let u =
-            oracle._impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
+        let u = oracle._impute_uncertainty(0, 1);
         assert!(u > 0.0);
-    }
-
-    #[test]
-    fn js_impute_uncertainty_smoke() {
-        let oracle = get_oracle_from_yaml();
-        let u = oracle._impute_uncertainty(
-            0,
-            1,
-            ImputeUncertaintyType::JsDivergence,
-        );
-        assert!(u > 0.0);
+        assert!(u < 1.0);
     }
 
     #[test]
@@ -431,6 +388,7 @@ mod tests {
         let oracle = get_oracle_from_yaml();
         let u = oracle._predict_uncertainty(0, &Given::Nothing, None);
         assert!(u > 0.0);
+        assert!(u < 1.0);
     }
 
     #[test]
@@ -439,6 +397,7 @@ mod tests {
         let given = Given::Conditions(vec![(1, Datum::Continuous(2.5))]);
         let u = oracle._predict_uncertainty(0, &given, None);
         assert!(u > 0.0);
+        assert!(u < 1.0);
     }
 
     #[test]
@@ -498,263 +457,270 @@ mod tests {
         }
     }
 
-    #[test]
-    fn recreate_doctest_mi_failure() {
-        use crate::examples::Example;
-        use crate::MiType;
+    #[cfg(feature = "examples")]
+    mod requiring_examples {
+        use super::*;
+        #[test]
+        fn recreate_doctest_mi_failure() {
+            use crate::examples::Example;
+            use crate::MiType;
 
-        let oracle = Example::Animals.oracle().unwrap();
+            let oracle = Example::Animals.oracle().unwrap();
 
-        let mi_flippers =
-            oracle.mi("swims", "flippers", 1000, MiType::Iqr).unwrap();
+            let mi_flippers =
+                oracle.mi("swims", "flippers", 1000, MiType::Iqr).unwrap();
 
-        let mi_fast = oracle.mi("swims", "fast", 1000, MiType::Iqr).unwrap();
+            let mi_fast =
+                oracle.mi("swims", "fast", 1000, MiType::Iqr).unwrap();
 
-        assert!(mi_flippers > mi_fast);
-    }
-
-    #[test]
-    fn mixture_and_oracle_logp_equivalence_animals_single_state() {
-        use crate::examples::Example;
-
-        let oracle = Example::Animals.oracle().unwrap();
-
-        for (ix, state) in oracle.states.iter().enumerate() {
-            for col_ix in 0..oracle.n_cols() {
-                let mm = match state.feature_as_mixture(col_ix) {
-                    MixtureType::Categorical(mm) => mm,
-                    _ => panic!("Invalid MixtureType"),
-                };
-                for val in 0..2 {
-                    let logp_mm = mm.ln_f(&(val as usize));
-                    let datum = Datum::Categorical((val as u8).into());
-                    let logp_or = oracle
-                        .logp(
-                            &[col_ix],
-                            &[vec![datum]],
-                            &Given::<usize>::Nothing,
-                            Some(&[ix]),
-                        )
-                        .unwrap()[0];
-                    assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
-                }
-            }
+            assert!(mi_flippers > mi_fast);
         }
-    }
 
-    #[test]
-    fn pw_and_conditional_entropy_equivalence_animals() {
-        use crate::examples::Example;
-        let oracle = Example::Animals.oracle().unwrap();
+        #[test]
+        fn mixture_and_oracle_logp_equivalence_animals_single_state() {
+            use crate::examples::Example;
 
-        let n_cols = oracle.n_cols();
-        let mut col_pairs: Vec<(usize, usize)> = Vec::new();
-        let mut entropies: Vec<f64> = Vec::new();
-        for col_a in 0..n_cols {
-            for col_b in 0..n_cols {
-                if col_a != col_b {
-                    col_pairs.push((col_a, col_b));
-                    let ce = oracle
-                        .conditional_entropy(col_a, &[col_b], 1000)
-                        .unwrap();
-                    entropies.push(ce);
+            let oracle = Example::Animals.oracle().unwrap();
+
+            for (ix, state) in oracle.states.iter().enumerate() {
+                for col_ix in 0..oracle.n_cols() {
+                    let mm = match state.feature_as_mixture(col_ix) {
+                        MixtureType::Categorical(mm) => mm,
+                        _ => panic!("Invalid MixtureType"),
+                    };
+                    for val in 0..2 {
+                        let logp_mm = mm.ln_f(&(val as usize));
+                        let datum = Datum::Categorical((val as u8).into());
+                        let logp_or = oracle
+                            .logp(
+                                &[col_ix],
+                                &[vec![datum]],
+                                &Given::<usize>::Nothing,
+                                Some(&[ix]),
+                            )
+                            .unwrap()[0];
+                        assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
+                    }
                 }
             }
         }
 
-        let entropies_pw = oracle
-            .conditional_entropy_pw(
-                &col_pairs,
-                1000,
-                ConditionalEntropyType::UnNormed,
-            )
-            .unwrap();
+        #[test]
+        fn pw_and_conditional_entropy_equivalence_animals() {
+            use crate::examples::Example;
+            let oracle = Example::Animals.oracle().unwrap();
 
-        entropies
-            .iter()
-            .zip(entropies_pw.iter())
-            .enumerate()
-            .for_each(|(ix, (h, h_pw))| {
-                println!("{ix}");
-                assert_relative_eq!(h, h_pw, epsilon = 1E-12);
-            })
-    }
-
-    #[test]
-    fn pw_and_info_prop_equivalence_animals() {
-        use crate::examples::Example;
-        let oracle = Example::Animals.oracle().unwrap();
-
-        let n_cols = oracle.n_cols();
-        let mut col_pairs: Vec<(usize, usize)> = Vec::new();
-        let mut entropies: Vec<f64> = Vec::new();
-        for col_a in 0..n_cols {
-            for col_b in 0..n_cols {
-                if col_a != col_b {
-                    col_pairs.push((col_a, col_b));
-                    let ce =
-                        oracle.info_prop(&[col_a], &[col_b], 1000).unwrap();
-                    entropies.push(ce);
-                }
-            }
-        }
-
-        let entropies_pw = oracle
-            .conditional_entropy_pw(
-                &col_pairs,
-                1000,
-                ConditionalEntropyType::InfoProp,
-            )
-            .unwrap();
-
-        entropies
-            .iter()
-            .zip(entropies_pw.iter())
-            .for_each(|(h, h_pw)| {
-                assert_relative_eq!(h, h_pw, epsilon = 1E-12);
-            })
-    }
-
-    #[test]
-    fn mi_pw_and_normal_equivalence() {
-        use crate::examples::Example;
-        let oracle = Example::Animals.oracle().unwrap();
-
-        let n_cols = oracle.n_cols();
-        let mut col_pairs: Vec<(usize, usize)> = Vec::new();
-        let mut mis: Vec<f64> = Vec::new();
-        for col_a in 0..n_cols {
-            for col_b in 0..n_cols {
-                if col_a != col_b {
-                    col_pairs.push((col_a, col_b));
-                    let mi = oracle
-                        .mi(col_a, col_b, 1000, MiType::UnNormed)
-                        .unwrap();
-                    mis.push(mi);
-                }
-            }
-        }
-
-        let mis_pw = oracle.mi_pw(&col_pairs, 1000, MiType::UnNormed).unwrap();
-
-        mis.iter().zip(mis_pw.iter()).for_each(|(mi, mi_pw)| {
-            assert_relative_eq!(mi, mi_pw, epsilon = 1E-12);
-        })
-    }
-
-    // pre v0.20.0 simulate code ripped straight from simulate_unchecked
-    fn old_simulate(
-        oracle: &Oracle,
-        col_ixs: &[usize],
-        given: &Given<usize>,
-        n: usize,
-        states_ixs_opt: Option<Vec<usize>>,
-        mut rng: &mut impl Rng,
-    ) -> Vec<Vec<Datum>> {
-        let state_ixs: Vec<usize> = match states_ixs_opt {
-            Some(state_ixs) => state_ixs,
-            None => (0..oracle.n_states()).collect(),
-        };
-
-        let states: Vec<&State> =
-            state_ixs.iter().map(|&ix| &oracle.states()[ix]).collect();
-        let state_ixer = Categorical::uniform(state_ixs.len());
-        let weights = utils::given_weights(&states, col_ixs, given);
-
-        (0..n)
-            .map(|_| {
-                // choose a random state
-                let draw_ix: usize = state_ixer.draw(&mut rng);
-                let state = states[draw_ix];
-
-                // for each view
-                //   choose a random component from the weights
-                let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
-                for (view_ix, view_weights) in &weights[draw_ix] {
-                    // TODO: use Categorical::new_unchecked when rv 0.9.3 drops.
-                    // from_ln_weights checks that the input logsumexp's to 0
-                    let component_ixer =
-                        Categorical::from_ln_weights(view_weights.clone())
+            let n_cols = oracle.n_cols();
+            let mut col_pairs: Vec<(usize, usize)> = Vec::new();
+            let mut entropies: Vec<f64> = Vec::new();
+            for col_a in 0..n_cols {
+                for col_b in 0..n_cols {
+                    if col_a != col_b {
+                        col_pairs.push((col_a, col_b));
+                        let ce = oracle
+                            .conditional_entropy(col_a, &[col_b], 1000)
                             .unwrap();
-                    let k = component_ixer.draw(&mut rng);
-                    cpnt_ixs.insert(*view_ix, k);
+                        entropies.push(ce);
+                    }
                 }
+            }
 
-                // for eacch column
-                //   draw from appropriate component from that view
-                let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
-                col_ixs.iter().for_each(|col_ix| {
-                    let view_ix = state.asgn.asgn[*col_ix];
-                    let k = cpnt_ixs[&view_ix];
-                    let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
-                    xs.push(x);
-                });
-                utils::post_process_row(xs, col_ixs, oracle.codebook())
-            })
-            .collect()
-    }
+            let entropies_pw = oracle
+                .conditional_entropy_pw(
+                    &col_pairs,
+                    1000,
+                    ConditionalEntropyType::UnNormed,
+                )
+                .unwrap();
 
-    fn simulate_equivalence(
-        col_ixs: &[usize],
-        given: &Given<usize>,
-        state_ixs_opt: Option<Vec<usize>>,
-    ) {
-        use crate::examples::Example;
-        use rand::SeedableRng;
-        use rand_xoshiro::Xoshiro256Plus;
-
-        let n: usize = 100;
-        let oracle = Example::Satellites.oracle().unwrap();
-
-        let xs_simulator: Vec<Vec<Datum>> = {
-            let mut rng = Xoshiro256Plus::seed_from_u64(1337);
-            old_simulate(
-                &oracle,
-                col_ixs,
-                given,
-                n,
-                state_ixs_opt.clone(),
-                &mut rng,
-            )
-        };
-
-        let xs_standard: Vec<Vec<Datum>> = {
-            let mut rng = Xoshiro256Plus::seed_from_u64(1337);
-            oracle
-                .simulate(col_ixs, given, n, state_ixs_opt, &mut rng)
-                .unwrap()
-        };
-
-        for (x, y) in xs_simulator.iter().zip(xs_standard.iter()) {
-            assert_eq!(x, y)
+            entropies
+                .iter()
+                .zip(entropies_pw.iter())
+                .enumerate()
+                .for_each(|(ix, (h, h_pw))| {
+                    println!("{ix}");
+                    assert_relative_eq!(h, h_pw, epsilon = 1E-12);
+                })
         }
-    }
 
-    #[test]
-    fn seeded_simulate_and_simulator_agree() {
-        let col_ixs = [0_usize, 5, 6];
-        let given = Given::Nothing;
-        simulate_equivalence(&col_ixs, &given, None);
-    }
+        #[test]
+        fn pw_and_info_prop_equivalence_animals() {
+            use crate::examples::Example;
+            let oracle = Example::Animals.oracle().unwrap();
 
-    #[test]
-    fn seeded_simulate_and_simulator_agree_state_ixs() {
-        let col_ixs = [0_usize, 5, 6];
-        let given = Given::Nothing;
-        simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
-    }
+            let n_cols = oracle.n_cols();
+            let mut col_pairs: Vec<(usize, usize)> = Vec::new();
+            let mut entropies: Vec<f64> = Vec::new();
+            for col_a in 0..n_cols {
+                for col_b in 0..n_cols {
+                    if col_a != col_b {
+                        col_pairs.push((col_a, col_b));
+                        let ce =
+                            oracle.info_prop(&[col_a], &[col_b], 1000).unwrap();
+                        entropies.push(ce);
+                    }
+                }
+            }
 
-    #[test]
-    fn seeded_simulate_and_simulator_agree_given() {
-        let col_ixs = [0_usize, 5, 6];
-        let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
-        simulate_equivalence(&col_ixs, &given, None);
-    }
+            let entropies_pw = oracle
+                .conditional_entropy_pw(
+                    &col_pairs,
+                    1000,
+                    ConditionalEntropyType::InfoProp,
+                )
+                .unwrap();
 
-    #[test]
-    fn seeded_simulate_and_simulator_agree_given_state_ixs() {
-        let col_ixs = [0_usize, 5, 6];
-        let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
-        simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
+            entropies
+                .iter()
+                .zip(entropies_pw.iter())
+                .for_each(|(h, h_pw)| {
+                    assert_relative_eq!(h, h_pw, epsilon = 1E-12);
+                })
+        }
+
+        #[test]
+        fn mi_pw_and_normal_equivalence() {
+            use crate::examples::Example;
+            let oracle = Example::Animals.oracle().unwrap();
+
+            let n_cols = oracle.n_cols();
+            let mut col_pairs: Vec<(usize, usize)> = Vec::new();
+            let mut mis: Vec<f64> = Vec::new();
+            for col_a in 0..n_cols {
+                for col_b in 0..n_cols {
+                    if col_a != col_b {
+                        col_pairs.push((col_a, col_b));
+                        let mi = oracle
+                            .mi(col_a, col_b, 1000, MiType::UnNormed)
+                            .unwrap();
+                        mis.push(mi);
+                    }
+                }
+            }
+
+            let mis_pw =
+                oracle.mi_pw(&col_pairs, 1000, MiType::UnNormed).unwrap();
+
+            mis.iter().zip(mis_pw.iter()).for_each(|(mi, mi_pw)| {
+                assert_relative_eq!(mi, mi_pw, epsilon = 1E-12);
+            })
+        }
+
+        // pre v0.20.0 simulate code ripped straight from simulate_unchecked
+        fn old_simulate(
+            oracle: &Oracle,
+            col_ixs: &[usize],
+            given: &Given<usize>,
+            n: usize,
+            states_ixs_opt: Option<Vec<usize>>,
+            mut rng: &mut impl Rng,
+        ) -> Vec<Vec<Datum>> {
+            let state_ixs: Vec<usize> = match states_ixs_opt {
+                Some(state_ixs) => state_ixs,
+                None => (0..oracle.n_states()).collect(),
+            };
+
+            let states: Vec<&State> =
+                state_ixs.iter().map(|&ix| &oracle.states()[ix]).collect();
+            let state_ixer = Categorical::uniform(state_ixs.len());
+            let weights = utils::given_weights(&states, col_ixs, given);
+
+            (0..n)
+                .map(|_| {
+                    // choose a random state
+                    let draw_ix: usize = state_ixer.draw(&mut rng);
+                    let state = states[draw_ix];
+
+                    // for each view
+                    //   choose a random component from the weights
+                    let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
+                    for (view_ix, view_weights) in &weights[draw_ix] {
+                        // TODO: use Categorical::new_unchecked when rv 0.9.3 drops.
+                        // from_ln_weights checks that the input logsumexp's to 0
+                        let component_ixer =
+                            Categorical::from_ln_weights(view_weights.clone())
+                                .unwrap();
+                        let k = component_ixer.draw(&mut rng);
+                        cpnt_ixs.insert(*view_ix, k);
+                    }
+
+                    // for eacch column
+                    //   draw from appropriate component from that view
+                    let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
+                    col_ixs.iter().for_each(|col_ix| {
+                        let view_ix = state.asgn.asgn[*col_ix];
+                        let k = cpnt_ixs[&view_ix];
+                        let x =
+                            state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
+                        xs.push(x);
+                    });
+                    utils::post_process_row(xs, col_ixs, oracle.codebook())
+                })
+                .collect()
+        }
+
+        fn simulate_equivalence(
+            col_ixs: &[usize],
+            given: &Given<usize>,
+            state_ixs_opt: Option<Vec<usize>>,
+        ) {
+            use crate::examples::Example;
+            use rand::SeedableRng;
+            use rand_xoshiro::Xoshiro256Plus;
+
+            let n: usize = 100;
+            let oracle = Example::Satellites.oracle().unwrap();
+
+            let xs_simulator: Vec<Vec<Datum>> = {
+                let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+                old_simulate(
+                    &oracle,
+                    col_ixs,
+                    given,
+                    n,
+                    state_ixs_opt.clone(),
+                    &mut rng,
+                )
+            };
+
+            let xs_standard: Vec<Vec<Datum>> = {
+                let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+                oracle
+                    .simulate(col_ixs, given, n, state_ixs_opt, &mut rng)
+                    .unwrap()
+            };
+
+            for (x, y) in xs_simulator.iter().zip(xs_standard.iter()) {
+                assert_eq!(x, y)
+            }
+        }
+
+        #[test]
+        fn seeded_simulate_and_simulator_agree() {
+            let col_ixs = [0_usize, 5, 6];
+            let given = Given::Nothing;
+            simulate_equivalence(&col_ixs, &given, None);
+        }
+
+        #[test]
+        fn seeded_simulate_and_simulator_agree_state_ixs() {
+            let col_ixs = [0_usize, 5, 6];
+            let given = Given::Nothing;
+            simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
+        }
+
+        #[test]
+        fn seeded_simulate_and_simulator_agree_given() {
+            let col_ixs = [0_usize, 5, 6];
+            let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
+            simulate_equivalence(&col_ixs, &given, None);
+        }
+
+        #[test]
+        fn seeded_simulate_and_simulator_agree_given_state_ixs() {
+            let col_ixs = [0_usize, 5, 6];
+            let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
+            simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
+        }
     }
 }

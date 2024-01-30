@@ -43,10 +43,10 @@ def process_file(file, language, version):
         elif args.language == "rust":
             rust_script_contents = f"""//! ```cargo
         //! [dependencies]
-        //! lace = {{ path = ".", version="{version}" }}
-        //! polars = {{ version = "0.31", features=["csv"] }}
-        //! rand = "0.8"
-        //! rand_xoshiro = "0.6"
+        //! lace = {{ path = ".", version="{version}", features = ["examples", "ctrlc_handler"] }}
+        //! polars = {{ version = "0.36", default_features=false, features=["csv", "dtype-i8", "dtype-i16", "dtype-u8", "dtype-u16"] }}
+        //! rand = {{version="0.8", features=["serde1"]}}
+        //! rand_xoshiro = {{ version="0.6", features = ["serde1"] }}
         //! ```
         fn main() {{
         {code}

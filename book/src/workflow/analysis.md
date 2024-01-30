@@ -84,7 +84,7 @@ animals.predict("swims")
 animals.predict(
     "swims",
     &Given::<usize>::Nothing,
-    Some(PredictUncertaintyType::JsDivergence),
+    true,
     None,
 );
 ```
@@ -94,7 +94,7 @@ animals.predict(
 Which outputs
 
 ```python
-(0, 0.008287057807910558)
+(0, 0.04384630488890182)
 ```
 
 The first number is the prediction. Lace predicts that *an* animal does not
@@ -121,7 +121,7 @@ animals.predict(
     &Given::Conditions(vec![
         ("flippers", Datum::Categorical(lace::Category::U8(1)))
     ]),
-    Some(PredictUncertaintyType::JsDivergence),
+    true,
     None,
 );
 ```
@@ -130,10 +130,10 @@ animals.predict(
 Output:
 
 ```python
-(1, 0.05008037071634858)
+(1, 0.09588592928237495)
 ```
 
-The uncertainty is higher, but still quite low.
+The uncertainty is a little higher, but still quite low.
 
 Let's add some more conditions that are indicative of a swimming animal and see
 how that effects the uncertainty.
@@ -151,7 +151,7 @@ animals.predict(
         ("flippers", Datum::Categorical(lace::Category::U8(1))),
         ("water", Datum::Categorical(lace::Category::U8(1))),
     ]),
-    Some(PredictUncertaintyType::JsDivergence),
+    true,
     None,
 );
 ```
@@ -160,10 +160,10 @@ animals.predict(
 Output:
 
 ```python
-(1, 0.05116664361415335)
+(1, 0.06761776764962134)
 ```
 
-The uncertainty is basically the same.
+The uncertainty is a bit lower now that we've added swim-consistent evidence.
 
 How about we try to mess with Lace? Let's try to confuse it by asking it to
 predict whether an animal with flippers that does not go in the water swims.
@@ -181,7 +181,7 @@ animals.predict(
         ("flippers", Datum::Categorical(lace::Category::U8(1))),
         ("water", Datum::Categorical(lace::Category::U8(0))),
     ]),
-    Some(PredictUncertaintyType::JsDivergence),
+    true,
     None,
 );
 ```
@@ -190,14 +190,14 @@ animals.predict(
 Output:
 
 ```python
-(0, 0.32863593091906085)
+(0, 0.36077426258767503)
 ```
 
 The uncertainty is really high! We've successfully confused lace.
 
 ## Evaluating likelihoods
 
-Let's compute the likemportlihood to see what is going on
+Let's compute the likelihood to see what is going on
 
 <div class=tabbed-blocks>
 

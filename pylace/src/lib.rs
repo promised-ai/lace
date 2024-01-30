@@ -11,9 +11,7 @@ use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
 use lace::prelude::ColMetadataList;
-use lace::{
-    EngineUpdateConfig, FType, HasStates, OracleT, PredictUncertaintyType,
-};
+use lace::{EngineUpdateConfig, FType, HasStates, OracleT};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -55,15 +53,6 @@ impl CoreEngine {
     ///     and `3.state`
     /// rng_seed: int, optional
     ///     Integer seed for the random number generator
-    /// source_type: str, optional
-    ///     The type of the data file. Can be `'csv'`, `'csv.gz'`, `'feather'`,
-    ///     `'ipc'`, `'parquet'`, `'json'`, or `'jsonl'`. If None (default) the
-    ///     source type will be inferred from the `data_source` file extension.
-    /// cat_cutoff: int, optional
-    ///     The number of distinct unsigned integer values and column can assume
-    ///     before it is inferred not to be a categorical type.
-    /// no_hypers: bool, optional
-    ///     If True, features hyperparameter inference will not be conducted.
     #[allow(clippy::too_many_arguments)]
     #[new]
     #[pyo3(
@@ -797,35 +786,22 @@ impl CoreEngine {
     /// rows: list(str) or list(int), optional
     ///     Optional list of rows to impute. If None (default), all missing
     ///     cells will be selected.
-    /// unc_type: str, optional
-    ///     Can be `'js_divergence'` (default), `'pairwise_kl'` or `None`. If
-    ///     None, uncertainty will not be computed.
+    /// with_uncertainty: bool, optional
+    ///     If true (default), compute and return uncertainty
     ///
     /// Returns
     /// -------
     /// df: polars.DataFrame
     ///     A data frame with columns for row names, values, and optional
     ///     uncertainty
-    #[pyo3(signature=(col, rows=None, unc_type="js_divergence"))]
+    #[pyo3(signature=(col, rows=None, with_uncertainty=true))]
     fn impute(
         &mut self,
         col: &PyAny,
         rows: Option<&PyAny>,
-        unc_type: Option<&str>,
+        with_uncertainty: bool,
     ) -> PyResult<PyDataFrame> {
         use lace::cc::feature::Feature;
-        use lace::ImputeUncertaintyType;
-
-        let unc_type_opt = match unc_type {
-            Some("js_divergence") => {
-                Ok(Some(ImputeUncertaintyType::JsDivergence))
-            }
-            Some("pairwise_kl") => Ok(Some(ImputeUncertaintyType::PairwiseKl)),
-            Some(val) => Err(PyErr::new::<PyValueError, _>(format!(
-                "Invalid unc_type: '{val}'"
-            ))),
-            None => Ok(None),
-        }?;
 
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
 
@@ -845,7 +821,7 @@ impl CoreEngine {
 
         row_ixs.drain(..).try_for_each(|row_ix| {
             self.engine
-                .impute(row_ix, col_ix, unc_type_opt)
+                .impute(row_ix, col_ix, with_uncertainty)
                 .map(|(val, unc)| {
                     values.push(val);
                     row_names.push(self.row_indexer.to_name[&row_ix].clone());
@@ -913,10 +889,9 @@ impl CoreEngine {
         let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
 
         if with_uncertainty {
-            let unc_type_opt = Some(PredictUncertaintyType::JsDivergence);
             let (pred, unc) = self
                 .engine
-                .predict(col_ix, &given, unc_type_opt, state_ixs.as_deref())
+                .predict(col_ix, &given, true, state_ixs.as_deref())
                 .map_err(|err| {
                     PyErr::new::<PyValueError, _>(format!("{err}"))
                 })?;
@@ -928,7 +903,7 @@ impl CoreEngine {
         } else {
             let (pred, _) = self
                 .engine
-                .predict(col_ix, &given, None, state_ixs.as_deref())
+                .predict(col_ix, &given, false, state_ixs.as_deref())
                 .map_err(|err| {
                     PyErr::new::<PyValueError, _>(format!("{err}"))
                 })?;

@@ -1,10 +1,11 @@
-use std::env;
-
-use lace::bencher::Bencher;
-use lace::prelude::*;
-use lace_utils::{mean, std};
-
+#[cfg(feature = "bencher")]
 fn main() {
+    use std::env;
+
+    use lace::bencher::Bencher;
+    use lace::prelude::*;
+    use lace_utils::{mean, std};
+
     let args: Vec<String> = env::args().skip(1).collect();
 
     let nrows: usize = args[0].parse().unwrap_or(250);
@@ -51,4 +52,9 @@ fn main() {
     let std_time = std(&times_sec);
 
     println!("Time (M, S) = ({}s, {}s)", mean_time, std_time);
+}
+
+#[cfg(not(feature = "bencher"))]
+fn main() {
+    eprintln!("Please enable the 'bencher' feature to use this example.")
 }

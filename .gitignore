@@ -7,4 +7,4 @@ Pipfile
 pybraid/.github
 *.ini
 .vscode/
-.helix/
+.helix

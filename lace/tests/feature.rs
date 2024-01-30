@@ -13,8 +13,8 @@ use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
 use lace_stats::rv::traits::Rv;
-use once_cell::sync::OnceCell;
 use rand::Rng;
+use std::sync::OnceLock;
 
 type GaussCol = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CatU8 = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
@@ -57,7 +57,7 @@ fn three_component_column() -> GaussCol {
         components,
         hyper,
         prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
-        ln_m_cache: OnceCell::new(),
+        ln_m_cache: OnceLock::new(),
         ignore_hyper: false,
     }
 }
@@ -188,7 +188,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
         )],
         hyper,
         prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
-        ln_m_cache: OnceCell::new(),
+        ln_m_cache: OnceLock::new(),
         ignore_hyper: false,
     };
 
@@ -219,7 +219,7 @@ fn gauss_accum_scores_2_cats_no_missing() {
         components,
         hyper,
         prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
-        ln_m_cache: OnceCell::new(),
+        ln_m_cache: OnceLock::new(),
         ignore_hyper: false,
     };
 
@@ -276,7 +276,7 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
         )],
         prior: SymmetricDirichlet::new_unchecked(1.0, 3),
         hyper: CsdHyper::new(1.0, 1.0),
-        ln_m_cache: OnceCell::new(),
+        ln_m_cache: OnceLock::new(),
         ignore_hyper: false,
     };
 
@@ -321,7 +321,7 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
         components,
         hyper: CsdHyper::new(1.0, 1.0),
         prior: SymmetricDirichlet::new_unchecked(1.0, 3),
-        ln_m_cache: OnceCell::new(),
+        ln_m_cache: OnceLock::new(),
         ignore_hyper: false,
     };
 

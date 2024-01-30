@@ -1,10 +1,10 @@
 //! Common import for general use.
 
 pub use crate::{
-    update_handler, AppendStrategy, Builder, Datum, Engine, EngineUpdateConfig,
-    Given, HasData, HasStates, ImputeUncertaintyType, InsertMode,
-    LatentColumnType, MiType, OracleT, OverwriteMode, PredictUncertaintyType,
-    Row, RowSimilarityVariant, SupportExtension, Value, WriteMode,
+    update_handler, AppendStrategy, Datum, Engine, EngineBuilder,
+    EngineUpdateConfig, Given, HasData, HasStates, InsertMode,
+    LatentColumnType, MiType, OracleT, OverwriteMode, Row,
+    RowSimilarityVariant, SupportExtension, Value, WriteMode,
 };
 
 pub use crate::data::DataSource;

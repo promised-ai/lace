@@ -5,7 +5,7 @@ pub mod error;
 pub mod experimental;
 pub mod update_handler;
 
-pub use builder::{BuildEngineError, Builder};
+pub use builder::{BuildEngineError, EngineBuilder};
 pub use data::{
     AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
@@ -117,17 +117,31 @@ pub enum LatentColumnType {
     Categorical(SymmetricDirichlet),
 }
 
+#[cfg(feature = "formats")]
 fn col_models_from_data_src<R: rand::Rng>(
     codebook: Codebook,
     data_source: DataSource,
     rng: &mut R,
 ) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
-    use crate::codebook::data;
+    use crate::codebook::formats;
     let df = match data_source {
-        DataSource::Csv(path) => data::read_csv(path).unwrap(),
-        DataSource::Ipc(path) => data::read_ipc(path).unwrap(),
-        DataSource::Json(path) => data::read_json(path).unwrap(),
-        DataSource::Parquet(path) => data::read_parquet(path).unwrap(),
+        DataSource::Csv(path) => formats::read_csv(path).unwrap(),
+        DataSource::Ipc(path) => formats::read_ipc(path).unwrap(),
+        DataSource::Json(path) => formats::read_json(path).unwrap(),
+        DataSource::Parquet(path) => formats::read_parquet(path).unwrap(),
+        DataSource::Polars(df) => df,
+        DataSource::Empty => DataFrame::empty(),
+    };
+    crate::data::df_to_col_models(codebook, df, rng)
+}
+
+#[cfg(not(feature = "formats"))]
+fn col_models_from_data_src<R: rand::Rng>(
+    codebook: Codebook,
+    data_source: DataSource,
+    rng: &mut R,
+) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
+    let df = match data_source {
         DataSource::Polars(df) => df,
         DataSource::Empty => DataFrame::empty(),
     };
@@ -1093,7 +1107,7 @@ impl Engine {
                 .collect::<Result<Vec<State>, _>>()?;
         }
         std::mem::drop(update_handlers);
-        update_handler.finialize();
+        update_handler.finalize();
 
         Ok(())
     }
@@ -1408,7 +1422,11 @@ mod tests {
     use super::*;
 
     fn animals_csv() -> DataSource {
-        DataSource::Csv(PathBuf::from("resources/datasets/animals/data.csv"))
+        let df = crate::codebook::data::read_csv(PathBuf::from(
+            "resources/datasets/animals/data.csv",
+        ))
+        .unwrap();
+        DataSource::Polars(df)
     }
 
     #[test]
@@ -1447,12 +1465,12 @@ mod tests {
                 false
             }
 
-            fn finialize(&mut self) {
+            fn finalize(&mut self) {
                 self.0.write().unwrap().insert("finalize".to_string());
             }
         }
 
-        let mut engine = Builder::new(animals_csv()).build().unwrap();
+        let mut engine = EngineBuilder::new(animals_csv()).build().unwrap();
 
         let called_methods = Arc::new(RwLock::new(HashSet::new()));
         let update_handler = TestingHandler(called_methods.clone());
@@ -1486,7 +1504,7 @@ mod tests {
     // It does not test that the StateTimeout successfully ends states that have gone over the duration
     #[test]
     fn state_timeout_update_handler() {
-        let mut engine = Builder::new(animals_csv()).build().unwrap();
+        let mut engine = EngineBuilder::new(animals_csv()).build().unwrap();
 
         let config = EngineUpdateConfig::new().default_transitions().n_iters(1);
 

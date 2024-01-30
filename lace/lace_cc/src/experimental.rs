@@ -5,11 +5,11 @@ use lace_consts::rv::traits::{ConjugatePrior, Rv};
 use lace_data::{Container, Datum, FeatureData, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeSummarize};
 use lace_stats::experimental::sbd::SbdHyper;
-use once_cell::sync::OnceCell;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use std::collections::HashSet;
+use std::sync::OnceLock;
 
 use crate::assignment::Assignment;
 use crate::component::ConjugateComponent;
@@ -454,7 +454,7 @@ impl State {
                 prior,
                 hyper,
                 ignore_hyper: false,
-                ln_m_cache: OnceCell::new(),
+                ln_m_cache: OnceLock::new(),
             })
         };
 

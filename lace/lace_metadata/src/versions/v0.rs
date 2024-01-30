@@ -17,7 +17,6 @@ use lace_stats::rv::dist::{
 };
 use lace_stats::MixtureType;
 
-use once_cell::sync::OnceCell;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -345,7 +344,7 @@ macro_rules! dataless2col {
                     prior: col_dl.prior,
                     hyper: col_dl.hyper,
                     data: SparseContainer::default(),
-                    ln_m_cache: OnceCell::new(),
+                    ln_m_cache: std::sync::OnceLock::new(),
                     ignore_hyper: col_dl.ignore_hyper,
                 })
             }

@@ -7,7 +7,149 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [python-0.2.0]
+### Added
+- `DataParseError::CodebookAndDataRowsMismatch` variant for when the number of rows in the codebook and the number of rows in the data do not match.
+
+### Fixed
+- Initializing an engine with a codebook that has a different number of rows than the data will result in an error instead of printing a bunch on nonsense.
+
+## [python-0.6.0] - 2024-01-23
+
+### Added
+
+- Added support for Python 3.12
+- Added `plot.state` function to render PCC states
+- Added `analysis.explain_prediction` to explain predictions
+- Added `plot.prediction_explanation` to render prediction explanations
+- Added `analysis.held_out_uncertainty`
+- Added `analysis.attributable_[neglogp | inconsistrncy | uncertainty]` to quantify the amount of surprisal (neglogp), inconsistency, and uncertainty attributable to other features
+- Added `utils.predict_xs`
+
+### Changed
+
+- Updated all packages to have the correct SPDX for the Business Source License
+- Changed to using total variation distance for uncertainty prediction (see docs)
+- Updated dependencies:
+  - `numpy`: 1.21 -> 1.26
+  - `polars`: 0.16.14 -> 0.20.5
+  - `scipy`: 1.7 -> 1.11
+  - `plotly`: 5.14 -> 5.18
+  - `pyarrow`: 11 -> 14
+- Added new dependencies: `seaborn`, `matplotlib`
+
+### Fixed
+
+- Fixed issue that would cause random row order when indexing pylace Engines by a single (column) index, e.g., engine['column'] would return the columns in a different order every time the engine was loaded
+- Fixed bug in appending data with a boolean column
+
+## [rust-0.6.0] - 2024-01-23
+
+### Changed
+
+- Updated all packages to have the correct SPDX for the Business Source License
+- Removed internal implimentation of `logsumexp` in favor of `rv::misc::logsumexp`
+- Changed to using total variation distance for uncertainty prediction (see docs)
+- Bump min rust version to `1.62` to support `f64::total_cmp`
+- Update to rv 0.16.2
+- Update to Polars 0.36
+
+### Fixed
+
+- Fixed bug in appending data with a boolean column
+
+## [python-0.5.0] - 2023-11-20
+
+### Added
+
+- Codebook.value_map fn and iterator
+
+### Changed
+
+- Added common transitions sets by name to `Engine.update` transition argument.
+
+## [rust-0.5.0] - 2023-11-20
+
+### Added
+
+- Lace can now be compiled to Wasm
+
+### Changed
+
+- Moved CLI into its own crate
+- Moved `DataSource` variants for Parquet, IPC (Arrow), and JSON data types into the `formats` feature flag.
+- Moved the `CtrlC` `UpdateHandler` into `ctrlc_handler` feature flag
+- Moved `Bencher` into the `bencher` feature flag
+- Moved `Example` code into the `examples` feature flag (on by default)
+- Replaced instances of `once_cell::sync::OnceCell` with `syd::sync::OnceLock`
+- Renamed all files/methods with the name `feather` to `arrow`
+- Renamed `Builder` to `EngineBuilder`
+
+### Fixed
+
+- Fixed typo `UpdateHandler::finialize` is now `UpdateHandler::finalize`
+
+## [python-0.4.1] - 2023-10-19
+
+### Fixed
+
+- Fixed issues when indexing `Engine` with slices.
+
+## [rust-0.4.1] - 2023-10-16
+
+### Fixed
+
+- Fixed stuck iterator from `ValueMap.iter`.
+
+## [python-0.4.0] - 2023-09-27
+
+### Added
+- Component params now available from `pylace`
+- `Engine`s in `pylace` now implement deepcopy
+
+### Fixed
+
+- Fixed `pylace`'s `__getitem__` index name to match other accessors
+- Fixed `pylace`'s `append_column_metadata` to refer to the correct internal function.
+- `pylace` will try to use Python's internal conversion for floats in `value_to_datum` conversion. 
+
+### Changed
+
+- Updated rust `polars` to version `0.33`
+- Updated rust `arrow2` to `0.18`
+
+## [rust-0.4.0] - 2023-09-27
+
+### Fixed
+
+ - Upgraded `polars` version to version `0.33` (fixes builds failing due to no `cmake` installed)
+
+## [python-0.3.1] - 2023-08-28
+
+### Fixed
+
+- Automatic conversion from `np.int*` types to Categorical.
+- Updated lace version to 0.3.1
+
+## [rust-0.3.1] - 2023-08-28
+
+### Fixed
+
+- Locked to a specific version of `polars 0.32` to produce reproducible builds on Rust 1.72
+
+## [python-0.3.0] - 2023-07-25
+
+### Changed
+
+- Updated lace version to 0.3.0
+- Updated polars to version ^0.31
+
+## [rust-0.3.0] - 2023-07-25
+
+### Fixed
+
+- Updated breaking dependencies
+
+## [python-0.2.0] - 2023-07-14
 
 ### Changed
 
@@ -91,8 +233,25 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.1.0...HEAD
-[rust-0.1.1]: https://github.com/promised-ai/lace/compare/rust-0.1.1...rust-0.1.0
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.6.0...HEAD
+[python-0.6.0]: https://github.com/promised-ai/lace/compare/python-0.5.0...python-0.6.0
+[rust-0.6.0]: https://github.com/promised-ai/lace/compare/rust-0.5.0...rust-0.6.0
+[python-0.5.0]: https://github.com/promised-ai/lace/compare/python-0.4.1...python-0.5.0
+[rust-0.5.0]: https://github.com/promised-ai/lace/compare/rust-0.4.1...rust-0.5.0
+[python-0.4.1]: https://github.com/promised-ai/lace/compare/python-0.4.0...python-0.4.1
+[rust-0.4.1]: https://github.com/promised-ai/lace/compare/rust-0.4.0...rust-0.4.1
+[python-0.4.0]: https://github.com/promised-ai/lace/compare/python-0.3.1...python-0.4.0
+[rust-0.4.0]: https://github.com/promised-ai/lace/compare/rust-0.3.1...rust-0.4.0
+[python-0.3.1]: https://github.com/promised-ai/lace/compare/python-0.3.0...python-0.3.1
+[rust-0.3.1]: https://github.com/promised-ai/lace/compare/rust-0.3.0...rust-0.3.1
+[python-0.3.0]: https://github.com/promised-ai/lace/compare/python-0.2.0...python-0.3.0
+[rust-0.3.0]: https://github.com/promised-ai/lace/compare/rust-0.2.0...rust-0.3.0
+[python-0.2.0]: https://github.com/promised-ai/lace/compare/python-0.1.2...python-0.2.0
+[rust-0.2.0]: https://github.com/promised-ai/lace/compare/rust-0.1.2...rust-0.2.0
+[python-0.1.2]: https://github.com/promised-ai/lace/compare/python-0.1.1...python-0.1.2
+[python-0.1.1]: https://github.com/promised-ai/lace/compare/python-0.1.0...python-0.1.1
+[rust-0.1.2]: https://github.com/promised-ai/lace/compare/rust-0.1.1...rust-0.1.2
+[rust-0.1.1]: https://github.com/promised-ai/lace/compare/rust-0.1.0...rust-0.1.1
 [python-0.1.0]: https://github.com/promised-ai/lace/releases/tag/python-0.1.0
 [rust-0.1.0]: https://github.com/promised-ai/lace/releases/tag/rust-0.1.0
 

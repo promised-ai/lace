@@ -128,10 +128,11 @@ impl Example {
             })?
         };
 
+        let df = crate::codebook::data::read_csv(paths.data).unwrap();
         let mut engine = crate::Engine::new(
             n_states,
             codebook,
-            DataSource::Csv(paths.data),
+            DataSource::Polars(df),
             0,
             Xoshiro256Plus::seed_from_u64(1337),
         )

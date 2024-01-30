@@ -1,12 +1,18 @@
 import itertools as it
 from typing import List, Optional, Union
 
+import numpy as np
 import pandas as pd
 import polars as pl
 from scipy.cluster.hierarchy import dendrogram, linkage
 
 from lace import ColumnMetadata
-from lace.core import infer_srs_metadata
+from lace.core import (
+    ColumnKernel,
+    RowKernel,
+    StateTransition,
+    infer_srs_metadata,
+)
 
 
 class Dimension:
@@ -117,3 +123,62 @@ def infer_column_metadata(
         ).rename(column)
         mds.append(md)
     return mds
+
+
+_COMMON_TRANSITIONS = {
+    "sams": [
+        StateTransition.view_alphas(),
+        StateTransition.row_assignment(RowKernel.sams()),
+        StateTransition.view_alphas(),
+        StateTransition.row_assignment(RowKernel.sams()),
+        StateTransition.view_alphas(),
+        StateTransition.component_parameters(),
+        StateTransition.column_assignment(ColumnKernel.gibbs()),
+        StateTransition.column_assignment(ColumnKernel.slice()),
+        StateTransition.view_alphas(),
+        StateTransition.feature_priors(),
+    ],
+    "flat": [
+        StateTransition.view_alphas(),
+        StateTransition.row_assignment(RowKernel.sams()),
+        StateTransition.view_alphas(),
+        StateTransition.row_assignment(RowKernel.sams()),
+        StateTransition.view_alphas(),
+        StateTransition.component_parameters(),
+        StateTransition.row_assignment(RowKernel.slice()),
+        StateTransition.component_parameters(),
+        StateTransition.view_alphas(),
+        StateTransition.feature_priors(),
+    ],
+    "fast": [
+        StateTransition.row_assignment(RowKernel.slice()),
+        StateTransition.column_assignment(ColumnKernel.slice()),
+    ],
+}
+
+
+def _get_common_transitions(name: str) -> List[StateTransition]:
+    transitions = _COMMON_TRANSITIONS.get(name, None)
+    if transitions is None:
+        keys_str = ", ".join(_COMMON_TRANSITIONS.keys())
+        raise ValueError(
+            f"{name} is not a valid transitions set name. valid options are: {keys_str}"
+        )
+    return transitions
+
+
+def predict_xs(
+    engine, target, given, *, n_points=1_000, mass=0.99
+) -> pl.Series:
+    ftype = engine.ftype(target)
+    if ftype == "Continuous":
+        xs = engine.simulate([target], given=given, n=10_000)
+        rm = (1.0 - mass) / 2
+        a = xs[target].quantile(rm)
+        b = xs[target].quantile(1.0 - rm)
+        xs = np.linspace(a, b, n_points)
+        return pl.Series(target, xs)
+    elif ftype == "Categorical":
+        return pl.Series(target, engine.engine.categorical_support(target))
+    else:
+        raise ValueError("unsupported ftype")

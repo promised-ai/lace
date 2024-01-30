@@ -5,18 +5,15 @@ use crate::index::{
     extract_col_pair, extract_colixs, extract_row_pair, ColumnIndex, RowIndex,
 };
 use crate::interface::oracle::error::SurprisalError;
-use crate::interface::oracle::{
-    ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
-    PredictUncertaintyType,
-};
+use crate::interface::oracle::{ConditionalEntropyType, MiComponents, MiType};
 use crate::interface::{CanOracle, Given};
 use lace_cc::feature::{FType, Feature};
 use lace_cc::state::{State, StateDiagnostics};
+use lace_consts::rv::misc::logsumexp;
 use lace_data::{Datum, SummaryStatistics};
 use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
 use lace_stats::rv::traits::Rv;
 use lace_stats::SampleError;
-use lace_utils::logsumexp;
 use rand::Rng;
 use rayon::prelude::*;
 use std::collections::BTreeSet;
@@ -1730,17 +1727,19 @@ pub trait OracleT: CanOracle {
     /// value of the cell rather than returning the existing value. To get
     /// the current value of a cell, use `Oracle::data`.
     ///
+    /// Impute uncertainty is the mean [total variation distance](https://en.wikipedia.org/wiki/Total_variation_distance_of_probability_measures)
+    /// between each state's impute distribution and the average impute
+    /// distribution.
+    ///
     /// # Arguments
     ///
     /// - row_ix: the row index of the cell to impute
     /// - col_ix: the column index of the cell to impute
-    /// - with_unc: if `true` compute the uncertainty, otherwise a value of -1
-    ///   is returned in the uncertainty spot
+    /// - with_uncertainty: if `true` compute and return the uncertainty
     ///
     /// # Returns
     ///
-    /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
-    /// `uncertainty` is -1.
+    /// A `(value, uncertainty_option)` tuple.
     ///
     /// # Example
     ///
@@ -1749,7 +1748,6 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace::ImputeUncertaintyType;
     /// use lace_data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1757,13 +1755,13 @@ pub trait OracleT: CanOracle {
     /// let dolphin_swims = oracle.impute(
     ///     "dolphin",
     ///     "swims",
-    ///     Some(ImputeUncertaintyType::JsDivergence)
+    ///     true,
     /// ).unwrap();
     ///
     /// let bear_swims = oracle.impute(
     ///     "polar+bear",
     ///     "swims",
-    ///     Some(ImputeUncertaintyType::JsDivergence)
+    ///     true,
     /// ).unwrap();
     ///
     /// assert_eq!(dolphin_swims.0, Datum::Categorical(1_u8.into()));
@@ -1782,14 +1780,13 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace::ImputeUncertaintyType;
     /// # use lace_data::{Datum, Category};
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
     /// let (imp, _) = oracle.impute(
     ///     "X-Sat",
     ///     "Type_of_Orbit",
-    ///     Some(ImputeUncertaintyType::JsDivergence),
+    ///     true,
     /// ).unwrap();
     ///
     /// assert_eq!(imp, Datum::Categorical("Sun-Synchronous".into()));
@@ -1798,13 +1795,12 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace::ImputeUncertaintyType;
     /// # use lace_data::{Datum, Category};
     /// # let oracle = Example::Satellites.oracle().unwrap();
     /// let (imp, _) = oracle.impute(
     ///     "X-Sat",
     ///     "longitude_radians_of_geo",
-    ///     Some(ImputeUncertaintyType::JsDivergence),
+    ///     true,
     /// ).unwrap();
     ///
     /// assert!((imp.to_f64_opt().unwrap() - 0.18514237733859296).abs() < 1e-10);
@@ -1813,7 +1809,7 @@ pub trait OracleT: CanOracle {
         &self,
         row_ix: RIx,
         col_ix: CIx,
-        unc_type_opt: Option<ImputeUncertaintyType>,
+        with_uncertainty: bool,
     ) -> Result<(Datum, Option<f64>), IndexError> {
         let row_ix = row_ix.row_ix(self.codebook())?;
         let col_ix = col_ix.col_ix(self.codebook())?;
@@ -1844,8 +1840,11 @@ pub trait OracleT: CanOracle {
 
         let val = utils::post_process_datum(val, col_ix, self.codebook());
 
-        let unc_opt = unc_type_opt
-            .map(|unc_type| self._impute_uncertainty(row_ix, col_ix, unc_type));
+        let unc_opt = if with_uncertainty {
+            Some(self._impute_uncertainty(row_ix, col_ix))
+        } else {
+            None
+        };
 
         Ok((val, unc_opt))
     }
@@ -1856,6 +1855,9 @@ pub trait OracleT: CanOracle {
     /// # Arguments
     /// - col_ix: the index of the column to predict
     /// - given: optional observations by which to constrain the prediction
+    /// - with_uncertainty: if true, copmute and return uncertainty
+    /// - state_ixs_opt: Optional vector of state indices from which to predict,
+    ///   if None, use all states.
     ///
     /// # Returns
     /// A `(value, uncertainty_option)` Tuple
@@ -1864,7 +1866,7 @@ pub trait OracleT: CanOracle {
     ///
     /// Predict the most likely class of orbit for given longitude of
     /// Geosynchronous orbit.
-    ///
+    ///    
     /// ```
     /// use lace::examples::Example;
     /// use lace::prelude::*;
@@ -1876,7 +1878,7 @@ pub trait OracleT: CanOracle {
     ///     &Given::Conditions(vec![
     ///         ("longitude_radians_of_geo", Datum::Continuous(1.0))
     ///     ]),
-    ///     None,
+    ///     false,
     ///     None,
     /// ).unwrap();
     ///
@@ -1896,7 +1898,7 @@ pub trait OracleT: CanOracle {
     ///     &Given::Conditions(vec![
     ///         ("longitude_radians_of_geo", Datum::Missing)
     ///     ]),
-    ///     None,
+    ///     false,
     ///     None,
     /// ).unwrap();
     ///
@@ -1914,7 +1916,7 @@ pub trait OracleT: CanOracle {
     ///     &Given::Conditions(vec![(
     ///         "Class_of_Orbit", Datum::Categorical("MEO".into()))
     ///     ]),
-    ///     None,
+    ///     false,
     ///     None,
     /// ).unwrap();
     ///
@@ -1931,7 +1933,7 @@ pub trait OracleT: CanOracle {
     /// let (pred_type, _) = oracle.predict(
     ///     "longitude_radians_of_geo",
     ///     &Given::<usize>::Nothing,
-    ///     None,
+    ///     false,
     ///     None,
     /// ).unwrap();
     ///
@@ -1954,7 +1956,7 @@ pub trait OracleT: CanOracle {
     ///     &Given::Conditions(vec![
     ///         ("Period_minutes", Datum::Continuous(1200.0))
     ///     ]),
-    ///     Some(PredictUncertaintyType::JsDivergence),
+    ///     true,
     ///     None,
     /// ).unwrap();
     ///
@@ -1965,7 +1967,7 @@ pub trait OracleT: CanOracle {
     ///     &Given::Conditions(vec![
     ///         ("Period_minutes", Datum::Continuous(1000.0))
     ///     ]),
-    ///     Some(PredictUncertaintyType::JsDivergence),
+    ///     true,
     ///     None,
     /// ).unwrap();
     ///
@@ -1977,7 +1979,7 @@ pub trait OracleT: CanOracle {
         &self,
         col_ix: Ix,
         given: &Given<GIx>,
-        unc_type_opt: Option<PredictUncertaintyType>,
+        with_uncertainty: bool,
         state_ixs_opt: Option<&[usize]>,
     ) -> Result<(Datum, Option<f64>), error::PredictError> {
         use super::validation::Mnar;
@@ -2011,9 +2013,11 @@ pub trait OracleT: CanOracle {
             false
         };
         if is_missing {
-            let unc_opt = unc_type_opt.map(|_| {
-                utils::mnar_uncertainty_jsd(states.as_slice(), col_ix, &given)
-            });
+            let unc_opt = if with_uncertainty {
+                Some(utils::mnar_uncertainty(states.as_slice(), col_ix, &given))
+            } else {
+                None
+            };
             Ok((Datum::Missing, unc_opt))
         } else {
             let value = match self.ftype(col_ix).unwrap() {
@@ -2039,9 +2043,11 @@ pub trait OracleT: CanOracle {
             let value =
                 utils::post_process_datum(value, col_ix, self.codebook());
 
-            let unc_opt = unc_type_opt.map(|_| {
-                self._predict_uncertainty(col_ix, &given, state_ixs_opt)
-            });
+            let unc_opt = if with_uncertainty {
+                Some(self._predict_uncertainty(col_ix, &given, state_ixs_opt))
+            } else {
+                None
+            };
 
             Ok((value, unc_opt))
         }
@@ -2325,21 +2331,8 @@ pub trait OracleT: CanOracle {
     /// # Arguments
     /// - row_ix: the row index
     /// - col_ix: the column index
-    /// - unc_type: The type of uncertainty to compute
-    fn _impute_uncertainty(
-        &self,
-        row_ix: usize,
-        col_ix: usize,
-        unc_type: ImputeUncertaintyType,
-    ) -> f64 {
-        match unc_type {
-            ImputeUncertaintyType::JsDivergence => {
-                utils::js_impute_uncertainty(self.states(), row_ix, col_ix)
-            }
-            ImputeUncertaintyType::PairwiseKl => {
-                utils::kl_impute_uncertainty(self.states(), row_ix, col_ix)
-            }
-        }
+    fn _impute_uncertainty(&self, row_ix: usize, col_ix: usize) -> f64 {
+        utils::impute_uncertainty(self.states(), row_ix, col_ix)
     }
 
     /// Computes the uncertainty associated with predicting the value of a
@@ -2353,7 +2346,7 @@ pub trait OracleT: CanOracle {
     /// # Arguments
     /// - col_ix: the column index
     /// - given_opt: an optional list of (column index, value) tuples
-    ///   designating other observations on which to condition the prediciton
+    ///   designating other observations on which to condition the prediction
     fn _predict_uncertainty(
         &self,
         col_ix: usize,

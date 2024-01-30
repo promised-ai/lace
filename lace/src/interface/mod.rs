@@ -5,7 +5,7 @@ mod metadata;
 mod oracle;
 
 pub use engine::{
-    update_handler, AppendStrategy, BuildEngineError, Builder, Engine,
+    update_handler, AppendStrategy, BuildEngineError, Engine, EngineBuilder,
     InsertDataActions, InsertMode, LatentColumnType, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
 };
@@ -18,9 +18,8 @@ pub use lace_metadata::latest::Metadata;
 pub use oracle::utils;
 
 pub use oracle::{
-    ConditionalEntropyType, DatalessOracle, ImputeUncertaintyType,
-    MiComponents, MiType, Oracle, OracleT, PredictUncertaintyType,
-    RowSimilarityVariant,
+    ConditionalEntropyType, DatalessOracle, MiComponents, MiType, Oracle,
+    OracleT, RowSimilarityVariant,
 };
 
 pub use given::Given;

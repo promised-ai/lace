@@ -153,7 +153,7 @@ impl From<latest::Metadata> for DatalessOracle {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "examples"))]
 mod tests {
     use super::*;
     use crate::examples::Example;

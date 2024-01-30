@@ -125,7 +125,7 @@ fn main() {
         checkpoint: None,
         save_config: None,
     };
-    let scale_contraint = Gaussian::standard();
+    let scale_constraint = Gaussian::standard();
 
     for i in 0..n_sweeps {
         let proposal = {
@@ -139,7 +139,7 @@ fn main() {
                         .collect::<Vec<(usize, Datum)>>();
 
                     let scale = if let Datum::Continuous(z) = conditions[0].1 {
-                        scale_contraint.ln_f(&z)
+                        scale_constraint.ln_f(&z)
                     } else {
                         panic!("z should be continuous")
                     };
@@ -175,7 +175,7 @@ fn main() {
             let y = engine.datum(row_ix, "y").unwrap();
             Given::Conditions(vec![("x", x), ("y", y)])
         };
-        let z = engine.predict("z", &given, None, None).unwrap().0;
+        let z = engine.predict("z", &given, false, None).unwrap().0;
         let xys = engine
             .simulate(
                 &[0, 1],

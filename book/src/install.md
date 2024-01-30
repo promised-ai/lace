@@ -8,7 +8,7 @@ Installation requires rust, which you can get [here](https://www.rust-lang.org/t
 The lace CLI is installed with rust via the command
 
 ```console
-$ cargo install --locked lace
+$ cargo install --locked lace-cli
 ```
 
 ## Rust crate

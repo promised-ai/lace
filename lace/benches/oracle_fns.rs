@@ -1,9 +1,7 @@
 use criterion::Criterion;
 use criterion::{black_box, criterion_group, criterion_main};
 use lace::examples::Example;
-use lace::{
-    Given, ImputeUncertaintyType, Oracle, OracleT, PredictUncertaintyType,
-};
+use lace::{Given, Oracle, OracleT};
 use lace_data::Datum;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -232,9 +230,8 @@ fn bench_simulate(c: &mut Criterion) {
 fn bench_impute(c: &mut Criterion) {
     c.bench_function("oracle impute", |b| {
         let oracle = get_oracle();
-        let unc_type = ImputeUncertaintyType::JsDivergence;
         b.iter(|| {
-            let _res = black_box(oracle.impute(13, 12, Some(unc_type)));
+            let _res = black_box(oracle.impute(13, 12, true));
         })
     });
 }
@@ -246,15 +243,13 @@ fn bench_predict(c: &mut Criterion) {
             (2, Datum::Categorical(lace::Category::U8(0))),
         ]);
         let oracle = get_oracle();
-        let unc_type = PredictUncertaintyType::JsDivergence;
         b.iter(|| {
-            let _res =
-                black_box(oracle.predict(13, &given, Some(unc_type), None));
+            let _res = black_box(oracle.predict(13, &given, true, None));
         })
     });
 }
 
-fn bench_predict_continous(c: &mut Criterion) {
+fn bench_predict_continuous(c: &mut Criterion) {
     c.bench_function("oracle predict continuous", |b| {
         let given = Given::Conditions(vec![(
             4,
@@ -262,7 +257,7 @@ fn bench_predict_continous(c: &mut Criterion) {
         )]);
         let oracle = get_satellites_oracle();
         b.iter(|| {
-            let _res = black_box(oracle.predict(8, &given, None, None));
+            let _res = black_box(oracle.predict(8, &given, false, None));
         })
     });
 }
@@ -288,6 +283,6 @@ criterion_group!(
     bench_draw,
     bench_impute,
     bench_predict,
-    bench_predict_continous,
+    bench_predict_continuous,
 );
 criterion_main!(oracle_benches);

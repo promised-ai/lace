@@ -1,8 +1,9 @@
-use lace::prelude::*;
-use lace_stats::rv::prelude::*;
-use std::io::Write;
-
+#[cfg(feature = "formats")]
 fn main() {
+    use lace::prelude::*;
+    use lace_stats::rv::prelude::*;
+    use std::io::Write;
+
     let mut rng = rand::thread_rng();
 
     // Draw data from a mixture of Poisson
@@ -23,7 +24,7 @@ fn main() {
                 writeln!(file, "{},{}", ix, x).unwrap();
             });
 
-        Builder::new(DataSource::Csv(file.path().into()))
+        EngineBuilder::new(DataSource::Csv(file.path().into()))
             .with_nstates(2)
             .seed_from_u64(1337)
             .build()
@@ -45,4 +46,9 @@ fn main() {
     for (x, fx) in fx.iter().enumerate() {
         println!("{},{},{}", x, mixture.f(&(x as u32)), fx);
     }
+}
+
+#[cfg(not(feature = "formats"))]
+fn main() {
+    eprintln!("Please enable the 'formats' feature to use this example.")
 }

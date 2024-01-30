@@ -1,7 +1,7 @@
-use arrow2::ffi;
 use polars::frame::DataFrame;
 use polars::prelude::{ArrayRef, ArrowField, PolarsError};
 use polars::series::Series;
+use polars_arrow::ffi;
 use pyo3::exceptions::{PyException, PyIOError, PyValueError};
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::types::PyModule;
@@ -11,24 +11,17 @@ use pyo3::{
 };
 
 #[derive(Debug)]
-pub enum DataFrameError {
-    Polars(PolarsError),
-    Arrow(arrow2::error::Error),
-}
+pub struct DataFrameError(PolarsError);
 
 impl From<PolarsError> for DataFrameError {
     fn from(value: PolarsError) -> Self {
-        Self::Polars(value)
-    }
-}
-impl From<arrow2::error::Error> for DataFrameError {
-    fn from(value: arrow2::error::Error) -> Self {
-        Self::Arrow(value)
+        Self(value)
     }
 }
 
 impl std::convert::From<DataFrameError> for PyErr {
     fn from(err: DataFrameError) -> PyErr {
+<<<<<<< HEAD
         match &err {
             DataFrameError::Polars(err) => match err {
                 PolarsError::ComputeError(err) => {
@@ -68,6 +61,83 @@ impl std::convert::From<DataFrameError> for PyErr {
             },
             DataFrameError::Arrow(err) => {
                 ArrowErrorException::new_err(format!("{:?}", err))
+||||||| d669cc52
+        match &err {
+            DataFrameError::Polars(err) => match err {
+                PolarsError::ComputeError(err) => {
+                    ComputeError::new_err(err.to_string())
+                }
+                PolarsError::NoData(err) => {
+                    NoDataError::new_err(err.to_string())
+                }
+                PolarsError::ShapeMismatch(err) => {
+                    ShapeError::new_err(err.to_string())
+                }
+                PolarsError::SchemaMismatch(err) => {
+                    SchemaError::new_err(err.to_string())
+                }
+                PolarsError::Io(err) => PyIOError::new_err(err.to_string()),
+                PolarsError::InvalidOperation(err) => {
+                    PyValueError::new_err(err.to_string())
+                }
+                PolarsError::ArrowError(err) => {
+                    ArrowErrorException::new_err(format!("{:?}", err))
+                }
+                PolarsError::Duplicate(err) => {
+                    DuplicateError::new_err(err.to_string())
+                }
+                PolarsError::ColumnNotFound(err) => {
+                    ColumnNotFound::new_err(err.to_string())
+                }
+                PolarsError::SchemaFieldNotFound(err) => {
+                    SchemaFieldNotFound::new_err(err.to_string())
+                }
+                PolarsError::StructFieldNotFound(err) => {
+                    StructFieldNotFound::new_err(err.to_string())
+                }
+                PolarsError::StringCacheMismatch(err) => {
+                    StringCacheMismatch::new_err(err.to_string())
+                }
+                PolarsError::OutOfBounds(_) => {
+                    OutOfBounds::new_err(err.to_string())
+                }
+            },
+            DataFrameError::Arrow(err) => {
+                ArrowErrorException::new_err(format!("{:?}", err))
+=======
+        match &err.0 {
+            PolarsError::ComputeError(err) => {
+                ComputeError::new_err(err.to_string())
+            }
+            PolarsError::NoData(err) => NoDataError::new_err(err.to_string()),
+            PolarsError::ShapeMismatch(err) => {
+                ShapeError::new_err(err.to_string())
+            }
+            PolarsError::SchemaMismatch(err) => {
+                SchemaError::new_err(err.to_string())
+            }
+            PolarsError::Io(err) => PyIOError::new_err(err.to_string()),
+            PolarsError::InvalidOperation(err) => {
+                PyValueError::new_err(err.to_string())
+            }
+            PolarsError::Duplicate(err) => {
+                DuplicateError::new_err(err.to_string())
+            }
+            PolarsError::ColumnNotFound(err) => {
+                ColumnNotFound::new_err(err.to_string())
+            }
+            PolarsError::SchemaFieldNotFound(err) => {
+                SchemaFieldNotFound::new_err(err.to_string())
+            }
+            PolarsError::StructFieldNotFound(err) => {
+                StructFieldNotFound::new_err(err.to_string())
+            }
+            PolarsError::StringCacheMismatch(err) => {
+                StringCacheMismatch::new_err(err.to_string())
+            }
+            PolarsError::OutOfBounds(_) => {
+                OutOfBounds::new_err(err.0.to_string())
+>>>>>>> master
             }
         }
     }
@@ -109,7 +179,8 @@ fn array_to_rust(obj: &PyAny) -> PyResult<ArrayRef> {
     let schema_ptr = &*schema as *const ffi::ArrowSchema;
 
     // make the conversion through PyArrow's private API
-    // this changes the pointer's memory and is thus unsafe. In particular, `_export_to_c` can go out of bounds
+    // this changes the pointer's memory and is thus unsafe. In particular,
+    // `_export_to_c` can go out of bounds
     obj.call_method1(
         "_export_to_c",
         (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),

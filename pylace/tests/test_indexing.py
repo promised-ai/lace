@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from lace.examples import Animals
+from lace.examples import Animals, Satellites
 
 
 @pytest.fixture(scope="module")
@@ -10,6 +10,13 @@ def animals():
     animals = Animals()
     animals.df = animals.df.to_pandas().set_index("id")
     return animals
+
+
+@pytest.fixture(scope="module")
+def satellites():
+    satellites = Satellites()
+    satellites.df = satellites.df.to_pandas().set_index("ID")
+    return satellites
 
 
 def _random_index(n, strs):
@@ -20,6 +27,19 @@ def _random_index(n, strs):
         return -random.randint(0, n - 1)
     else:
         return random.choice(strs)
+
+
+@pytest.mark.parametrize("target", ["black", "swims", 12, 45])
+def test_single_index_consistency(target):
+    # for some reason, the order of the row indeices iterator was different
+    # each time we read in the metadata -- probably because of some random
+    # state initialization in a hashmap. Not sure why that would happen, but
+    # we fixed that particular issue.
+    a1 = Animals()
+    a2 = Animals()
+    xs = a1[target][:, 1]
+    ys = a2[target][:, 1]
+    assert all(x == y for x, y in zip(xs, ys))
 
 
 def tests_index_positive_int_tuple(animals):
@@ -47,6 +67,80 @@ def test_string_tuple_index(animals):
     for row in animals.index:
         for col in animals.columns:
             assert animals[row, col] == animals.df.loc[row, col]
+
+
+def test_poscont_col_slice_indexing_1(animals):
+    data = animals["otter", :2]
+    columns = data.columns
+
+    assert data.shape == (1, 3)
+    assert columns[1] == animals.columns[0]
+    assert columns[2] == animals.columns[1]
+
+
+def test_poscont_col_slice_indexing_2(animals):
+    data = animals["otter", 80:]
+    columns = data.columns
+
+    assert data.shape == (1, 6)
+    assert columns[1] == animals.columns[80]
+    assert columns[2] == animals.columns[81]
+    assert columns[3] == animals.columns[82]
+    assert columns[4] == animals.columns[83]
+    assert columns[5] == animals.columns[84]
+
+
+def test_negcont_col_slice_indexing_1(animals):
+    data = animals["otter", -2:]
+    columns = data.columns
+
+    assert data.shape == (1, 3)
+    assert columns[1] == animals.columns[83]
+    assert columns[2] == animals.columns[84]
+
+
+def test_negcont_col_slice_indexing_2(animals):
+    data = animals["otter", :-80]
+    columns = data.columns
+
+    assert data.shape == (1, 6)
+    assert columns[1] == animals.columns[0]
+    assert columns[2] == animals.columns[1]
+    assert columns[3] == animals.columns[2]
+    assert columns[4] == animals.columns[3]
+    assert columns[5] == animals.columns[4]
+
+
+def test_skip_col_slice_indexing_1(animals):
+    data = animals["otter", 0:4:2]
+    columns = data.columns
+
+    assert data.shape == (1, 3)
+    assert columns[1] == animals.columns[0]
+    assert columns[2] == animals.columns[2]
+
+
+def test_skip_col_slice_indexing_2(animals):
+    data = animals["otter", 4:0:-1]
+    columns = data.columns
+
+    assert data.shape == (1, 5)
+    assert columns[1] == animals.columns[4]
+    assert columns[2] == animals.columns[3]
+    assert columns[3] == animals.columns[2]
+    assert columns[4] == animals.columns[1]
+
+
+@pytest.mark.parametrize("col_ix", ["Class_of_Orbit", 0])
+def test_column_index(satellites, col_ix):
+    data = satellites[col_ix]
+    assert data.shape == (satellites.shape[0], 2)
+
+
+@pytest.mark.parametrize("col_ix", ["Class_of_Orbit", 0])
+def test_column_index_with_slice_row(satellites, col_ix):
+    data = satellites[:, col_ix]
+    assert data.shape == (satellites.shape[0], 2)
 
 
 def test_tuple_index_fuzzy_smoke(animals):

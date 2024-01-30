@@ -17,6 +17,7 @@ where
     to_cat: Vec<T>,
     to_ix: HashMap<T, usize>,
 }
+
 impl<T> CategoryMap<T>
 where
     T: Hash + Clone + Eq + Default + Ord,

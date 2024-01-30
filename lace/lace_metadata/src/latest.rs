@@ -21,13 +21,13 @@ use lace_data::SparseContainer;
 use lace_stats::experimental::sbd::SbdHyper;
 #[cfg(feature = "experimental")]
 use lace_stats::rv::experimental::{Sb, Sbd};
-#[cfg(feature = "experimental")]
-use once_cell::sync::OnceCell;
+// #[cfg(feature = "experimental")]
+// use std::sync::OnceLock;
 
 use crate::versions::v0;
 use crate::versions::v0::{DataStore, DatalessMissingNotAtRandom};
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
 

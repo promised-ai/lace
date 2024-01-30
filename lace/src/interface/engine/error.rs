@@ -44,9 +44,9 @@ pub enum DataParseError {
     /// The supplied data source is not currently supported for this operation
     #[error("Provided an unsupported data source")]
     UnsupportedDataSource,
-    /// The user supplied column_metdata in the codebook but provided an empty
+    /// The user supplied column_metadata in the codebook but provided an empty
     /// data source
-    #[error("non-empty column_metdata the codebook but empty DataSource")]
+    #[error("non-empty column_metadata the codebook but empty DataSource")]
     ColumnMetadataSuppliedForEmptyData,
     /// The user supplied row_names in the codebook but provided an empty
     /// data source
@@ -62,6 +62,12 @@ pub enum DataParseError {
     /// externally
     #[error("Column `{col_name}` has type `{col_type}`, which is unsupported for external data sources")]
     UnsupportedColumnType { col_name: String, col_type: String },
+    /// The codebook and the data have a different number of rows
+    #[error("The codebook contains {n_codebook_rows} rows, but the data contain {n_data_rows} rows")]
+    CodebookAndDataRowsMismatch {
+        n_codebook_rows: usize,
+        n_data_rows: usize,
+    },
 }
 
 /// Errors that can arise when creating a new engine

@@ -2,17 +2,30 @@
 use super::error::DefaultCodebookError;
 use lace_codebook::Codebook;
 use polars::frame::DataFrame;
-use std::convert::TryFrom;
-use std::ffi::{OsStr, OsString};
 use std::fmt;
+
+#[cfg(feature = "formats")]
+use std::ffi::{OsStr, OsString};
+#[cfg(feature = "formats")]
 use std::path::PathBuf;
 
 /// Denotes the source type of the data to be analyzed
+#[cfg(not(feature = "formats"))]
+#[derive(Debug, Clone, PartialEq)]
+pub enum DataSource {
+    /// Polars DataFrame
+    Polars(DataFrame),
+    /// Empty (A void datasource).
+    Empty,
+}
+
+/// Denotes the source type of the data to be analyzed
+#[cfg(feature = "formats")]
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataSource {
     /// CSV file
     Csv(PathBuf),
-    /// Apache IPC data format (e.g. Feather V2)
+    /// Apache IPC data format (e.g. Arrow V2)
     Ipc(PathBuf),
     /// JSON  or JSON line file
     Json(PathBuf),
@@ -25,17 +38,21 @@ pub enum DataSource {
 }
 
 /// Error when extension is not CSV, JSON, IPC, or Parquet
+#[cfg(feature = "formats")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnknownExtension(pub Option<OsString>);
 
+#[cfg(feature = "formats")]
 impl std::fmt::Display for UnknownExtension {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Unknown Extension: {:?}", self.0)
     }
 }
 
+#[cfg(feature = "formats")]
 impl std::error::Error for UnknownExtension {}
 
+#[cfg(feature = "formats")]
 impl TryFrom<PathBuf> for DataSource {
     type Error = UnknownExtension;
 
@@ -61,12 +78,7 @@ impl TryFrom<PathBuf> for DataSource {
     }
 }
 
-impl From<DataFrame> for DataSource {
-    fn from(value: DataFrame) -> Self {
-        Self::Polars(value)
-    }
-}
-
+#[cfg(feature = "formats")]
 impl TryFrom<DataSource> for PathBuf {
     type Error = &'static str;
     fn try_from(src: DataSource) -> Result<Self, Self::Error> {
@@ -85,6 +97,13 @@ impl TryFrom<DataSource> for PathBuf {
     }
 }
 
+impl From<DataFrame> for DataSource {
+    fn from(value: DataFrame) -> Self {
+        Self::Polars(value)
+    }
+}
+
+#[cfg(feature = "formats")]
 impl fmt::Display for DataSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -97,6 +116,21 @@ impl fmt::Display for DataSource {
     }
 }
 
+#[cfg(not(feature = "formats"))]
+impl fmt::Display for DataSource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Polars(df) => {
+                write!(f, "polars::DataFrame {:?}", df.shape())
+            }
+            Self::Empty => {
+                write!(f, "Empty")
+            }
+        }
+    }
+}
+
+#[cfg(feature = "formats")]
 impl DataSource {
     pub fn to_os_string(&self) -> Option<OsString> {
         match self {
@@ -111,19 +145,19 @@ impl DataSource {
 
     /// Generate a default `Codebook` from the source data
     pub fn default_codebook(&self) -> Result<Codebook, DefaultCodebookError> {
-        use crate::codebook::data;
+        use crate::codebook::{data, formats};
         let codebook = match &self {
             DataSource::Ipc(path) => {
-                data::codebook_from_ipc(path, None, None, false)
+                formats::codebook_from_ipc(path, None, None, false)
             }
             DataSource::Csv(path) => {
-                data::codebook_from_csv(path, None, None, false)
+                formats::codebook_from_csv(path, None, None, false)
             }
             DataSource::Json(path) => {
-                data::codebook_from_json(path, None, None, false)
+                formats::codebook_from_json(path, None, None, false)
             }
             DataSource::Parquet(path) => {
-                data::codebook_from_parquet(path, None, None, false)
+                formats::codebook_from_parquet(path, None, None, false)
             }
             DataSource::Polars(df) => {
                 data::df_to_codebook(df, None, None, false)
@@ -134,43 +168,17 @@ impl DataSource {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{DataSource, UnknownExtension};
-    use std::path::PathBuf;
-
-    #[test]
-    fn data_source_from_path() {
-        macro_rules! pathcheck_ok {
-            ($path: literal, $expected: ident) => {
-                let path = PathBuf::from($path);
-                let maybe_datasource = path.clone().try_into();
-                assert_eq!(maybe_datasource, Ok(DataSource::$expected(path)));
-            };
-        }
-
-        macro_rules! pathcheck_err {
-            ($path: literal, $expected: expr) => {
-                let path = PathBuf::from($path);
-                let maybe_datasource: Result<DataSource, UnknownExtension> =
-                    path.clone().try_into();
-                assert_eq!(
-                    maybe_datasource,
-                    Err(UnknownExtension($expected.map(|x: &str| x.into())))
-                );
-            };
-        }
-
-        pathcheck_ok!("./abc.csv", Csv);
-        pathcheck_ok!("/xyz/efg.hji//abc.csv", Csv);
-        pathcheck_ok!("./abc.csv.gz", Csv);
-        pathcheck_ok!("./abc.json", Json);
-        pathcheck_ok!("./abc.jsonl", Json);
-        pathcheck_ok!("./abc.parquet", Parquet);
-        pathcheck_ok!("./abc.arrow", Ipc);
-        pathcheck_ok!("./abc.ipc", Ipc);
-
-        pathcheck_err!("./abc.123", Some("123"));
-        pathcheck_err!("./abc", None);
+#[cfg(not(feature = "formats"))]
+impl DataSource {
+    /// Generate a default `Codebook` from the source data
+    pub fn default_codebook(&self) -> Result<Codebook, DefaultCodebookError> {
+        use crate::codebook::data;
+        let codebook = match &self {
+            DataSource::Polars(df) => {
+                data::df_to_codebook(df, None, None, false)
+            }
+            DataSource::Empty => Ok(Codebook::default()),
+        }?;
+        Ok(codebook)
     }
 }

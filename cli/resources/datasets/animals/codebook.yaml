@@ -1,0 +1,995 @@
+table_name: my_table
+state_alpha_prior:
+  shape: 1.0
+  rate: 1.0
+view_alpha_prior:
+  shape: 1.0
+  rate: 1.0
+col_metadata:
+- name: black
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: white
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: blue
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: brown
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: gray
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: orange
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: red
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: yellow
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: patches
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: spots
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: stripes
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: furry
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: hairless
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: toughskin
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: big
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: small
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: bulbous
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: lean
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: flippers
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: hands
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: hooves
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: pads
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: paws
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: longleg
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: longneck
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: tail
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: chewteeth
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: meatteeth
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: buckteeth
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: strainteeth
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: horns
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: claws
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: tusks
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: smelly
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: flys
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: hops
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: swims
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: tunnels
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: walks
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: fast
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: slow
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: strong
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: weak
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: muscle
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: bipedal
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: quadrapedal
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: active
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: inactive
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: nocturnal
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: hibernate
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: agility
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: fish
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: meat
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: plankton
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: vegetation
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: insects
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: forager
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: grazer
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: hunter
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: scavenger
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: skimmer
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: stalker
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: newworld
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: oldworld
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: arctic
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: coastal
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: desert
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: bush
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: plains
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: forest
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: fields
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: jungle
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: mountains
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: ocean
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: ground
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: water
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: tree
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: cave
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: fierce
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: timid
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: smart
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: group
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: solitary
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: nestspot
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: domestic
+  coltype: !Categorical
+    k: 2
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !u8 2
+    prior: null
+  notes: null
+  missing_not_at_random: false
+comments: null
+row_names:
+- antelope
+- grizzly+bear
+- killer+whale
+- beaver
+- dalmatian
+- persian+cat
+- horse
+- german+shepherd
+- blue+whale
+- siamese+cat
+- skunk
+- mole
+- tiger
+- hippopotamus
+- leopard
+- moose
+- spider+monkey
+- humpback+whale
+- elephant
+- gorilla
+- ox
+- fox
+- sheep
+- seal
+- chimpanzee
+- hamster
+- squirrel
+- rhinoceros
+- rabbit
+- bat
+- giraffe
+- wolf
+- chihuahua
+- rat
+- weasel
+- otter
+- buffalo
+- zebra
+- giant+panda
+- deer
+- bobcat
+- pig
+- lion
+- mouse
+- polar+bear
+- collie
+- walrus
+- raccoon
+- cow
+- dolphin
