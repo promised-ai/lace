@@ -17,7 +17,7 @@ from lace.core import (
 
 class Dimension:
     Rows = 0
-    Colums = 1
+    Columns = 1
 
 
 FN_IS_SYMMETRIC = {
@@ -28,8 +28,8 @@ FN_IS_SYMMETRIC = {
 
 
 FN_DIMENSION = {
-    "mi": Dimension.Colums,
-    "depprob": Dimension.Colums,
+    "mi": Dimension.Columns,
+    "depprob": Dimension.Columns,
     "rowsim": Dimension.Rows,
 }
 
@@ -132,10 +132,10 @@ _COMMON_TRANSITIONS = {
         StateTransition.view_alphas(),
         StateTransition.row_assignment(RowKernel.sams()),
         StateTransition.view_alphas(),
+        StateTransition.row_assignment(RowKernel.slice()),
         StateTransition.component_parameters(),
         StateTransition.column_assignment(ColumnKernel.gibbs()),
-        StateTransition.column_assignment(ColumnKernel.slice()),
-        StateTransition.view_alphas(),
+        StateTransition.state_alpha(),
         StateTransition.feature_priors(),
     ],
     "flat": [
@@ -151,8 +151,12 @@ _COMMON_TRANSITIONS = {
         StateTransition.feature_priors(),
     ],
     "fast": [
+        StateTransition.view_alphas(),
         StateTransition.row_assignment(RowKernel.slice()),
+        StateTransition.component_parameters(),
+        StateTransition.feature_priors(),
         StateTransition.column_assignment(ColumnKernel.slice()),
+        StateTransition.state_alpha(),
     ],
 }
 

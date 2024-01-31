@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Initializing an engine with a codebook that has a different number of rows than the data will result in an error instead of printing a bunch on nonsense.
+- Pylace default transition sets didn't hit all required transitions
+- Typo in pylace internal `Dimension` class
 
 ## [python-0.6.0] - 2024-01-23
 
