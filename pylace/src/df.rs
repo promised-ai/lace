@@ -2,7 +2,7 @@ use polars::frame::DataFrame;
 use polars::prelude::{ArrayRef, ArrowField, PolarsError};
 use polars::series::Series;
 use polars_arrow::ffi;
-use pyo3::exceptions::{PyException, PyIOError, PyValueError};
+use pyo3::exceptions::{PyException, PyIOError, PyIndexError, PyValueError};
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::types::PyModule;
 use pyo3::{
@@ -21,90 +21,6 @@ impl From<PolarsError> for DataFrameError {
 
 impl std::convert::From<DataFrameError> for PyErr {
     fn from(err: DataFrameError) -> PyErr {
-<<<<<<< HEAD
-        match &err {
-            DataFrameError::Polars(err) => match err {
-                PolarsError::ComputeError(err) => {
-                    ComputeError::new_err(err.to_string())
-                }
-                PolarsError::NoData(err) => {
-                    NoDataError::new_err(err.to_string())
-                }
-                PolarsError::ShapeMismatch(err) => {
-                    ShapeError::new_err(err.to_string())
-                }
-                PolarsError::SchemaMismatch(err) => {
-                    SchemaError::new_err(err.to_string())
-                }
-                PolarsError::Io(err) => PyIOError::new_err(err.to_string()),
-                PolarsError::InvalidOperation(err) => {
-                    PyValueError::new_err(err.to_string())
-                }
-                PolarsError::ArrowError(err) => {
-                    ArrowErrorException::new_err(format!("{:?}", err))
-                }
-                PolarsError::Duplicate(err) => {
-                    DuplicateError::new_err(err.to_string())
-                }
-                PolarsError::ColumnNotFound(err) => {
-                    ColumnNotFound::new_err(err.to_string())
-                }
-                PolarsError::SchemaFieldNotFound(err) => {
-                    SchemaFieldNotFound::new_err(err.to_string())
-                }
-                PolarsError::StructFieldNotFound(err) => {
-                    StructFieldNotFound::new_err(err.to_string())
-                }
-                PolarsError::StringCacheMismatch(err) => {
-                    StringCacheMismatch::new_err(err.to_string())
-                }
-            },
-            DataFrameError::Arrow(err) => {
-                ArrowErrorException::new_err(format!("{:?}", err))
-||||||| d669cc52
-        match &err {
-            DataFrameError::Polars(err) => match err {
-                PolarsError::ComputeError(err) => {
-                    ComputeError::new_err(err.to_string())
-                }
-                PolarsError::NoData(err) => {
-                    NoDataError::new_err(err.to_string())
-                }
-                PolarsError::ShapeMismatch(err) => {
-                    ShapeError::new_err(err.to_string())
-                }
-                PolarsError::SchemaMismatch(err) => {
-                    SchemaError::new_err(err.to_string())
-                }
-                PolarsError::Io(err) => PyIOError::new_err(err.to_string()),
-                PolarsError::InvalidOperation(err) => {
-                    PyValueError::new_err(err.to_string())
-                }
-                PolarsError::ArrowError(err) => {
-                    ArrowErrorException::new_err(format!("{:?}", err))
-                }
-                PolarsError::Duplicate(err) => {
-                    DuplicateError::new_err(err.to_string())
-                }
-                PolarsError::ColumnNotFound(err) => {
-                    ColumnNotFound::new_err(err.to_string())
-                }
-                PolarsError::SchemaFieldNotFound(err) => {
-                    SchemaFieldNotFound::new_err(err.to_string())
-                }
-                PolarsError::StructFieldNotFound(err) => {
-                    StructFieldNotFound::new_err(err.to_string())
-                }
-                PolarsError::StringCacheMismatch(err) => {
-                    StringCacheMismatch::new_err(err.to_string())
-                }
-                PolarsError::OutOfBounds(_) => {
-                    OutOfBounds::new_err(err.to_string())
-                }
-            },
-            DataFrameError::Arrow(err) => {
-                ArrowErrorException::new_err(format!("{:?}", err))
-=======
         match &err.0 {
             PolarsError::ComputeError(err) => {
                 ComputeError::new_err(err.to_string())
@@ -136,8 +52,7 @@ impl std::convert::From<DataFrameError> for PyErr {
                 StringCacheMismatch::new_err(err.to_string())
             }
             PolarsError::OutOfBounds(_) => {
-                OutOfBounds::new_err(err.0.to_string())
->>>>>>> master
+                PyIndexError::new_err(err.0.to_string())
             }
         }
     }
