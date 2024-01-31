@@ -6,6 +6,8 @@ pub use crate::{
     RowSimilarityVariant, SupportExtension, Value, WriteMode,
 };
 
+pub use crate::interface::Variability;
+
 pub use crate::data::DataSource;
 
 pub use lace_cc::{

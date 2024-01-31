@@ -5,7 +5,7 @@ pub mod utils;
 mod validation;
 
 pub use dataless::DatalessOracle;
-pub use traits::OracleT;
+pub use traits::{OracleT, Variability};
 
 use std::path::Path;
 

@@ -44,3 +44,23 @@ engine.update(10_000)
 engine.predict('Class_of_Orbit', given={'Period_minutes': 1436.0})
 # ('GEO', 0.13583714831550336)
 ```
+
+## Tests
+
+To run tests, use `pytest`
+
+```console
+$ pytest -x
+```
+
+To run doctets:
+
+```console
+$ python tests/test_docs.py
+```
+
+To prevent plotly from displaying
+
+```console
+$ LACE_DOCTEST_NOPLOT=1 python tests/test_docs.py
+```

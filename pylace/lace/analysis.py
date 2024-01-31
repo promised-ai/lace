@@ -302,7 +302,7 @@ def held_out_neglogp(
     │ ["Apogee_km"]                     ┆ 5.106627            ┆ 1         │
     │ ["Apogee_km", "Eccentricity"]     ┆ 2.951662            ┆ 2         │
     │ ["Apogee_km", "Country_of_Operat… ┆ 2.951254            ┆ 3         │
-    │ …                                 ┆ …                   ┆ …         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 2.952801            ┆ 4         │
     │ ["Apogee_km", "Country_of_Contra… ┆ 2.956224            ┆ 5         │
     │ ["Apogee_km", "Country_of_Contra… ┆ 2.96479             ┆ 6         │
     │ ["Apogee_km", "Country_of_Contra… ┆ 2.992173            ┆ 7         │
@@ -415,7 +415,7 @@ def held_out_inconsistency(
     │ ["Apogee_km"]                     ┆ 1.290609                  ┆ 1         │
     │ ["Apogee_km", "Eccentricity"]     ┆ 0.74598                   ┆ 2         │
     │ ["Apogee_km", "Country_of_Operat… ┆ 0.745877                  ┆ 3         │
-    │ …                                 ┆ …                         ┆ …         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 0.746268                  ┆ 4         │
     │ ["Apogee_km", "Country_of_Contra… ┆ 0.747133                  ┆ 5         │
     │ ["Apogee_km", "Country_of_Contra… ┆ 0.749297                  ┆ 6         │
     │ ["Apogee_km", "Country_of_Contra… ┆ 0.756218                  ┆ 7         │
@@ -525,7 +525,7 @@ def held_out_uncertainty(
     │ ["Expected_Lifetime"]             ┆ 0.437647                ┆ 1         │
     │ ["Apogee_km", "Eccentricity"]     ┆ 0.05561                 ┆ 2         │
     │ ["Apogee_km", "Country_of_Operat… ┆ 0.055283                ┆ 3         │
-    │ …                                 ┆ …                       ┆ …         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 0.056185                ┆ 4         │
     │ ["Apogee_km", "Country_of_Operat… ┆ 0.057624                ┆ 5         │
     │ ["Apogee_km", "Country_of_Contra… ┆ 0.0595                  ┆ 6         │
     │ ["Apogee_km", "Country_of_Contra… ┆ 0.077359                ┆ 7         │
@@ -945,15 +945,15 @@ def explain_prediction(
     │ ---                          ┆ ---         │
     │ str                          ┆ f64         │
     ╞══════════════════════════════╪═════════════╡
-    │ Country_of_Operator          ┆ 3.5216e-16  │
-    │ Users                        ┆ -3.1668e-14 │
-    │ Purpose                      ┆ -9.5636e-14 │
-    │ Class_of_Orbit               ┆ -1.8263e-15 │
+    │ Country_of_Operator          ┆ 2.4617e-16  │
+    │ Users                        ┆ -2.1412e-15 │
+    │ Purpose                      ┆ -8.0193e-15 │
+    │ Class_of_Orbit               ┆ -2.2727e-15 │
     │ …                            ┆ …           │
-    │ Launch_Site                  ┆ -2.8416e-15 │
-    │ Launch_Vehicle               ┆ 1.0704e-14  │
-    │ Source_Used_for_Orbital_Data ┆ -3.9301e-15 │
-    │ Inclination_radians          ┆ -9.6259e-15 │
+    │ Launch_Site                  ┆ -5.8214e-16 │
+    │ Launch_Vehicle               ┆ -9.6101e-16 │
+    │ Source_Used_for_Orbital_Data ┆ -9.1997e-15 │
+    │ Inclination_radians          ┆ -1.5407e-15 │
     └──────────────────────────────┴─────────────┘
 
     Get the importances using the 'ablative-dist' method, which measures how
@@ -975,7 +975,7 @@ def explain_prediction(
     │ Country_of_Operator          ┆ -0.000109 │
     │ Users                        ┆ 0.081289  │
     │ Purpose                      ┆ 0.18938   │
-    │ Class_of_Orbit               ┆ 0.000133  │
+    │ Class_of_Orbit               ┆ 0.000119  │
     │ …                            ┆ …         │
     │ Launch_Site                  ┆ 0.003411  │
     │ Launch_Vehicle               ┆ -0.018817 │
@@ -994,9 +994,3 @@ def explain_prediction(
         raise ValueError(
             f"Invalid method `{method}`, valid methods are {PRED_EXPLAIN_METHODS}"
         )
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

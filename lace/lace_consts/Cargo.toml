@@ -9,4 +9,4 @@ repository = "https://github.com/promised-ai/lace"
 description = "Default constants for Lace"
 
 [dependencies]
-rv = { version = "0.16.2", features = ["serde1", "arraydist"] }
+rv = { version = "0.16.3", features = ["serde1", "arraydist"] }

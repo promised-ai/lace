@@ -1234,7 +1234,8 @@ class Engine:
         ...         xaxis_title='Period_minutes',
         ...         yaxis_title='f(Period)',
         ...     ) \
-        ...     .show()
+        ...     .show()  # doctest: +ELLIPSIS
+        {...}
         """
         srs = (
             self.engine.logp_scaled(values, given, state_ixs)
@@ -1746,6 +1747,57 @@ class Engine:
         """
         return self.engine.predict(target, given, state_ixs, with_uncertainty)
 
+    def variability(
+        self,
+        target: Union[str, int],
+        given: Optional[Dict[Union[str, int], object]] = None,
+        state_ixs: Optional[List[int]] = None,
+    ):
+        """
+        Return the variability of a conditional distribution.
+
+        "Variability" is variance for target types with defined mean and
+        variance and is entropy otherwise.
+
+        Parameters
+        ----------
+        target: column index
+            The column for which to return the variability
+        given: Dict[column index, value], optional
+            Column -> Value dictionary describing observations. Note that
+            columns can either be indices (int) or names (str)
+        state_ixs: List[int], optional
+            An optional list specifying which states should be used in the
+            computation. If `None` (default), use all states.
+
+        Returns
+        -------
+        float
+            The variance or entropy (for categorical targets)
+
+        Examples
+        --------
+        Compute the variance of the Period_minutes column unconditioned
+
+        >>> from lace.examples import Satellites
+        >>> sats = Satellites()
+        >>> sats.variability("Period_minutes")
+        691324.3941953736
+
+        Compute the variance of Period_minutes for geosynchronous satellite
+
+        >>> sats.variability("Period_minutes", given={"Class_of_Orbit": "GEO"})
+        136818.61181890886
+
+        Compute the entropy of Class_of_orbit
+
+        >>> sats.variability("Class_of_Orbit")
+        0.9362550555890782
+        >>> sats.variability("Class_of_Orbit", given={"Period_minutes": 1440.0})
+        0.01569677151657056
+        """
+        return self.engine.variability(target, given, state_ixs)
+
     def impute(
         self,
         col: Union[str, int],
@@ -2143,7 +2195,7 @@ class Engine:
         │ wolf  ┆ rat   ┆ 0.71689  │
         │ wolf  ┆ otter ┆ 0.492262 │
         │ rat   ┆ wolf  ┆ 0.71689  │
-        │ …     ┆ …     ┆ …        │
+        │ rat   ┆ rat   ┆ 1.0      │
         │ rat   ┆ otter ┆ 0.613095 │
         │ otter ┆ wolf  ┆ 0.492262 │
         │ otter ┆ rat   ┆ 0.613095 │
@@ -2167,7 +2219,7 @@ class Engine:
         │ wolf  ┆ rat   ┆ 0.642647 │
         │ wolf  ┆ otter ┆ 0.302206 │
         │ rat   ┆ wolf  ┆ 0.642647 │
-        │ …     ┆ …     ┆ …        │
+        │ rat   ┆ rat   ┆ 1.0      │
         │ rat   ┆ otter ┆ 0.491176 │
         │ otter ┆ wolf  ┆ 0.302206 │
         │ otter ┆ rat   ┆ 0.491176 │
@@ -2251,7 +2303,8 @@ class Engine:
         >>> animals = Animals()
         >>> animals.clustermap(
         ...     "depprob", zmin=0, zmax=1, color_continuous_scale="greys"
-        ... ).figure.show()
+        ... ).figure.show() # doctest:+ELLIPSIS
+        {...}
 
         Use the ``fn_kwargs`` keyword argument to pass keyword arguments to the
         target function.
@@ -2262,7 +2315,8 @@ class Engine:
         ...     zmax=1,
         ...     color_continuous_scale="greys",
         ...     fn_kwargs={"wrt": ["swims"]},
-        ... ).figure.show()
+        ... ).figure.show() # doctest:+ELLIPSIS
+        {...}
         """
         if fn_kwargs is None:
             fn_kwargs = {}
@@ -2282,9 +2336,3 @@ class Engine:
             return ClusterMap(df, linkage, fig)
         else:
             return ClusterMap(df, linkage)
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

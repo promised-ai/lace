@@ -15,7 +15,7 @@ pub use oracle::utils;
 
 pub use oracle::{
     ConditionalEntropyType, DatalessOracle, MiComponents, MiType, Oracle,
-    OracleT, RowSimilarityVariant,
+    OracleT, RowSimilarityVariant, Variability,
 };
 
 pub use given::Given;

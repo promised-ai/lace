@@ -16,6 +16,7 @@ use lace_stats::rv::traits::Rv;
 use lace_stats::SampleError;
 use rand::Rng;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 macro_rules! col_indices_ok  {
@@ -39,6 +40,25 @@ macro_rules! state_indices_ok  {
            }
        })
     }}
+}
+
+/// Represents different formalizations of variability in distributions
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Variability {
+    /// The variance of a univariate distribution
+    Variance(f64),
+    /// The entropy of a distribution
+    Entropy(f64),
+}
+
+impl From<Variability> for f64 {
+    fn from(value: Variability) -> Self {
+        match value {
+            Variability::Variance(x) => x,
+            Variability::Entropy(x) => x,
+        }
+    }
 }
 
 pub trait OracleT: CanOracle {
@@ -2043,6 +2063,125 @@ pub trait OracleT: CanOracle {
             };
 
             Ok((value, unc_opt))
+        }
+    }
+
+    /// Compute the variability of a conditional distribution
+    ///
+    /// # Notes
+    /// - Returns variance for Continuous and Count columns
+    /// - Returns Entropy for Categorical columns
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column for which to compute the variability
+    /// - given: optional observations by which to constrain the prediction
+    /// - state_ixs_opt: Optional vector of state indices from which to compute,
+    ///   if None, use all states.
+    fn variability<Ix: ColumnIndex, GIx: ColumnIndex>(
+        &self,
+        col_ix: Ix,
+        given: &Given<GIx>,
+        state_ixs_opt: Option<&[usize]>,
+    ) -> Result<Variability, error::VariabilityError> {
+        use crate::stats::rv::traits::{Entropy, Variance};
+        use crate::stats::MixtureType;
+
+        let states: Vec<&State> = if let Some(state_ixs) = state_ixs_opt {
+            state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
+        } else {
+            self.states().iter().collect()
+        };
+
+        let given =
+            given.clone().canonical(self.codebook()).map_err(|err| {
+                error::VariabilityError::GivenError(
+                    error::GivenError::IndexError(err),
+                )
+            })?;
+
+        let col_ix = col_ix.col_ix(self.codebook())?;
+
+        // Get the mixture weights for each state
+        let mut mixture_types: Vec<MixtureType> = states
+            .iter()
+            .map(|state| {
+                let view_ix = state.asgn.asgn[col_ix];
+                let weights =
+                    &utils::given_weights(&[state], &[col_ix], &given)[0];
+
+                // combine the state weights with the given weights
+                let mut mm_weights: Vec<f64> = state.views[view_ix]
+                    .weights
+                    .iter()
+                    .zip(weights[&view_ix].iter())
+                    .map(|(&w1, &w2)| w1 + w2)
+                    .collect();
+
+                let z: f64 = logsumexp(&mm_weights);
+                mm_weights.iter_mut().for_each(|w| *w = (*w - z).exp());
+
+                state.views[view_ix].ftrs[&col_ix].to_mixture(mm_weights)
+            })
+            .collect();
+
+        enum MType {
+            Gaussian,
+            Categorical,
+            Count,
+            Unsupported,
+        }
+
+        let mtype = match mixture_types[0] {
+            MixtureType::Gaussian(_) => MType::Gaussian,
+            MixtureType::Poisson(_) => MType::Count,
+            MixtureType::Categorical(_) => MType::Categorical,
+            _ => MType::Unsupported,
+        };
+
+        match mtype {
+            MType::Gaussian => {
+                let mms: Vec<_> = mixture_types
+                    .drain(..)
+                    .map(|mt| {
+                        if let MixtureType::Gaussian(mm) = mt {
+                            mm
+                        } else {
+                            panic!("Expected Gaussian Mixture Type")
+                        }
+                    })
+                    .collect();
+                let mm = Mixture::combine(mms);
+                Ok(Variability::Variance(mm.variance().unwrap()))
+            }
+            MType::Count => {
+                let mms: Vec<_> = mixture_types
+                    .drain(..)
+                    .map(|mt| {
+                        if let MixtureType::Poisson(mm) = mt {
+                            mm
+                        } else {
+                            panic!("Expected Poisson Mixture Type")
+                        }
+                    })
+                    .collect();
+                let mm = Mixture::combine(mms);
+                Ok(Variability::Variance(mm.variance().unwrap()))
+            }
+            MType::Categorical => {
+                let mms: Vec<_> = mixture_types
+                    .drain(..)
+                    .map(|mt| {
+                        if let MixtureType::Categorical(mm) = mt {
+                            mm
+                        } else {
+                            panic!("Expected Categorical Mixture Type")
+                        }
+                    })
+                    .collect();
+                let mm = Mixture::combine(mms);
+                Ok(Variability::Entropy(mm.entropy()))
+            }
+            _ => panic!("Unsupported MType"),
         }
     }
 
