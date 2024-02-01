@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union
 import pandas as pd
 import plotly.express as px
 import polars as pl
+from tqdm.auto import tqdm
 
 from lace import core, utils
 from lace.codebook import Codebook
@@ -55,9 +56,7 @@ class Engine:
     def from_df(
         cls,
         df: Union[pd.DataFrame, pl.DataFrame],
-        codebook: Optional[
-            Union[CodebookBuilder, PathLike, str, Codebook]
-        ] = None,
+        codebook: Optional[Union[CodebookBuilder, PathLike, str, Codebook]] = None,
         n_states: int = 8,
         id_offset: int = 0,
         rng_seed: Optional[int] = None,
@@ -445,9 +444,7 @@ class Engine:
         """
         return self.engine.row_assignments(state_ix)
 
-    def feature_params(
-        self, col: Union[int, str], state_ixs: Optional[List[int]] = None
-    ) -> Dict:
+    def feature_params(self, col: Union[int, str], state_ixs: Optional[List[int]] = None) -> Dict:
         """
         Get the component parameters for a given column.
 
@@ -497,10 +494,7 @@ class Engine:
         if state_ixs is None:
             state_ixs = list(range(self.n_states))
 
-        return {
-            state_ix: self.engine.feature_params(col, state_ix)
-            for state_ix in state_ixs
-        }
+        return {state_ix: self.engine.feature_params(col, state_ix) for state_ix in state_ixs}
 
     def __getitem__(self, ix):
         df = self.engine[ix]
@@ -637,9 +631,7 @@ class Engine:
 
     def append_rows(
         self,
-        rows: Union[
-            pd.Series, pd.DataFrame, pl.DataFrame, Dict[str, Dict[str, object]]
-        ],
+        rows: Union[pd.Series, pd.DataFrame, pl.DataFrame, Dict[str, Dict[str, object]]],
     ):
         """
         Append new rows to the table.
@@ -897,9 +889,7 @@ class Engine:
         └─────────────────┴─────────────────────────────────┘
         """
         if metadata is None:
-            metadata = utils.infer_column_metadata(
-                cols, cat_cutoff=cat_cutoff, no_hypers=no_hypers
-            )
+            metadata = utils.infer_column_metadata(cols, cat_cutoff=cat_cutoff, no_hypers=no_hypers)
 
         self.engine.append_columns(cols, metadata)
 
@@ -1010,13 +1000,15 @@ class Engine:
         if isinstance(transitions, str):
             transitions = utils._get_common_transitions(transitions)
 
+        update_handler = None if quiet else TqdmUpdateHandler()
+
         return self.engine.update(
             n_iters,
             timeout=timeout,
             checkpoint=checkpoint,
             transitions=transitions,
             save_path=save_path,
-            quiet=quiet,
+            update_handler=update_handler,
         )
 
     def entropy(self, cols, n_mc_samples: int = 1000):
@@ -1388,9 +1380,7 @@ class Engine:
 
         return out
 
-    def surprisal(
-        self, col: Union[int, str], *, rows=None, values=None, state_ixs=None
-    ):
+    def surprisal(self, col: Union[int, str], *, rows=None, values=None, state_ixs=None):
         r"""
         Compute the surprisal of a values in specific cells.
 
@@ -1508,18 +1498,14 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.587096  │
         └──────────────┴───────────────────┴───────────┘
         """
-        out = self.engine.surprisal(
-            col, rows=rows, values=values, state_ixs=state_ixs
-        )
+        out = self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
 
         if out.shape[1] == 1:
             return out["surprisal"]
         else:
             return out
 
-    def simulate(
-        self, cols, given=None, n: int = 1, include_given: bool = False
-    ):
+    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
         """
         Simulate data from a conditional distribution.
 
@@ -1980,9 +1966,7 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(
-        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
-    ):
+    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
         """
         Compute the mutual information between pairs of columns.
 
@@ -2061,9 +2045,7 @@ class Engine:
             0.005378
         ]
         """
-        srs = self.engine.mi(
-            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
-        )
+        srs = self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
         return utils.return_srs(srs)
 
     def rowsim(
@@ -2336,3 +2318,29 @@ class Engine:
             return ClusterMap(df, linkage, fig)
         else:
             return ClusterMap(df, linkage)
+
+
+class TqdmUpdateHandler:
+    def __init__(self):
+        self._t = tqdm()
+
+    def global_init(self, config):
+        self._t.reset(config.n_iters * config.n_states)
+
+    def new_state_init(self, state_id):
+        pass
+
+    def state_updated(self, state_id):
+        self._t.update(1)
+
+    def state_complete(self, state_id):
+        pass
+
+    def stop_engine(self):
+        return False
+
+    def stop_state(self):
+        return False
+
+    def finalize(self):
+        self._t.close()
