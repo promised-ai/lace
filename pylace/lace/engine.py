@@ -1,4 +1,5 @@
 """The main interface to Lace models."""
+
 import itertools as it
 from os import PathLike
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
@@ -56,7 +57,9 @@ class Engine:
     def from_df(
         cls,
         df: Union[pd.DataFrame, pl.DataFrame],
-        codebook: Optional[Union[CodebookBuilder, PathLike, str, Codebook]] = None,
+        codebook: Optional[
+            Union[CodebookBuilder, PathLike, str, Codebook]
+        ] = None,
         n_states: int = 8,
         id_offset: int = 0,
         rng_seed: Optional[int] = None,
@@ -444,7 +447,9 @@ class Engine:
         """
         return self.engine.row_assignments(state_ix)
 
-    def feature_params(self, col: Union[int, str], state_ixs: Optional[List[int]] = None) -> Dict:
+    def feature_params(
+        self, col: Union[int, str], state_ixs: Optional[List[int]] = None
+    ) -> Dict:
         """
         Get the component parameters for a given column.
 
@@ -494,7 +499,10 @@ class Engine:
         if state_ixs is None:
             state_ixs = list(range(self.n_states))
 
-        return {state_ix: self.engine.feature_params(col, state_ix) for state_ix in state_ixs}
+        return {
+            state_ix: self.engine.feature_params(col, state_ix)
+            for state_ix in state_ixs
+        }
 
     def __getitem__(self, ix):
         df = self.engine[ix]
@@ -631,7 +639,9 @@ class Engine:
 
     def append_rows(
         self,
-        rows: Union[pd.Series, pd.DataFrame, pl.DataFrame, Dict[str, Dict[str, object]]],
+        rows: Union[
+            pd.Series, pd.DataFrame, pl.DataFrame, Dict[str, Dict[str, object]]
+        ],
     ):
         """
         Append new rows to the table.
@@ -889,7 +899,9 @@ class Engine:
         └─────────────────┴─────────────────────────────────┘
         """
         if metadata is None:
-            metadata = utils.infer_column_metadata(cols, cat_cutoff=cat_cutoff, no_hypers=no_hypers)
+            metadata = utils.infer_column_metadata(
+                cols, cat_cutoff=cat_cutoff, no_hypers=no_hypers
+            )
 
         self.engine.append_columns(cols, metadata)
 
@@ -1380,7 +1392,9 @@ class Engine:
 
         return out
 
-    def surprisal(self, col: Union[int, str], *, rows=None, values=None, state_ixs=None):
+    def surprisal(
+        self, col: Union[int, str], *, rows=None, values=None, state_ixs=None
+    ):
         r"""
         Compute the surprisal of a values in specific cells.
 
@@ -1498,14 +1512,18 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.587096  │
         └──────────────┴───────────────────┴───────────┘
         """
-        out = self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
+        out = self.engine.surprisal(
+            col, rows=rows, values=values, state_ixs=state_ixs
+        )
 
         if out.shape[1] == 1:
             return out["surprisal"]
         else:
             return out
 
-    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
+    def simulate(
+        self, cols, given=None, n: int = 1, include_given: bool = False
+    ):
         """
         Simulate data from a conditional distribution.
 
@@ -1966,7 +1984,9 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
+    def mi(
+        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
+    ):
         """
         Compute the mutual information between pairs of columns.
 
@@ -2045,7 +2065,9 @@ class Engine:
             0.005378
         ]
         """
-        srs = self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
+        srs = self.engine.mi(
+            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
+        )
         return utils.return_srs(srs)
 
     def rowsim(

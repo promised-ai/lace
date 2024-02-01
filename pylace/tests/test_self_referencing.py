@@ -1,4 +1,5 @@
 """Tests whether engine functions work with various engine outputs."""
+
 import random
 
 import polars as pl

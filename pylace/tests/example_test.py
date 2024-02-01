@@ -1,4 +1,5 @@
 """Check the basics of the example datasets."""
+
 from numpy.testing import assert_almost_equal
 
 from lace import examples
