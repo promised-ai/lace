@@ -1,4 +1,5 @@
 """The main interface to Lace models."""
+
 import itertools as it
 from os import PathLike
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
@@ -6,6 +7,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union
 import pandas as pd
 import plotly.express as px
 import polars as pl
+from tqdm.auto import tqdm
 
 from lace import core, utils
 from lace.codebook import Codebook
@@ -1010,13 +1012,15 @@ class Engine:
         if isinstance(transitions, str):
             transitions = utils._get_common_transitions(transitions)
 
+        update_handler = None if quiet else TqdmUpdateHandler()
+
         return self.engine.update(
             n_iters,
             timeout=timeout,
             checkpoint=checkpoint,
             transitions=transitions,
             save_path=save_path,
-            quiet=quiet,
+            update_handler=update_handler,
         )
 
     def entropy(self, cols, n_mc_samples: int = 1000):
@@ -2336,3 +2340,29 @@ class Engine:
             return ClusterMap(df, linkage, fig)
         else:
             return ClusterMap(df, linkage)
+
+
+class TqdmUpdateHandler:
+    def __init__(self):
+        self._t = tqdm()
+
+    def global_init(self, config):
+        self._t.reset(config.n_iters * config.n_states)
+
+    def new_state_init(self, state_id):
+        pass
+
+    def state_updated(self, state_id):
+        self._t.update(1)
+
+    def state_complete(self, state_id):
+        pass
+
+    def stop_engine(self):
+        return False
+
+    def stop_state(self):
+        return False
+
+    def finalize(self):
+        self._t.close()

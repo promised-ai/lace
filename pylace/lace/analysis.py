@@ -1,6 +1,5 @@
 """Tools for analysis of probabilistic cross-categorization results in Lace."""
 
-
 import enum
 import itertools as it
 from copy import deepcopy

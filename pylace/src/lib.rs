@@ -2,6 +2,7 @@ mod component;
 mod df;
 mod metadata;
 mod transition;
+mod update_handler;
 mod utils;
 
 use std::cmp::Ordering;
@@ -22,6 +23,7 @@ use rand_xoshiro::Xoshiro256Plus;
 
 use metadata::{Codebook, CodebookBuilder};
 
+use crate::update_handler::PyUpdateHandler;
 use crate::utils::*;
 
 #[derive(Clone)]
@@ -1027,19 +1029,20 @@ impl CoreEngine {
             checkpoint=None,
             transitions=None,
             save_path=None,
-            quiet=false,
+            update_handler=None,
         )
     )]
     fn update(
         &mut self,
+        py: Python<'_>,
         n_iters: usize,
         timeout: Option<u64>,
         checkpoint: Option<usize>,
         transitions: Option<Vec<transition::StateTransition>>,
         save_path: Option<PathBuf>,
-        quiet: bool,
+        update_handler: Option<PyObject>,
     ) {
-        use lace::update_handler::{ProgressBar, Timeout};
+        use lace::update_handler::Timeout;
         use std::time::Duration;
 
         let config = match transitions {
@@ -1068,12 +1071,18 @@ impl CoreEngine {
             Timeout::new(Duration::from_secs(secs))
         };
 
-        if quiet {
-            self.engine.update(config, timeout).unwrap();
-        } else {
-            let pbar = ProgressBar::new();
-            self.engine.update(config, (timeout, pbar)).unwrap();
-        }
+        py.allow_threads(|| {
+            if let Some(update_handler) = update_handler {
+                self.engine
+                    .update(
+                        config,
+                        (timeout, PyUpdateHandler::new(update_handler)),
+                    )
+                    .unwrap();
+            } else {
+                self.engine.update(config, timeout).unwrap();
+            }
+        });
     }
 
     /// Append new rows to the table.
@@ -1316,6 +1325,7 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<metadata::CategoricalPrior>()?;
     m.add_class::<metadata::CountHyper>()?;
     m.add_class::<metadata::CountPrior>()?;
+    m.add_class::<update_handler::PyEngineUpdateConfig>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
     Ok(())
