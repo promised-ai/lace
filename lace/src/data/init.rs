@@ -224,7 +224,11 @@ pub fn df_to_col_models<R: rand::Rng>(
         .iter()
         .enumerate()
         .map(|(id, colmd)| {
-            let srs = srss[colmd.name.as_str()];
+            let srs = srss.get(colmd.name.as_str()).ok_or_else(|| {
+                DataParseError::DataFrameMissingColumn {
+                    column: colmd.name.clone(),
+                }
+            })?;
             let col_model = match &colmd.coltype {
                 ColType::Continuous { hyper, prior } => continuous_col_model(
                     id,

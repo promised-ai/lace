@@ -42,6 +42,10 @@ pub enum DataParseError {
         n_codebook_rows: usize,
         n_data_rows: usize,
     },
+    #[error(
+        "The dataframe does not contain the column `{column}` listed in the codebook"
+    )]
+    DataFrameMissingColumn { column: String },
 }
 
 /// Errors that can arise when creating a new engine
