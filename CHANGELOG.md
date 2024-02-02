@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DataParseError::DataFrameMissingColumn` variant for when a column is in the codebook but not in the initial dataframe.
 - Python's `Engine.update` uses `tqdm.auto` for progress bar reporting.
 
+### Changed
+- Added parallelism to `Slice` row reassignment kernel. Run time is ~6x faster.
+
 ### Fixed
 - Initializing an engine with a codebook that has a different number of rows than the data will result in an error instead of printing a bunch on nonsense.
 - Pylace default transition sets didn't hit all required transitions

@@ -966,8 +966,9 @@ impl View {
         row_alg: RowAssignAlg,
         rng: &mut impl Rng,
     ) {
-        // TODO: parallelize over rows_mut somehow?
-        logps.rows_mut().enumerate().for_each(|(k, logp)| {
+        use rayon::prelude::*;
+
+        logps.par_rows_mut().enumerate().for_each(|(k, logp)| {
             self.ftrs.values().for_each(|ftr| {
                 ftr.accum_score(logp, k);
             })
