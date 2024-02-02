@@ -27,5 +27,5 @@ approx = "0.5.1"
 tempfile = "3.4"
 indoc = "2.0.3"
 
-[profile.release]
-lto = "fat"
+# [profile.release]
+# lto = "fat"

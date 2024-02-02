@@ -647,6 +647,7 @@ name = "lace_utils"
 version = "0.2.0"
 dependencies = [
  "rand",
+ "rayon",
 ]
 
 [[package]]

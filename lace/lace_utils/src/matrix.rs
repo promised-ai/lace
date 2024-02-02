@@ -1,3 +1,4 @@
+use rayon::prelude::{ParallelSlice, ParallelSliceMut};
 use std::ops::Index;
 
 /// A lightweight Matrix abstraction that does almost nothing.
@@ -71,8 +72,14 @@ impl<T: Send + Sync> Matrix<T> {
     /// assert_eq!(mat.raw_values(), &vec![1, 2, 3, 4, 5, 6])
     /// ```
     #[inline]
-    pub fn rows_mut(&mut self) -> std::slice::ChunksMut<T> {
-        self.values.chunks_mut(self.n_cols)
+    pub fn rows_mut(&mut self) -> std::slice::ChunksExactMut<T> {
+        self.values.chunks_exact_mut(self.n_cols)
+    }
+
+    /// Parallel version of `rows_mut`
+    #[inline]
+    pub fn par_rows_mut(&mut self) -> rayon::slice::ChunksExactMut<T> {
+        self.values.par_chunks_exact_mut(self.n_cols)
     }
 
     /// Create an iterator through rows
@@ -96,8 +103,14 @@ impl<T: Send + Sync> Matrix<T> {
     /// assert_eq!(rowsum, vec![3_u8, 12_u8])
     /// ```
     #[inline]
-    pub fn rows(&self) -> std::slice::Chunks<T> {
-        self.values.chunks(self.n_cols)
+    pub fn rows(&self) -> std::slice::ChunksExact<T> {
+        self.values.chunks_exact(self.n_cols)
+    }
+
+    /// Parallel version of `rows`
+    #[inline]
+    pub fn par_rows(&self) -> rayon::slice::ChunksExact<T> {
+        self.values.par_chunks_exact(self.n_cols)
     }
 
     /// Does an implicit transpose by inverting coordinates.
