@@ -1023,7 +1023,7 @@ class Engine:
         if isinstance(transitions, str):
             transitions = utils._get_common_transitions(transitions)
 
-        update_handler = None if quiet else TqdmUpdateHandler()
+        update_handler = None if quiet else _TqdmUpdateHandler()
 
         return self.engine.update(
             n_iters,
@@ -1038,8 +1038,8 @@ class Engine:
         """
         Estimate the entropy or joint entropy of one or more features.
 
-        Prameters
-        ---------
+        Parameters
+        ----------
         col: column indices
             The columns for which to compute entropy
         n_mc_samples: int
@@ -2353,7 +2353,7 @@ class Engine:
             return ClusterMap(df, linkage)
 
 
-class TqdmUpdateHandler:
+class _TqdmUpdateHandler:
     def __init__(self):
         self._t = tqdm()
 
