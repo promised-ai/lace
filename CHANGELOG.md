@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DataParseError::CodebookAndDataRowsMismatch` variant for when the number of rows in the codebook and the number of rows in the data do not match.
 - `DataParseError::DataFrameMissingColumn` variant for when a column is in the codebook but not in the initial dataframe.
 - Python's `Engine.update` uses `tqdm.auto` for progress bar reporting.
+- Added `flat_columns` option to pylace `Engine` constructor to enable creating engines with one view
 
 ### Changed
 - Added parallelism to `Slice` row reassignment kernel. Run time is ~6x faster.
