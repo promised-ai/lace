@@ -63,6 +63,7 @@ class Engine:
         n_states: int = 8,
         id_offset: int = 0,
         rng_seed: Optional[int] = None,
+        flat_columns: bool = False,
     ) -> "Engine":
         """
         Create a new ``Engine`` from a DataFrame.
@@ -85,7 +86,8 @@ class Engine:
             files may be merged by copying without name collisions.
         rng_seed: int, optional
             Random number generator seed.
-
+        flat_columns: bool
+            Initialize all states with one view
 
         Examples
         --------
@@ -106,9 +108,17 @@ class Engine:
         ...    "ID": [1, 2, 3, 4],
         ...    "list_b": [2.0, 4.0, 6.0, 8.0],
         ... })
-        >>> engine = Engine.from_df(df, CodebookBuilder.infer(
+        >>> engine = Engine.from_df(df, codebook=CodebookBuilder.infer(
         ...     cat_cutoff=2,
         ... ))
+
+        Create an engine with flat column structure (one view)
+        >>> from lace.examples import Animals
+        >>> df = Animals().df
+        >>> n_states = 8
+        >>> engine = Engine.from_df(df, n_states=n_states, flat_columns=True)
+        >>> [max(engine.column_assignment(i)) for i in range(n_states)]
+        [0, 0, 0, 0, 0, 0, 0, 0]
 
         """
         if isinstance(df, pd.DataFrame):
@@ -128,6 +138,7 @@ class Engine:
                 n_states,
                 id_offset,
                 rng_seed,
+                flat_columns,
             )
         )
 

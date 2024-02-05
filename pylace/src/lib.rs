@@ -66,6 +66,7 @@ impl CoreEngine {
             n_states=16,
             id_offset=0,
             rng_seed=None,
+            flat_columns=false,
         )
     )]
     fn new(
@@ -74,6 +75,7 @@ impl CoreEngine {
         n_states: usize,
         id_offset: usize,
         rng_seed: Option<u64>,
+        flat_columns: bool,
     ) -> PyResult<CoreEngine> {
         let dataframe = dataframe.0;
         let codebook =
@@ -86,7 +88,7 @@ impl CoreEngine {
             Xoshiro256Plus::from_entropy()
         };
 
-        let engine = lace::Engine::new(
+        let mut engine = lace::Engine::new(
             n_states,
             codebook,
             data_source,
@@ -95,6 +97,10 @@ impl CoreEngine {
         )
         .map_err(|err| err.to_string())
         .map_err(PyErr::new::<PyValueError, _>)?;
+
+        if flat_columns {
+            engine.flatten_cols();
+        }
 
         Ok(Self {
             col_indexer: Indexer::columns(&engine.codebook),
