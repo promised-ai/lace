@@ -87,7 +87,11 @@ class Engine:
         rng_seed: int, optional
             Random number generator seed.
         flat_columns: bool
-            Initialize all states with one view
+            Initialize all states with one view. Use when you do not want to
+            do inference over the assignment of columns to views. Note that to
+            keep the states flat you will have to either use the `flat`
+            transition set or manually create a transition set that does not
+            update the column assignments when updating.
 
         Examples
         --------
