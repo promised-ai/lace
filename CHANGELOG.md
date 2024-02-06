@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Added parallelism to `Slice` row reassignment kernel. Run time is ~6x faster.
+- (Python) Improved errors in type conversions.
 
 ### Fixed
 - Initializing an engine with a codebook that has a different number of rows than the data will result in an error instead of printing a bunch on nonsense.
