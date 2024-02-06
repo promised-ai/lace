@@ -532,7 +532,11 @@ pub(crate) fn value_to_datum(val: &PyAny, ftype: FType) -> PyResult<Datum> {
 
     match ftype {
         FType::Continuous => {
-            let x: f64 = val.extract().unwrap();
+            let x: f64 = val.extract().map_err(|err| {
+                PyTypeError::new_err(format!(
+                    "Expected real number, got `{val}` ({err})"
+                ))
+            })?;
             if x.is_nan() {
                 Ok(Datum::Missing)
             } else {
@@ -543,10 +547,9 @@ pub(crate) fn value_to_datum(val: &PyAny, ftype: FType) -> PyResult<Datum> {
             let x = pyany_to_category(val)?;
             Ok(Datum::Categorical(x))
         }
-        FType::Count => Ok(Datum::Count(val.extract().unwrap())),
-        ftype => Err(PyErr::new::<PyValueError, _>(format!(
-            "Unsupported ftype: {:?}",
-            ftype
+        FType::Count => Ok(Datum::Count(val.extract()?)),
+        ftype => Err(PyTypeError::new_err(format!(
+            "Unsupported ftype: `{ftype:?}`"
         ))),
     }
 }
@@ -556,7 +559,7 @@ pub(crate) fn value_to_name(
     indexer: &Indexer,
 ) -> PyResult<String> {
     val.extract::<String>().or_else(|_| {
-        let ix: usize = val.extract().unwrap();
+        let ix: usize = val.extract()?;
         if let Some(name) = indexer.to_name.get(&ix) {
             Ok(name.to_owned())
         } else {
@@ -570,7 +573,7 @@ pub(crate) fn value_to_index(
     indexer: &Indexer,
 ) -> PyResult<usize> {
     val.extract::<usize>().or_else(|_| {
-        let s: &str = val.extract().unwrap();
+        let s: &str = val.extract()?;
         if let Some(ix) = indexer.to_ix.get(s) {
             Ok(*ix)
         } else {
