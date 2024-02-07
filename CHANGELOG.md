@@ -7,20 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.7.0] - 2024-02-07
+
 ### Added
-- `DataParseError::CodebookAndDataRowsMismatch` variant for when the number of rows in the codebook and the number of rows in the data do not match.
-- `DataParseError::DataFrameMissingColumn` variant for when a column is in the codebook but not in the initial dataframe.
-- Python's `Engine.update` uses `tqdm.auto` for progress bar reporting.
-- Added `flat_columns` option to pylace `Engine` constructor to enable creating engines with one view
+
+- `Engine.update` uses `tqdm.auto` for progress bar reporting, to support progress bars in notebooks
+- Added `flat_columns` option to `Engine` constructor to enable creating engines with one view
+- Added `variability` method to `Engine`
 
 ### Changed
-- Added parallelism to `Slice` row reassignment kernel. Run time is ~6x faster.
-- (Python) Improved errors in type conversions.
+
+- Improved errors in type conversions.
+- Rearranged test execution
 
 ### Fixed
-- Initializing an engine with a codebook that has a different number of rows than the data will result in an error instead of printing a bunch on nonsense.
-- Pylace default transition sets didn't hit all required transitions
-- Typo in pylace internal `Dimension` class
+
+- Default transition sets now hit all required transitions
+- Fixed typo in internal `Dimension` class
+
+## [rust-0.7.0] - 2024-02-07
+
+### Added
+
+- `DataParseError::CodebookAndDataRowsMismatch` variant for when the number of rows in the codebook and the number of rows in the data do not match.
+- `DataParseError::DataFrameMissingColumn` variant for when a column is in the codebook but not in the initial dataframe.
+- Added `variability` method to `OraceT` trait
+
+### Changed
+
+- Added parallelism to `Slice` row reassignment kernel. Run time is ~6x faster.
+
+### Fixed
+
+- Initializing an engine with a codebook that has a different number of rows than the data will result in an error instead of printing a bunch of nonsense.
 
 ## [python-0.6.0] - 2024-01-23
 
@@ -242,7 +261,9 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.6.0...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.7.0...HEAD
+[python-0.7.0]: https://github.com/promised-ai/lace/compare/python-0.6.0...python-0.7.0
+[rust-0.7.0]: https://github.com/promised-ai/lace/compare/rust-0.6.0...rust-0.7.0
 [python-0.6.0]: https://github.com/promised-ai/lace/compare/python-0.5.0...python-0.6.0
 [rust-0.6.0]: https://github.com/promised-ai/lace/compare/rust-0.5.0...rust-0.6.0
 [python-0.5.0]: https://github.com/promised-ai/lace/compare/python-0.4.1...python-0.5.0
