@@ -1,6 +1,6 @@
 [package]
 name = "lace_stats"
-version = "0.2.1"
+version = "0.3.0"
 rust-version = "1.62.0"
 authors = ["Promised AI"]
 edition = "2021"
@@ -10,9 +10,9 @@ repository = "https://github.com/promised-ai/lace"
 description = "Contains component model and hyperprior specifications"
 
 [dependencies]
-lace_utils = { path = "../lace_utils", version = "0.2.0" }
+lace_utils = { path = "../lace_utils", version = "0.3.0" }
 lace_consts = { path = "../lace_consts", version = "0.2.1" }
-lace_data = { path = "../lace_data", version = "0.2.0" }
+lace_data = { path = "../lace_data", version = "0.3.0" }
 special = "0.10"
 rand = {version="0.8", features=["serde1"]}
 itertools = "0.12"
