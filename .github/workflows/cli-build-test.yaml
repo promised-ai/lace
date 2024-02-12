@@ -19,7 +19,7 @@ jobs:
   features:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -43,7 +43,7 @@ jobs:
         working-directory: cli
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -89,7 +89,7 @@ jobs:
         working-directory: cli
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -114,12 +114,12 @@ jobs:
   #   needs: ["features", "lint", "test"]
   #   steps:
   #     - name: Checkout branch
-  #       uses: actions/checkout@v3
+  #       uses: actions/checkout@v4
   #       with:
   #         path: branch
 
   #     - name: Checkout master
-  #       uses: actions/checkout@v3
+  #       uses: actions/checkout@v4
   #       with:
   #         ref: master
   #         path: master
