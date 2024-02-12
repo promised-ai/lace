@@ -73,7 +73,10 @@ impl CategoricalParams {
             _ => format!(
                 "[{}, ..., {}]",
                 self.weights[0],
-                self.weights.last().unwrap()
+                self.weights
+                    .last()
+                    .map(|x| x.to_string())
+                    .unwrap_or_else(|| "-".to_string())
             ),
         };
 

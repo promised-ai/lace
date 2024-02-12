@@ -418,7 +418,9 @@ impl Indexer {
         let name = self.to_name.remove(&ix).ok_or_else(|| {
             PyIndexError::new_err(format!("Index {ix} not found"))
         })?;
-        self.to_ix.remove(&name).unwrap();
+        self.to_ix
+            .remove(&name)
+            .expect("Should exist as a consequence of the check above");
         Ok(name)
     }
 }
@@ -441,7 +443,7 @@ pub(crate) fn pairs_list_iter<'a>(
                 }
             })
             .unwrap_or_else(|_| {
-                let ixs: &PyTuple = item.downcast().unwrap();
+                let ixs: &PyTuple = item.downcast()?;
                 if ixs.len() != 2 {
                     Err(PyErr::new::<PyValueError, _>(
                         "A pair consists of two items",
@@ -606,8 +608,13 @@ pub(crate) fn dict_to_given(
                 .iter()
                 .map(|(key, value)| {
                     value_to_index(key, indexer).and_then(|ix| {
-                        value_to_datum(value, engine.ftype(ix).unwrap())
-                            .map(|x| (ix, x))
+                        value_to_datum(
+                            value,
+                            engine.ftype(ix).expect(
+                                "Index from indexer ought to be valid.",
+                            ),
+                        )
+                        .map(|x| (ix, x))
                     })
                 })
                 .collect::<PyResult<Vec<(usize, Datum)>>>()?;
@@ -618,7 +625,7 @@ pub(crate) fn dict_to_given(
 }
 
 pub(crate) fn srs_to_strings(srs: &PyAny) -> PyResult<Vec<String>> {
-    let list: &PyList = srs.call_method0("to_list").unwrap().extract().unwrap();
+    let list: &PyList = srs.call_method0("to_list")?.extract()?;
 
     list.iter()
         .map(|x| x.extract::<String>())
@@ -666,11 +673,11 @@ fn process_row_dict(
     _col_indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
-) -> Result<Vec<Datum>, PyErr> {
+) -> PyResult<Vec<Datum>> {
     let mut row_data: Vec<Datum> = Vec::with_capacity(row_dict.len());
     for (name_any, value_any) in row_dict {
-        let col_name: &PyString = name_any.downcast().unwrap();
-        let col_name = col_name.to_str().unwrap();
+        let col_name: &PyString = name_any.downcast()?;
+        let col_name = col_name.to_str()?;
         let ftype = engine
             .codebook
             .col_metadata(col_name.to_owned())
@@ -698,7 +705,7 @@ fn values_to_data(
 ) -> PyResult<Vec<Vec<Datum>>> {
     data.iter()
         .map(|row_any| {
-            let row_dict: &PyDict = row_any.downcast().unwrap();
+            let row_dict: &PyDict = row_any.downcast()?;
             process_row_dict(row_dict, col_indexer, engine, suppl_types)
         })
         .collect()
@@ -722,35 +729,38 @@ fn df_to_values(
 ) -> PyResult<DataFrameComponents> {
     Python::with_gil(|py| {
         let (columns, data, row_names) = {
-            let columns = df.getattr("columns").unwrap();
-            if columns.get_type().name().unwrap().contains("Index") {
+            let columns = df.getattr("columns")?;
+            if columns.get_type().name()?.contains("Index") {
                 // Is a Pandas dataframe
                 let index = df.getattr("index")?;
                 let row_names = srs_to_strings(index).ok();
 
-                let cols =
-                    columns.call_method0("tolist").unwrap().to_object(py);
+                let cols = columns.call_method0("tolist")?.to_object(py);
                 let kwargs = PyDict::new(py);
-                kwargs.set_item("orient", "records").unwrap();
-                let data = df.call_method("to_dict", (), Some(kwargs)).unwrap();
+                kwargs.set_item("orient", "records")?;
+                let data = df.call_method("to_dict", (), Some(kwargs))?;
                 (cols, data, row_names)
             } else {
                 // Is a Polars dataframe
-                let list = columns.downcast::<PyList>().unwrap();
+                let list = columns.downcast::<PyList>()?;
                 let index_col =
                     {
                         // Find all the index columns
                         let mut index_col_names = list
                             .iter()
-                            .map(|s| s.extract::<&str>().unwrap())
-                            .filter_map(|s| {
-                                if is_index_col(s) {
-                                    Some(String::from(s))
-                                } else {
-                                    None
-                                }
+                            .map(|s| s.extract::<&str>())
+                            .map(|s| {
+                                s.map(|s| {
+                                    if is_index_col(s) {
+                                        Some(String::from(s))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .transpose()
                             })
-                            .collect::<Vec<String>>();
+                            .flatten()
+                            .collect::<PyResult<Vec<String>>>()?;
 
                         if index_col_names.is_empty() {
                             Ok(None)
@@ -769,7 +779,7 @@ fn df_to_values(
 
                 let (df, row_names) = if let Some(ref index_name) = index_col {
                     // remove the index column label
-                    list.call_method1("remove", (index_name,)).unwrap();
+                    list.call_method1("remove", (index_name,))?;
                     // Get the indices from the index if it exists
                     let row_names =
                         df.get_item(index_name)
@@ -779,20 +789,20 @@ fn df_to_values(
                                 "Indices in index '{index_name}' are not strings: {err}"))
                             })?;
                     // remove the index column from the data
-                    let df = df.call_method1("drop", (index_name,)).unwrap();
+                    let df = df.call_method1("drop", (index_name,))?;
 
                     (df, Some(row_names))
                 } else {
                     (df, None)
                 };
 
-                let data = df.call_method0("to_dicts").unwrap();
+                let data = df.call_method0("to_dicts")?;
                 (list.to_object(py), data, row_names)
             }
         };
 
-        let data: &PyList = data.extract().unwrap();
-        let columns: &PyList = columns.extract(py).unwrap();
+        let data: &PyList = data.extract()?;
+        let columns: &PyList = columns.extract(py)?;
         // will return nothing if there are unknown column names
         let col_ixs = columns
             .iter()
@@ -820,7 +830,7 @@ fn srs_to_column_values(
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
-    let data = srs.call_method0("to_frame").unwrap();
+    let data = srs.call_method0("to_frame")?;
 
     df_to_values(data, indexer, engine, suppl_types)
 }
@@ -831,11 +841,7 @@ fn srs_to_row_values(
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
-    let data = srs
-        .call_method0("to_frame")
-        .unwrap()
-        .call_method0("transpose")
-        .unwrap();
+    let data = srs.call_method0("to_frame")?.call_method0("transpose")?;
 
     df_to_values(data, indexer, engine, suppl_types)
 }
@@ -845,7 +851,7 @@ pub(crate) fn pandas_to_logp_values(
     indexer: &Indexer,
     engine: &lace::Engine,
 ) -> PyResult<DataFrameComponents> {
-    let type_name = xs.get_type().name().unwrap();
+    let type_name = xs.get_type().name()?;
 
     match type_name {
         "DataFrame" => df_to_values(xs, indexer, engine, None),
@@ -862,7 +868,7 @@ pub(crate) fn pandas_to_insert_values(
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
-    let type_name = xs.get_type().name().unwrap();
+    let type_name = xs.get_type().name()?;
 
     match type_name {
         "DataFrame" => df_to_values(xs, col_indexer, engine, suppl_types),

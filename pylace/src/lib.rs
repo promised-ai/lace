@@ -16,8 +16,8 @@ use lace::prelude::ColMetadataList;
 use lace::{EngineUpdateConfig, FType, HasStates, OracleT};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
-use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyType};
+use pyo3::{create_exception, prelude::*};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -112,18 +112,20 @@ impl CoreEngine {
 
     /// Load a Engine from metadata
     #[classmethod]
-    fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
+    fn load(_cls: &PyType, path: PathBuf) -> PyResult<CoreEngine> {
         let (engine, rng) = {
-            let mut engine = lace::Engine::load(path).unwrap();
-            let rng = Xoshiro256Plus::from_rng(&mut engine.rng).unwrap();
+            let mut engine = lace::Engine::load(path)
+                .map_err(|e| EngineLoadError::new_err(e.to_string()))?;
+            let rng = Xoshiro256Plus::from_rng(&mut engine.rng)
+                .map_err(|e| EngineLoadError::new_err(e.to_string()))?;
             (engine, rng)
         };
-        Self {
+        Ok(Self {
             col_indexer: Indexer::columns(&engine.codebook),
             row_indexer: Indexer::rows(&engine.codebook),
             rng,
             engine,
-        }
+        })
     }
 
     /// Save the engine to `path`
@@ -491,13 +493,17 @@ impl CoreEngine {
             let mut a = Vec::with_capacity(pairs.len());
             let mut b = Vec::with_capacity(pairs.len());
 
-            utils::pairs_list_iter(pairs, indexer).for_each(|res| {
-                let (ix_a, ix_b) = res.unwrap();
-                let name_a = indexer.to_name[&ix_a].clone();
-                let name_b = indexer.to_name[&ix_b].clone();
-                a.push(name_a);
-                b.push(name_b);
-            });
+            utils::pairs_list_iter(pairs, indexer)
+                .map(|res| {
+                    let (ix_a, ix_b) = res?;
+                    let name_a = indexer.to_name[&ix_a].clone();
+                    let name_b = indexer.to_name[&ix_b].clone();
+                    a.push(name_a);
+                    b.push(name_b);
+
+                    Ok::<(), PyErr>(())
+                })
+                .collect::<PyResult<()>>()?;
 
             let a = Series::new("A", a);
             let b = Series::new("B", b);
@@ -1047,7 +1053,7 @@ impl CoreEngine {
         transitions: Option<Vec<transition::StateTransition>>,
         save_path: Option<PathBuf>,
         update_handler: Option<PyObject>,
-    ) {
+    ) -> PyResult<()> {
         use lace::update_handler::Timeout;
         use std::time::Duration;
 
@@ -1084,11 +1090,13 @@ impl CoreEngine {
                         config,
                         (timeout, PyUpdateHandler::new(update_handler)),
                     )
-                    .unwrap();
+                    .map_err(|e| EngineUpdateError::new_err(e.to_string()))
             } else {
-                self.engine.update(config, timeout).unwrap();
+                self.engine
+                    .update(config, timeout)
+                    .map_err(|e| EngineUpdateError::new_err(e.to_string()))
             }
-        });
+        })
     }
 
     /// Append new rows to the table.
@@ -1132,15 +1140,22 @@ impl CoreEngine {
         })?;
 
         // must add new row names to indexer
-        let row_names = df_vals.row_names.unwrap();
-        (self.engine.n_rows()..).zip(row_names.iter()).for_each(
+        let row_names = df_vals.row_names.ok_or_else(|| {
+            PyValueError::new_err("Provided dataframe has no index (row names)")
+        })?;
+        (self.engine.n_rows()..).zip(row_names.iter()).map(
             |(ix, name)| {
-                // row names passed to 'append' should not exist
-                assert!(!self.row_indexer.to_ix.contains_key(name));
-                self.row_indexer.to_ix.insert(name.to_owned(), ix);
-                self.row_indexer.to_name.insert(ix, name.to_owned());
+                if self.row_indexer.to_ix.contains_key(name)  {
+                    Err(PyValueError::new_err(
+                            format!("Duplicate ids/indices cannot be inserted. Duplicate `{name}`")
+                    ))
+                } else {
+                    self.row_indexer.to_ix.insert(name.to_owned(), ix);
+                    self.row_indexer.to_name.insert(ix, name.to_owned());
+                    Ok(())
+                }
             },
-        );
+        ).collect::<PyResult<()>>()?;
 
         let data = parts_to_insert_values(
             df_vals.col_names,
@@ -1217,7 +1232,11 @@ impl CoreEngine {
 
         let data = parts_to_insert_values(
             col_names,
-            df_vals.row_names.unwrap(),
+            df_vals.row_names.ok_or_else(|| {
+                PyValueError::new_err(
+                    "Provided dataframe has no index (row names)",
+                )
+            })?,
             df_vals.values,
         );
 
@@ -1314,9 +1333,12 @@ pub fn infer_srs_metadata(
         .map(metadata::ColumnMetadata)
 }
 
+create_exception!(lace, EngineLoadError, pyo3::exceptions::PyException);
+create_exception!(lace, EngineUpdateError, pyo3::exceptions::PyException);
+
 /// A Python module implemented in Rust.
 #[pymodule]
-fn core(_py: Python, m: &PyModule) -> PyResult<()> {
+fn core(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Codebook>()?;
     m.add_class::<CoreEngine>()?;
     m.add_class::<CodebookBuilder>()?;
@@ -1334,5 +1356,7 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<update_handler::PyEngineUpdateConfig>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
+    m.add("EngineLoadError", py.get_type::<EngineLoadError>())?;
+    m.add("EngineUpdateError", py.get_type::<EngineUpdateError>())?;
     Ok(())
 }

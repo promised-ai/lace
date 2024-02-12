@@ -1,4 +1,3 @@
-use std::io::Write;
 /// Update Handler and associated tooling for `CoreEngine.update` in Python.
 use std::sync::{Arc, Mutex};
 
