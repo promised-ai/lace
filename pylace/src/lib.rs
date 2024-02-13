@@ -15,19 +15,21 @@ use lace::metadata::SerializedType;
 use lace::prelude::ColMetadataList;
 use lace::{EngineUpdateConfig, FType, HasStates, OracleT};
 use polars::prelude::{DataFrame, NamedFrom, Series};
+use pyo3::create_exception;
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
-use pyo3::types::{PyDict, PyList, PyType};
-use pyo3::{create_exception, prelude::*};
+use pyo3::prelude::*;
+use pyo3::types::{PyBytes, PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+use serde::{Deserialize, Serialize};
 
 use metadata::{Codebook, CodebookBuilder};
 
 use crate::update_handler::PyUpdateHandler;
 use crate::utils::*;
 
-#[derive(Clone)]
-#[pyclass(subclass)]
+#[derive(Clone, Serialize, Deserialize)]
+#[pyclass(subclass, module = "lace.core")]
 struct CoreEngine {
     engine: lace::Engine,
     col_indexer: Indexer,
@@ -1319,6 +1321,39 @@ impl CoreEngine {
                         .collect::<Vec<_>>(),
                 })
         })
+    }
+
+    pub fn __setstate__(
+        &mut self,
+        py: Python,
+        state: PyObject,
+    ) -> PyResult<()> {
+        let s = state.extract::<&PyBytes>(py)?;
+        *self = bincode::deserialize(s.as_bytes()).map_err(|e| {
+            PyValueError::new_err(format!("Cannot Deserialize CoreEngine: {e}"))
+        })?;
+        Ok(())
+    }
+
+    pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
+        Ok(PyBytes::new(
+            py,
+            &bincode::serialize(&self).map_err(|e| {
+                PyValueError::new_err(format!(
+                    "Cannot Serialize CoreEngine: {e}"
+                ))
+            })?,
+        )
+        .to_object(py))
+    }
+
+    pub fn __getnewargs__(&self) -> PyResult<(PyDataFrame,)> {
+        Ok((PyDataFrame(
+            polars::df! {
+                "ID" => [0],
+            }
+            .map_err(|e| PyValueError::new_err(format!("Polars error: {e}")))?,
+        ),))
     }
 }
 

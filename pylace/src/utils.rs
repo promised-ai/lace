@@ -15,6 +15,7 @@ use pyo3::prelude::*;
 use pyo3::types::{
     PyAny, PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyTuple,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::df::{PyDataFrame, PySeries};
 
@@ -381,7 +382,7 @@ pub(crate) fn str_to_mitype(mi_type: &str) -> PyResult<lace::MiType> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Indexer {
     pub to_ix: HashMap<String, usize>,
     pub to_name: HashMap<usize, String>,
