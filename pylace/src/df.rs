@@ -166,6 +166,8 @@ pub(crate) fn to_py_array(
     Ok(array.to_object(py))
 }
 
+// TODO: When https://github.com/PyO3/pyo3/issues/1813 is solved, implement a
+// failable version.
 impl IntoPy<PyObject> for PySeries {
     fn into_py(self, py: Python<'_>) -> PyObject {
         let s = self.0.rechunk();
@@ -181,6 +183,8 @@ impl IntoPy<PyObject> for PySeries {
     }
 }
 
+// TODO: When https://github.com/PyO3/pyo3/issues/1813 is solved, implement a
+// failable version.
 impl IntoPy<PyObject> for PyDataFrame {
     fn into_py(self, py: Python<'_>) -> PyObject {
         let pyseries = self
