@@ -1352,7 +1352,7 @@ impl CoreEngine {
             polars::df! {
                 "ID" => [0],
             }
-            .expect("Should be a df"),
+            .map_err(|e| PyValueError::new_err(format!("Polars error: {e}")))?,
         ),))
     }
 }
