@@ -223,7 +223,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: wheels
           path: dist
@@ -307,7 +307,7 @@ jobs:
           DEPLOYING_VERSION=$(echo "$NEW_VERSION" | perl -lpe 's/^python-//')
           find . -name Cargo.toml -exec tomlq -r .package.version {} \; | xargs -n 1 test "$DEPLOYING_VERSION" =
           find . -name pyproject.toml   -exec tomlq -r .project.version {} \; | xargs -n 1 test "$DEPLOYING_VERSION" =
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         id: download-wheels
         with:
           name: wheels
