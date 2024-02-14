@@ -22,10 +22,10 @@ jobs:
         working-directory: pylace
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
@@ -52,7 +52,7 @@ jobs:
         working-directory: pylace
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -89,8 +89,8 @@ jobs:
       matrix:
         target: [x86_64]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: |
             3.8
@@ -122,9 +122,9 @@ jobs:
         run: pytest pylace/tests
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-linux-${{ matrix.target }}
           path: dist
 
   windows:
@@ -134,8 +134,8 @@ jobs:
       matrix:
         target: [x64]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: |
             3.8
@@ -166,9 +166,9 @@ jobs:
         run: pytest pylace/tests
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-windows-${{ matrix.target }}
           path: dist
 
   macos:
@@ -178,8 +178,8 @@ jobs:
       matrix:
         target: [x86_64, aarch64]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: |
             3.8
@@ -211,24 +211,34 @@ jobs:
         run: pytest pylace/tests
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.target }}
+          path: dist
+
+  merge:
+    runs-on: ubuntu-latest
+    needs: [ macos, windows, linux ]
+    steps:
+      - name: Merge Artifacts
+        uses: actions/upload-artifact/merge@v4
         with:
           name: wheels
-          path: dist
+          pattern: wheels-*
 
   test-mdbook-python:
     name: Test MDBook Python Snippets
     runs-on: ubuntu-latest
-    needs: [linux]
+    needs: [merge]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: wheels
           path: dist
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
@@ -253,9 +263,9 @@ jobs:
   test-mdbook-build:
     name: Test MDBook Building
     runs-on: ubuntu-latest
-    needs: [linux]
+    needs: [merge]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -287,9 +297,9 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/python-')
-    needs: [linux, windows, macos, test-mdbook-python, test-mdbook-build]
+    needs: [merge, test-mdbook-python, test-mdbook-build]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Check Branch
@@ -307,7 +317,7 @@ jobs:
           DEPLOYING_VERSION=$(echo "$NEW_VERSION" | perl -lpe 's/^python-//')
           find . -name Cargo.toml -exec tomlq -r .package.version {} \; | xargs -n 1 test "$DEPLOYING_VERSION" =
           find . -name pyproject.toml   -exec tomlq -r .project.version {} \; | xargs -n 1 test "$DEPLOYING_VERSION" =
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         id: download-wheels
         with:
           name: wheels
