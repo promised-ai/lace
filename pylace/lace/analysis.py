@@ -307,6 +307,7 @@ def held_out_neglogp(
     │ ["Apogee_km", "Country_of_Contra… ┆ 2.992173            ┆ 7         │
     │ ["Apogee_km", "Class_of_Orbit", … ┆ 3.956759            ┆ 8         │
     └───────────────────────────────────┴─────────────────────┴───────────┘
+
     """
     search = (
         HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
@@ -420,6 +421,7 @@ def held_out_inconsistency(
     │ ["Apogee_km", "Country_of_Contra… ┆ 0.756218                  ┆ 7         │
     │ ["Apogee_km", "Class_of_Orbit", … ┆ 1.0                       ┆ 8         │
     └───────────────────────────────────┴───────────────────────────┴───────────┘
+
     """
     search = (
         HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
@@ -530,6 +532,7 @@ def held_out_uncertainty(
     │ ["Apogee_km", "Country_of_Contra… ┆ 0.077359                ┆ 7         │
     │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.089026                ┆ 8         │
     └───────────────────────────────────┴─────────────────────────┴───────────┘
+
     """
     search = (
         HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
@@ -654,6 +657,7 @@ def attributable_inconsistency(
     ... )  # doctest: +NORMALIZE_WHITESPACE
     >>> frac
     0.2930260843667006
+
     """
 
     return _attributable_holdout(
@@ -727,6 +731,7 @@ def attributable_neglogp(
     ... )  # doctest: +NORMALIZE_WHITESPACE
     >>> frac
     0.29302608436670047
+
     """
 
     return _attributable_holdout(
@@ -797,6 +802,7 @@ def attributable_uncertainty(
     ... )  # doctest: +NORMALIZE_WHITESPACE
     >>> frac
     0.1814171785207335
+
     """
 
     return _attributable_holdout(
@@ -981,6 +987,7 @@ def explain_prediction(
     │ Source_Used_for_Orbital_Data ┆ 0.001454  │
     │ Inclination_radians          ┆ 0.057333  │
     └──────────────────────────────┴───────────┘
+
     """
     if method is None:
         method = ABLATIVE_ERR
