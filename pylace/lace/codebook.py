@@ -50,6 +50,7 @@ class Codebook:
     ----------
     codebook: core.Codebook
         A reference to the underlying rust data structure
+
     """
 
     codebook: _lc.Codebook
@@ -89,6 +90,7 @@ class Codebook:
         no_hypers: bool, optional
             If `True`, disable hyper prior inference. Priors will be derived
             from the data and will remain static.
+
         """
 
         if isinstance(df, pd.DataFrame):
@@ -214,6 +216,7 @@ class Codebook:
         }
         >>> codebook.column_names[-5:]
         ['solitary', 'nestspot', 'domestic', 'number-in-wild', 'scary']
+
         """
         return _ColumnMetadataIndexer(self.codebook)
 
@@ -228,6 +231,7 @@ class Codebook:
         >>> codebook = Animals().codebook
         >>> codebook.shape
         (50, 85)
+
         """
         return self.codebook.shape
 
@@ -242,6 +246,7 @@ class Codebook:
         >>> codebook = Animals().codebook
         >>> codebook.row_names[:4]
         ['antelope', 'grizzly+bear', 'killer+whale', 'beaver']
+
         """
         return self.codebook.row_names
 
@@ -256,6 +261,7 @@ class Codebook:
         >>> codebook = Animals().codebook
         >>> codebook.column_names[:4]
         ['black', 'white', 'blue', 'brown']
+
         """
         return self.codebook.column_names
 
@@ -284,6 +290,7 @@ class Codebook:
           view_alpha_prior: G(α: 1, β: 1)
           columns: 85
           rows: 50
+
         """
         codebook = copy.copy(self)
         codebook.codebook.rename(name)
@@ -318,6 +325,7 @@ class Codebook:
           view_alpha_prior: G(α: 1, β: 1)
           columns: 85
           rows: 50
+
         """
         codebook = copy.copy(self)
         codebook.codebook.set_state_alpha_prior(shape, rate)
@@ -352,6 +360,7 @@ class Codebook:
           view_alpha_prior: G(α: 2, β: 3.1)
           columns: 85
           rows: 50
+
         """
         codebook = copy.copy(self)
         codebook.codebook.set_view_alpha_prior(shape, rate)
@@ -392,6 +401,7 @@ class Codebook:
         >>> new_rows = np.array(["one", "two", "three-hahaha"])
         >>> codebook.set_row_names(new_rows).row_names
         ['one', 'two', 'three-hahaha']
+
         """
         if isinstance(row_names, (pl.Series, pd.Series)):
             row_names = row_names.to_list()
@@ -433,6 +443,7 @@ class Codebook:
         ValueMap (UInt, k=2)
         >>> [c for c in vm.values()]
         [0, 1]
+
         """
         return self.column_metadata[col].value_map
 

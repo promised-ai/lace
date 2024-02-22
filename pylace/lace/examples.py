@@ -142,6 +142,7 @@ def delete_metadata(name: str):
 
     >>> from lace.examples import delete_metadata
     >>> delete_metadata("animals")
+
     """
     if name not in EXAMPLE_PATHS:
         raise ValueError(

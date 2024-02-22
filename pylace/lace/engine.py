@@ -31,6 +31,7 @@ class ClusterMap:
     figure: plotly.Figure, optional
         The handle to the plotly heatmap figure. May not be included if the
         user chose not to plot the ``clustermap``.
+
     """
 
     def __init__(self, df: pl.DataFrame, linkage: "np.ndarray", figure=None):
@@ -162,6 +163,7 @@ class Engine:
 
         >>> from lace import Engine  # doctest: +SKIP
         >>> engine = Engine.load("metadata.lace")  # doctest: +SKIP
+
         """
         return cls(core.CoreEngine.load(path))
 
@@ -176,6 +178,7 @@ class Engine:
         >>> from lace import Engine  # doctest: +SKIP
         >>> engine = Engine(metadata="metadata.lace")  # doctest: +SKIP
         >>> engine.save("metadata-copy.lace")  # doctest: +SKIP
+
         """
         self.engine.save(path)
 
@@ -222,6 +225,7 @@ class Engine:
         ╞═══════╪══════╪══════════╪═══════╡
         │ 0     ┆ 0    ┆ 0        ┆ 0     │
         └───────┴──────┴──────────┴───────┘
+
         """
         self.engine.seed(rng_seed)
 
@@ -236,6 +240,7 @@ class Engine:
         >>> engine = Satellites()
         >>> engine.shape
         (1164, 20)
+
         """
         return self.engine.shape
 
@@ -250,6 +255,7 @@ class Engine:
         >>> engine = Satellites()
         >>> engine.n_rows
         1164
+
         """
         return self.engine.n_rows
 
@@ -264,6 +270,7 @@ class Engine:
         >>> engine = Satellites()
         >>> engine.n_cols
         20
+
         """
         return self.engine.n_cols
 
@@ -278,6 +285,7 @@ class Engine:
         >>> engine = Satellites()
         >>> engine.n_states
         16
+
         """
         return self.engine.n_states
 
@@ -311,6 +319,7 @@ class Engine:
          'Source_Used_for_Orbital_Data',
          'longitude_radians_of_geo',
          'Inclination_radians']
+
         """
         return self.engine.columns
 
@@ -349,6 +358,7 @@ class Engine:
          'Users': 'Categorical',
          'Launch_Mass_kg': 'Continuous',
          'Class_of_Orbit': 'Categorical'}
+
         """
         return self.engine.ftypes
 
@@ -383,6 +393,7 @@ class Engine:
         'Categorical'
         >>> engine.ftype("Period_minutes")
         'Continuous'
+
         """
         return self.engine.ftype(col)
 
@@ -433,6 +444,7 @@ class Engine:
         >>> engine = Satellites()
         >>> engine.column_assignment(0)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+
         """
         return self.engine.column_assignment(state_ix)
 
@@ -459,6 +471,7 @@ class Engine:
         >>> animals = Animals()
         >>> animals.row_assignments(0)[1][11]
         3
+
         """
         return self.engine.row_assignments(state_ix)
 
@@ -510,6 +523,7 @@ class Engine:
         >>> params = sats.feature_params(3)
         >>> params[0][1]
         Categorical_4(weights=[0.0016550494108113051, ..., 0.000028906241993218738])
+
         """
         if state_ixs is None:
             state_ixs = list(range(self.n_states))
@@ -567,6 +581,7 @@ class Engine:
         │ -1969.400394 ┆ -2147.941128 ┆ -1968.697139 ┆ -1988.805311 │
         │ -1920.217666 ┆ -2081.368421 ┆ -1909.655836 ┆ -1920.432849 │
         └──────────────┴──────────────┴──────────────┴──────────────┘
+
         """
         diag = self.engine.diagnostics()
 
@@ -649,6 +664,7 @@ class Engine:
         ╞═══════╪════════╪═════════════╡
         │ pig   ┆ 0      ┆ 0.07593     │
         └───────┴────────┴─────────────┘
+
         """
         self.engine.edit_cell(row, col, value)
 
@@ -741,6 +757,7 @@ class Engine:
         │ sponge ┆ 0        │
         │ squid  ┆ null     │
         └────────┴──────────┘
+
         """
         if isinstance(rows, dict):
             for name, values in rows.items():
@@ -912,6 +929,7 @@ class Engine:
         │ horse           ┆ 1                               │
         │ german+shepherd ┆ 2                               │
         └─────────────────┴─────────────────────────────────┘
+
         """
         if metadata is None:
             metadata = utils.infer_column_metadata(
@@ -951,6 +969,7 @@ class Engine:
         >>> engine.del_column(82)
         >>> engine.shape
         (50, 82)
+
         """
         self.engine.del_column(col)
 
@@ -1022,6 +1041,7 @@ class Engine:
         ...     timeout=30,
         ...     transitions="sams",
         ... )
+
         """
 
         if isinstance(transitions, str):
@@ -1097,6 +1117,7 @@ class Engine:
         >>> h_swims_and_flippers = animals.entropy(["swims", "flippers"])
         >>> h_swims + h_flippers - h_swims_and_flippers
         0.19361180218629537
+
         """
         return self.engine.entropy(cols, n_mc_samples)
 
@@ -1255,6 +1276,7 @@ class Engine:
         ...     ) \
         ...     .show()  # doctest: +ELLIPSIS
         {...}
+
         """
         srs = (
             self.engine.logp_scaled(values, given, state_ixs)
@@ -1384,6 +1406,7 @@ class Engine:
         │ Apogee_km      ┆ 358802.0           │
         │ Eccentricity   ┆ 0.7930699999999999 │
         └────────────────┴────────────────────┘
+
         """
         if given is None and (len(values.shape) == 1 or values.shape[1] == 1):
             raise ValueError(
@@ -1526,6 +1549,7 @@ class Engine:
         │ Landsat 7    ┆ 10.0              ┆ 2.743636  │
         │ Intelsat 701 ┆ 10.0              ┆ 2.587096  │
         └──────────────┴───────────────────┴───────────┘
+
         """
         out = self.engine.surprisal(
             col, rows=rows, values=values, state_ixs=state_ixs
@@ -1653,6 +1677,7 @@ class Engine:
         │ 1443.983013    ┆ Communications ┆ GEO            │
         │ 1437.544045    ┆ Communications ┆ GEO            │
         └────────────────┴────────────────┴────────────────┘
+
         """
         df = self.engine.simulate(cols, given=given, n=n)
 
@@ -1700,6 +1725,7 @@ class Engine:
             90.175641
             94.512276
         ]
+
         """
         srs = self.engine.draw(row, col, n)
         return utils.return_srs(srs)
@@ -1763,6 +1789,7 @@ class Engine:
 
         >>> animals.predict("swims", with_uncertainty=False)
         0
+
         """
         return self.engine.predict(target, given, state_ixs, with_uncertainty)
 
@@ -1814,6 +1841,7 @@ class Engine:
         0.9362550555890782
         >>> sats.variability("Class_of_Orbit", given={"Period_minutes": 1440.0})
         0.01569677151657056
+
         """
         return self.engine.variability(target, given, state_ixs)
 
@@ -1924,6 +1952,7 @@ class Engine:
         │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous │
         │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous │
         └───────────────────────────────────┴─────────────────┘
+
         """
         return self.engine.impute(col, rows, with_uncertainty)
 
@@ -1995,6 +2024,7 @@ class Engine:
             1.0
             0.625
         ]
+
         """
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
@@ -2079,6 +2109,7 @@ class Engine:
             0.271978
             0.005378
         ]
+
         """
         srs = self.engine.mi(
             col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
@@ -2171,6 +2202,7 @@ class Engine:
             0.629315
             0.772545
         ]
+
         """
         srs = self.engine.rowsim(row_pairs, wrt=wrt, col_weighted=col_weighted)
         return utils.return_srs(srs)
@@ -2265,6 +2297,7 @@ class Engine:
         │ dolphin  ┆ cow          ┆ 0.482887 │
         │ dolphin  ┆ dolphin      ┆ 1.0      │
         └──────────┴──────────────┴──────────┘
+
         """
         if indices is not None:
             pairs = list(it.product(indices, indices))
@@ -2336,6 +2369,7 @@ class Engine:
         ...     fn_kwargs={"wrt": ["swims"]},
         ... ).figure.show() # doctest:+ELLIPSIS
         {...}
+
         """
         if fn_kwargs is None:
             fn_kwargs = {}
