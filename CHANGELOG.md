@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Updated dependencies for pylace:
+    `pandas`: 1.3 -> 2.2
+    `pyarrow`: 14.0 -> 15.0
+
 ## [python-0.7.0] - 2024-02-07
 
 ### Added
