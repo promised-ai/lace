@@ -44,7 +44,9 @@ fn main() {
                 .push(ViewTransition::RowAssignment(opt.alg));
         }
         if !opt.no_view_alpha {
-            settings.transitions.push(ViewTransition::Alpha);
+            settings
+                .transitions
+                .push(ViewTransition::PriorProcessParams);
         }
         if !opt.no_priors {
             settings.transitions.push(ViewTransition::FeaturePriors);

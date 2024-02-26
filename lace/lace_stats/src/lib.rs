@@ -8,6 +8,8 @@
     clippy::option_option,
     clippy::implicit_clone
 )]
+
+pub mod assignment;
 mod cdf;
 mod chi_square;
 pub mod dist;
@@ -19,6 +21,7 @@ pub mod mh;
 mod mixture_type;
 mod perm;
 pub mod prior;
+pub mod prior_process;
 pub mod seq;
 mod simplex;
 pub mod uncertainty;

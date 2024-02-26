@@ -4,8 +4,6 @@ use lace_stats::rv::traits::Rv;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-const MAX_STICK_BREAKING_ITERS: u16 = 1000;
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct CrpDraw {
     pub asgn: Vec<usize>,
@@ -13,7 +11,7 @@ pub struct CrpDraw {
     pub n_cats: usize,
 }
 
-/// Draw from Chinese Restaraunt Process
+/// Draw from Chinese Restaurant Process
 pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     let mut n_cats = 0;
     let mut weights: Vec<f64> = vec![];
@@ -41,53 +39,6 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
         asgn,
         counts,
         n_cats,
-    }
-}
-
-/// The stick breaking algorithm has exceeded the max number of iterations.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TheStickIsDust(u16);
-
-/// Append new dirchlet weights by stick breaking until the new weight is less
-/// than u*
-///
-/// **NOTE** This function is only for the slice reassignment kernel. It cuts out all
-/// weights that are less that u*, so the sum of the weights will not be 1.
-pub fn sb_slice_extend<R: Rng>(
-    mut weights: Vec<f64>,
-    alpha: f64,
-    u_star: f64,
-    mut rng: &mut R,
-) -> Result<Vec<f64>, TheStickIsDust> {
-    let mut b_star = weights.pop().unwrap();
-
-    // If α is low and we do the dirichlet update w ~ Dir(n_1, ..., n_k, α),
-    // the final weight will often be zero. In that case, we're done.
-    if b_star <= 1E-16 {
-        weights.push(b_star);
-        return Ok(weights);
-    }
-
-    let beta = Beta::new(1.0, alpha).unwrap();
-
-    let mut iters: u16 = 0;
-    loop {
-        let vk: f64 = beta.draw(&mut rng);
-        let bk = vk * b_star;
-        b_star *= 1.0 - vk;
-
-        if bk >= u_star {
-            weights.push(bk);
-        }
-
-        if b_star < u_star {
-            return Ok(weights);
-        }
-
-        iters += 1;
-        if iters > MAX_STICK_BREAKING_ITERS {
-            return Err(TheStickIsDust(MAX_STICK_BREAKING_ITERS));
-        }
     }
 }
 

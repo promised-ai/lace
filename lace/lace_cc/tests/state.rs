@@ -186,9 +186,9 @@ fn two_part_runner(
         n_iters: 50,
         transitions: vec![
             StateTransition::ColumnAssignment(first_algs.1),
-            StateTransition::StateAlpha,
+            StateTransition::StatePriorProcessParams,
             StateTransition::RowAssignment(first_algs.0),
-            StateTransition::ViewAlphas,
+            StateTransition::ViewPriorProcessParams,
             StateTransition::FeaturePriors,
         ],
     };
@@ -199,9 +199,9 @@ fn two_part_runner(
         n_iters: 50,
         transitions: vec![
             StateTransition::ColumnAssignment(second_algs.1),
-            StateTransition::StateAlpha,
+            StateTransition::StatePriorProcessParams,
             StateTransition::RowAssignment(second_algs.0),
-            StateTransition::ViewAlphas,
+            StateTransition::ViewPriorProcessParams,
             StateTransition::FeaturePriors,
         ],
     };

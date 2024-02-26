@@ -1336,9 +1336,9 @@ mod insert_data {
             n_iters: 10,
             transitions: vec![
                 StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
-                StateTransition::StateAlpha,
+                StateTransition::StatePriorProcessParams,
                 StateTransition::RowAssignment(RowAssignAlg::Gibbs),
-                StateTransition::ViewAlphas,
+                StateTransition::ViewPriorProcessParams,
                 StateTransition::FeaturePriors,
             ],
             ..Default::default()
@@ -1432,9 +1432,9 @@ mod insert_data {
             n_iters: 10,
             transitions: vec![
                 StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
-                StateTransition::StateAlpha,
+                StateTransition::StatePriorProcessParams,
                 StateTransition::RowAssignment(RowAssignAlg::Gibbs),
-                StateTransition::ViewAlphas,
+                StateTransition::ViewPriorProcessParams,
                 StateTransition::FeaturePriors,
             ],
             ..Default::default()

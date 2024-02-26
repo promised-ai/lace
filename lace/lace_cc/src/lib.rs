@@ -9,7 +9,7 @@
 )]
 
 pub mod alg;
-pub mod assignment;
+pub mod builders;
 pub mod component;
 pub mod config;
 pub mod feature;

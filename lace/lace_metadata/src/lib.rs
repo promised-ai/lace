@@ -13,6 +13,7 @@ mod config;
 mod error;
 pub mod latest;
 mod utils;
+pub mod versions;
 
 pub use utils::{deserialize_file, save_state, serialize_obj};
 

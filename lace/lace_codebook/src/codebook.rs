@@ -7,7 +7,9 @@ use crate::ValueMap;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
-use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+use lace_stats::rv::dist::{
+    Beta, Gamma, NormalInvChiSquared, SymmetricDirichlet,
+};
 use polars::prelude::DataFrame;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -343,6 +345,21 @@ impl TryFrom<Vec<ColMetadata>> for ColMetadataList {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum PriorProcess {
+    Dirichlet { alpha_prior: Gamma },
+    PitmanYor { alpha_prior: Gamma, d_prior: Beta },
+}
+
+impl Default for PriorProcess {
+    fn default() -> Self {
+        Self::Dirichlet {
+            alpha_prior: lace_consts::general_alpha_prior(),
+        }
+    }
+}
+
 /// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -350,9 +367,9 @@ pub struct Codebook {
     /// The name of the table
     pub table_name: String,
     /// Prior on State CRP alpha parameter
-    pub state_alpha_prior: Option<Gamma>,
+    pub state_prior_process: Option<PriorProcess>,
     /// Prior on View CRP alpha parameters
-    pub view_alpha_prior: Option<Gamma>,
+    pub view_prior_process: Option<PriorProcess>,
     /// The metadata for each column indexed by name
     pub col_metadata: ColMetadataList,
     /// Optional misc comments
@@ -372,8 +389,8 @@ impl Codebook {
         Codebook {
             table_name,
             col_metadata,
-            view_alpha_prior: None,
-            state_alpha_prior: None,
+            view_prior_process: None,
+            state_prior_process: None,
             comments: None,
             row_names: RowNameList::new(),
         }
@@ -385,15 +402,23 @@ impl Codebook {
     /// - df: the dataframe
     /// - cat_cutoff: the maximum value an integer column can take on before it
     ///   is considered Count type instead of Categorical
-    /// - alpha_prior_opt: Optional Gamma prior on the column and row CRP alpha
+    /// - state_prior_process: The prior process on the column partition
+    /// - view_prior_process: The prior process on the row partitions
     /// - no_hypers: if `true` do not do prior parameter inference
     pub fn from_df(
         df: &DataFrame,
         cat_cutoff: Option<u8>,
-        alpha_prior_opt: Option<Gamma>,
+        state_prior_process: Option<PriorProcess>,
+        view_prior_process: Option<PriorProcess>,
         no_hypers: bool,
     ) -> Result<Self, CodebookError> {
-        df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
+        df_to_codebook(
+            df,
+            cat_cutoff,
+            state_prior_process,
+            view_prior_process,
+            no_hypers,
+        )
     }
 
     pub fn from_yaml<P: AsRef<Path>>(path: P) -> io::Result<Self> {

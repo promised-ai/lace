@@ -1,6 +1,6 @@
 use super::{ColModel, Column, Component, FType, Feature, FeatureHelper};
-use crate::assignment::Assignment;
 use lace_data::{Datum, FeatureData, SparseContainer};
+use lace_stats::assignment::Assignment;
 use lace_stats::rv::dist::{Bernoulli, Beta};
 use lace_stats::MixtureType;
 use rand::Rng;

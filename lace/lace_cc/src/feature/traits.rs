@@ -2,6 +2,7 @@
 use enum_dispatch::enum_dispatch;
 use lace_data::FeatureData;
 use lace_data::{Datum, SparseContainer};
+use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -13,7 +14,6 @@ use lace_stats::MixtureType;
 use rand::Rng;
 
 use super::Component;
-use crate::assignment::Assignment;
 use crate::feature::{ColModel, Column, FType};
 
 pub trait TranslateDatum<X>

@@ -67,7 +67,7 @@ fn main() {
     }
 
     if !opt.no_state_alpha {
-        transitions.push(StateTransition::StateAlpha);
+        transitions.push(StateTransition::StatePriorProcessParams);
     }
 
     if !opt.no_row_reassign {
@@ -75,7 +75,7 @@ fn main() {
     }
 
     if !opt.no_view_alpha {
-        transitions.push(StateTransition::ViewAlphas);
+        transitions.push(StateTransition::ViewPriorProcessParams);
     }
 
     if !opt.no_priors {

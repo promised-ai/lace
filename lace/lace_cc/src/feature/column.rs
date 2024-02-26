@@ -4,6 +4,7 @@ use std::vec::Drain;
 use enum_dispatch::enum_dispatch;
 use lace_data::{Category, FeatureData};
 use lace_data::{Container, SparseContainer};
+use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -20,7 +21,6 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::sync::OnceLock;
 
 use super::{Component, MissingNotAtRandom};
-use crate::assignment::Assignment;
 use crate::component::ConjugateComponent;
 use crate::feature::traits::{Feature, FeatureHelper, TranslateDatum};
 use crate::feature::FType;

@@ -15,7 +15,7 @@ fn main() {
     // The column model uses an assignment as its setting. We'll draw a
     // 50-length assignment from the prior.
     let transitions = vec![
-        ViewTransition::Alpha,
+        ViewTransition::PriorProcessParams,
         ViewTransition::RowAssignment(RowAssignAlg::Slice),
     ];
     let asgn = AssignmentBuilder::new(10).flat().build().unwrap();
