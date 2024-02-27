@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "pylace"
-version = "0.7.0"
+version = "0.7.1"
 description = "A probabalistic programming ML tool for science"
 requires-python = ">=3.8"
 classifiers = [
