@@ -1,24 +1,13 @@
 use std::collections::BTreeMap;
 
-use lace_cc::component::ConjugateComponent;
-use lace_cc::feature::{ColModel, Column, MissingNotAtRandom};
-use lace_cc::prior_process::PriorProcess;
+use lace_cc::feature::{ColModel, MissingNotAtRandom};
 use lace_cc::state::{State, StateDiagnostics, StateScoreComponents};
-use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
 use lace_cc::view::View;
-use lace_data::{FeatureData, SparseContainer};
-use lace_stats::prior::csd::CsdHyper;
-use lace_stats::prior::nix::NixHyper;
-use lace_stats::prior::pg::PgHyper;
-use lace_stats::rv::dist::{
-    Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
-    NormalInvChiSquared, Poisson, SymmetricDirichlet,
-};
-use lace_stats::MixtureType;
+use lace_stats::assignment::Assignment;
+use lace_stats::prior_process::{PriorProcess, Process};
 
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::sync::OnceLock;
+use serde::{Deserialize, Serialize};
 
 use crate::versions::v1;
 use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
@@ -159,6 +148,48 @@ impl From<View> for DatalessView {
     }
 }
 
+impl From<v1::Assignment> for PriorProcess {
+    fn from(asgn: v1::Assignment) -> Self {
+        Self {
+            asgn: Assignment {
+                asgn: asgn.asgn,
+                counts: asgn.counts,
+                n_cats: asgn.n_cats,
+            },
+            process: Process::Dirichlet(lace_stats::prior_process::Dirichlet {
+                alpha: asgn.alpha,
+                prior: asgn.prior,
+            }),
+        }
+    }
+}
+
+impl From<v1::DatalessView> for DatalessView {
+    fn from(view: v1::DatalessView) -> Self {
+        Self {
+            ftrs: view.ftrs,
+            prior_process: view.asgn.into(),
+            weights: view.weights,
+        }
+    }
+}
+
+impl From<v1::DatalessState> for DatalessState {
+    fn from(mut state: v1::DatalessState) -> Self {
+        Self {
+            views: state.views.drain(..).map(|view| view.into()).collect(),
+            prior_process: state.asgn.into(),
+            weights: state.weights,
+            score: StateScoreComponents {
+                ln_likelihood: state.loglike,
+                ln_prior: state.log_prior,
+                ln_state_prior_process: state.log_state_alpha_prior,
+                ln_view_prior_process: state.log_view_alpha_prior,
+            },
+        }
+    }
+}
+
 impl From<v1::DatalessStateAndDiagnostics> for DatalessStateAndDiagnostics {
     fn from(state_and_diag: v1::DatalessStateAndDiagnostics) -> Self {
         Self {
@@ -170,13 +201,19 @@ impl From<v1::DatalessStateAndDiagnostics> for DatalessStateAndDiagnostics {
 
 impl From<v1::Codebook> for Codebook {
     fn from(codebook: v1::Codebook) -> Self {
-        Self(lace_codebook::Codebook { 
-            table_name: codebook.0.table_name, 
-            state_alpha_prior: codebook,
-            view_alpha_prior: ,
-            col_metadata: ,
-            comments: ,
-            row_names:  
+        Self(lace_codebook::Codebook {
+            table_name: codebook.table_name,
+            state_prior_process: codebook.state_alpha_prior.map(
+                |alpha_prior| lace_codebook::PriorProcess::Dirichlet {
+                    alpha_prior,
+                },
+            ),
+            view_prior_process: codebook.view_alpha_prior.map(|alpha_prior| {
+                lace_codebook::PriorProcess::Dirichlet { alpha_prior }
+            }),
+            col_metadata: codebook.col_metadata,
+            comments: codebook.comments,
+            row_names: codebook.row_names,
         })
     }
 }
@@ -191,7 +228,7 @@ impl From<v1::Metadata> for Metadata {
                 .collect(),
             state_ids: metadata.state_ids,
             codebook: metadata.codebook.into(),
-            data: metadata.codebook,
+            data: metadata.data,
             rng: metadata.rng,
         }
     }

@@ -59,7 +59,7 @@ macro_rules! to_from_newtype {
 }
 
 /// creates a bunch of helper functions in a `load` module that load the
-/// metadata components and create and `Meatadata` object of the appropriate
+/// metadata components and create and `Metadata` object of the appropriate
 /// version.
 #[macro_export]
 macro_rules! loaders {
@@ -133,7 +133,7 @@ macro_rules! loaders {
                 load(codebook_path, file_config.serialized_type)
             }
 
-            pub(crate) fn load_meatadata<P: AsRef<std::path::Path>>(
+            pub(crate) fn load_metadata<P: AsRef<std::path::Path>>(
                 path: P,
                 file_config: &$crate::config::FileConfig,
             ) -> Result<Metadata, $crate::error::Error> {
@@ -203,7 +203,9 @@ pub fn load_metadata<P: AsRef<Path>>(
 
     let md_version = file_config.metadata_version;
     match md_version {
-        0 => crate::latest::load::load_meatadata(path, &file_config),
+        0 => crate::versions::v1::load::load_metadata(path, &file_config)
+            .map(|metadata| metadata.into()),
+        1 => crate::latest::load::load_metadata(path, &file_config),
         requested => Err(Error::UnsupportedMetadataVersion {
             requested,
             max_supported: crate::latest::METADATA_VERSION,
