@@ -1,18 +1,17 @@
 use clap::Parser;
-use lace::prelude::*;
-use lace_cc::view::ViewGewekeSettings;
-use lace_geweke::GewekeTester;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+
+use lace_cc::alg::RowAssignAlg;
+use lace_cc::feature::FType;
+use lace_cc::transition::ViewTransition;
+use lace_cc::view::{View, ViewGewekeSettings};
+use lace_geweke::GewekeTester;
 
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]
 struct Opt {
-    #[clap(
-        long,
-        default_value = "gibbs",
-        value_parser = ["finite_cpu", "gibbs", "slice", "sams"],
-    )]
+    #[clap(long, default_value = "gibbs")]
     pub alg: RowAssignAlg,
     #[clap(short, long, default_value = "20")]
     pub nrows: usize,

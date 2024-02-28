@@ -75,7 +75,7 @@ impl HasData for Engine {
     #[inline]
     fn summarize_feature(&self, ix: usize) -> SummaryStatistics {
         let state = &self.states[0];
-        let view_ix = state.asgn.asgn[ix];
+        let view_ix = state.asgn().asgn[ix];
         // XXX: Cloning the data could be very slow
         state.views[view_ix].ftrs[&ix].clone_data().summarize()
     }
@@ -154,8 +154,8 @@ impl Engine {
             col_models_from_data_src(codebook, data_source, &mut rng)
                 .map_err(NewEngineError::DataParseError)?;
 
-        let state_alpha_prior = codebook
-            .state_alpha_prior
+        let state_prior_process = codebook
+            .state_prior_process
             .clone()
             .unwrap_or_else(lace_consts::state_alpha_prior);
 

@@ -12,7 +12,12 @@ pub trait PriorProcessT {
 
     fn ln_singleton_weight(&self, n_cats: usize) -> f64;
 
-    fn weight_vec(&self, asgn: &Assignment, append_new: bool) -> Vec<f64>;
+    fn weight_vec(
+        &self,
+        asgn: &Assignment,
+        normed: bool,
+        append_new: bool,
+    ) -> Vec<f64>;
 
     fn slice_sb_extend<R: Rng>(
         &self,
@@ -52,7 +57,12 @@ impl PriorProcessT for Dirichlet {
         self.alpha.ln()
     }
 
-    fn weight_vec(&self, asgn: &Assignment, append_new: bool) -> Vec<f64> {
+    fn weight_vec(
+        &self,
+        asgn: &Assignment,
+        normed: bool,
+        append_new: bool,
+    ) -> Vec<f64> {
         let mut weights: Vec<f64> =
             asgn.counts.iter().map(|&ct| ct as f64).collect();
 
@@ -63,7 +73,9 @@ impl PriorProcessT for Dirichlet {
             asgn.len() as f64
         };
 
-        weights.iter_mut().for_each(|ct| *ct /= z);
+        if normed {
+            weights.iter_mut().for_each(|ct| *ct /= z);
+        }
 
         weights
     }
@@ -103,7 +115,17 @@ impl PriorProcessT for Dirichlet {
     }
 
     fn update_params<R: Rng>(&mut self, asgn: &Assignment, rng: &mut R) -> f64 {
-        unimplemented!()
+        // TODO: Should we use a different method to draw CRP alpha that can
+        // extend outside of the bulk of the prior's mass?
+        let cts = &asgn.counts;
+        let n: usize = asgn.len();
+        let loglike = |alpha: &f64| crate::assignment::lcrp(n, cts, *alpha);
+        let prior_ref = &self.prior;
+        let prior_draw = |rng: &mut R| prior_ref.draw(rng);
+        let mh_result =
+            crate::mh::mh_prior(self.alpha, loglike, prior_draw, 100, rng);
+        self.alpha = mh_result.x;
+        mh_result.score_x
     }
 
     fn reset_params<R: Rng>(&mut self, rng: &mut R) {
@@ -144,7 +166,12 @@ impl PriorProcessT for PitmanYor {
         (self.alpha + self.d * (n_cats as f64)).ln()
     }
 
-    fn weight_vec(&self, asgn: &Assignment, append_new: bool) -> Vec<f64> {
+    fn weight_vec(
+        &self,
+        asgn: &Assignment,
+        normed: bool,
+        append_new: bool,
+    ) -> Vec<f64> {
         let mut weights: Vec<f64> =
             asgn.counts.iter().map(|&ct| ct as f64 - self.d).collect();
 
@@ -155,7 +182,9 @@ impl PriorProcessT for PitmanYor {
             asgn.len() as f64
         };
 
-        weights.iter_mut().for_each(|ct| *ct /= z);
+        if normed {
+            weights.iter_mut().for_each(|ct| *ct /= z);
+        }
 
         weights
     }
@@ -208,10 +237,15 @@ impl PriorProcessT for Process {
         }
     }
 
-    fn weight_vec(&self, asgn: &Assignment, append_new: bool) -> Vec<f64> {
+    fn weight_vec(
+        &self,
+        asgn: &Assignment,
+        normed: bool,
+        append_new: bool,
+    ) -> Vec<f64> {
         match self {
-            Self::Dirichlet(proc) => proc.weight_vec(asgn, append_new),
-            Self::PitmanYor(proc) => proc.weight_vec(asgn, append_new),
+            Self::Dirichlet(proc) => proc.weight_vec(asgn, normed, append_new),
+            Self::PitmanYor(proc) => proc.weight_vec(asgn, normed, append_new),
         }
     }
 
@@ -266,7 +300,11 @@ impl PriorProcess {
     }
 
     pub fn weight_vec(&self, append_new: bool) -> Vec<f64> {
-        self.process.weight_vec(&self.asgn, append_new)
+        self.process.weight_vec(&self.asgn, true, append_new)
+    }
+
+    pub fn weight_vec_unnormed(&self, append_new: bool) -> Vec<f64> {
+        self.process.weight_vec(&self.asgn, false, append_new)
     }
 
     pub fn update_params<R: Rng>(&mut self, rng: &mut R) -> f64 {
@@ -313,10 +351,15 @@ fn sb_slice_extend<R: Rng>(
     }
     let n_cats = weights.len() as f64;
 
+    let mut beta = Beta::new(1.0 + d, alpha).unwrap();
+
     let mut iters: u16 = 0;
     loop {
-        let beta =
-            Beta::new(1.0 + d, alpha + iters as f64 + n_cats + 1.0).unwrap();
+        if d > 0.0 {
+            let b = (iters as f64) + n_cats + 1.0;
+            beta.set_beta(alpha + b * d).unwrap();
+        }
+
         let vk: f64 = beta.draw(&mut rng);
         let bk = vk * b_star;
         b_star *= 1.0 - vk;

@@ -400,7 +400,7 @@ impl View {
 
         let weights: Vec<f64> = {
             // FIXME: only works for dirichlet
-            let dirvec = self.prior_process.weight_vec(true);
+            let dirvec = self.prior_process.weight_vec_unnormed(true);
             let dir = Dirichlet::new(dirvec).unwrap();
             dir.draw(&mut rng)
         };
@@ -849,9 +849,7 @@ impl View {
             + lcrp(
                 asgn.len(),
                 &asgn.counts,
-                self.prior_process
-                    .process
-                    .ln_singleton_weight(self.n_cats()),
+                self.prior_process.alpha().unwrap(),
             );
 
         self.drop_component(self.n_cats());
@@ -871,9 +869,7 @@ impl View {
             + lcrp(
                 self.asgn().len(),
                 &self.asgn().counts,
-                self.prior_process
-                    .process
-                    .ln_singleton_weight(self.n_cats()),
+                self.prior_process.alpha().unwrap(),
             );
         let (logp_spt, logq_spt, asgn_opt) =
             self.propose_split(i, j, false, rng);
@@ -959,9 +955,7 @@ impl View {
             logp += lcrp(
                 self.asgn().len(),
                 &self.asgn().counts,
-                self.prior_process
-                    .process
-                    .ln_singleton_weight(self.n_cats()),
+                self.prior_process.alpha().unwrap(),
             );
             None
         } else {
@@ -980,8 +974,11 @@ impl View {
                 .build()
                 .unwrap();
 
-            // FIXME: alpha: see above
-            logp += lcrp(asgn.len(), &asgn.counts, 1.0);
+            logp += lcrp(
+                asgn.len(),
+                &asgn.counts,
+                self.prior_process.alpha().unwrap(),
+            );
             Some(asgn)
         };
 

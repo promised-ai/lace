@@ -28,6 +28,7 @@ itertools = "0.12"
 [dev-dependencies]
 approx = "0.5.1"
 criterion = "0.5"
+clap = { version = "4.3.17", features = ["derive"] }
 
 [[bench]]
 name = "state_types"

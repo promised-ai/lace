@@ -1179,6 +1179,7 @@ name = "lace_cc"
 version = "0.6.0"
 dependencies = [
  "approx",
+ "clap",
  "criterion",
  "enum_dispatch",
  "itertools 0.12.0",

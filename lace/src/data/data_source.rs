@@ -175,7 +175,7 @@ impl DataSource {
         use crate::codebook::data;
         let codebook = match &self {
             DataSource::Polars(df) => {
-                data::df_to_codebook(df, None, None, false)
+                data::df_to_codebook(df, None, None, None, false)
             }
             DataSource::Empty => Ok(Codebook::default()),
         }?;
