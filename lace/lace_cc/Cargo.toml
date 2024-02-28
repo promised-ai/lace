@@ -29,6 +29,7 @@ itertools = "0.12"
 approx = "0.5.1"
 criterion = "0.5"
 clap = { version = "4.3.17", features = ["derive"] }
+plotly = "0.8"
 
 [[bench]]
 name = "state_types"
