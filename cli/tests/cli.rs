@@ -1011,7 +1011,7 @@ mod codebook {
 
     #[test]
     fn bool_data() -> Result<(), Box<dyn std::error::Error>> {
-        let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let output_dir = tempfile::Builder::new().tempdir().unwrap();
         let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
         {
@@ -1032,8 +1032,8 @@ mod codebook {
             .arg("--csv")
             .arg(data_file.path())
             .arg("-n")
-            .arg("10000")
-            .arg(fileout.path())
+            .arg("100")
+            .arg(output_dir.path())
             .output()
             .expect("Failed to execute process");
 
