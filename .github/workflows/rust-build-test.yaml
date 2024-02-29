@@ -59,22 +59,41 @@ jobs:
         with:
           workspaces: . -> lace/target
 
-      - name: Run rustfmt
+      - name: Run rustfmt (Lace)
         working-directory: lace
         run: cargo fmt --all -- --check
 
-      - name: Run clippy
+      - name: Run rustfmt (CLI)
+        working-directory: cli
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy (Lace)
         working-directory: lace
         env:
           RUSTFLAGS: -C debuginfo=0
         run: |
           cargo clippy --all-features
 
+      - name: Run clippy (CLI)
+        working-directory: cli
+        env:
+          RUSTFLAGS: -C debuginfo=0
+        run: |
+          cargo clippy --all-features
+  
       - name: Install audit
         run: cargo install cargo-audit
 
-      - name: Run audit
+      - name: Run audit (Lace)
         working-directory: lace
+        # Note: Both `polars` and `arrow2` trigger this security violation
+        #       due to their reliance on `chrono`, which is the ultimate source of the violation
+        #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
+        #       and thus neither `polars` or `arrow2` can pass `audit` checks
+        run: cargo audit -f Cargo.lock --ignore RUSTSEC-2020-0071
+
+      - name: Run audit (CLI)
+        working-directory: cli
         # Note: Both `polars` and `arrow2` trigger this security violation
         #       due to their reliance on `chrono`, which is the ultimate source of the violation
         #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
