@@ -1037,7 +1037,11 @@ mod codebook {
             .output()
             .expect("Failed to execute process");
 
-        assert!(output_default.status.success(), "Process exited with error :\n{}", String::from_utf8(output_default.stderr)?);
+        assert!(
+            output_default.status.success(),
+            "Process exited with error :\n{}",
+            String::from_utf8(output_default.stderr)?
+        );
 
         Ok(())
     }

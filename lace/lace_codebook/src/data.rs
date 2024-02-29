@@ -298,7 +298,13 @@ fn uint_categorical_coltype(
     })
 }
 
-fn hyper_and_prior_for_categorical(no_hypers: bool, k: usize) -> (Option<CsdHyper>, Option<lace_stats::rv::prelude::SymmetricDirichlet>) {
+fn hyper_and_prior_for_categorical(
+    no_hypers: bool,
+    k: usize,
+) -> (
+    Option<CsdHyper>,
+    Option<lace_stats::rv::prelude::SymmetricDirichlet>,
+) {
     use lace_stats::rv::dist::SymmetricDirichlet;
 
     let (hyper, prior) = if no_hypers {
@@ -309,9 +315,7 @@ fn hyper_and_prior_for_categorical(no_hypers: bool, k: usize) -> (Option<CsdHype
     (hyper, prior)
 }
 
-fn bool_categorical_coltype(
-    no_hypers: bool,
-) -> Result<ColType, CodebookError> {
+fn bool_categorical_coltype(no_hypers: bool) -> Result<ColType, CodebookError> {
     let (hyper, prior) = hyper_and_prior_for_categorical(no_hypers, 2);
 
     Ok(ColType::Categorical {
@@ -321,7 +325,6 @@ fn bool_categorical_coltype(
         value_map: ValueMap::Bool,
     })
 }
-
 
 fn string_categorical_coltype(
     srs: &Series,
