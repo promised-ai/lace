@@ -806,7 +806,7 @@ impl State {
         let n_cols = self.n_cols();
 
         let weights: Vec<f64> = {
-            let dirvec = self.prior_process.weight_vec(true);
+            let dirvec = self.prior_process.weight_vec_unnormed(true);
             // FIXME: this only works for Dirichlet process!
             let dir = Dirichlet::new(dirvec).unwrap();
             dir.draw(rng)
