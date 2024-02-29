@@ -105,7 +105,7 @@ impl State {
         rng: &mut R,
     ) -> Self {
         let n_cols = ftrs.len();
-        let n_rows = ftrs.get(0).map(|f| f.len()).unwrap_or(0);
+        let n_rows = ftrs.first().map(|f| f.len()).unwrap_or(0);
         let asgn = AssignmentBuilder::new(n_cols)
             .with_prior(state_alpha_prior)
             .seed_from_rng(rng)
@@ -178,7 +178,7 @@ impl State {
     /// Get the number of rows
     #[inline]
     pub fn n_rows(&self) -> usize {
-        self.views.get(0).map(|v| v.n_rows()).unwrap_or(0)
+        self.views.first().map(|v| v.n_rows()).unwrap_or(0)
     }
 
     /// Get the number of columns

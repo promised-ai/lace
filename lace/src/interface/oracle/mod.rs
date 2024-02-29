@@ -139,7 +139,7 @@ impl Oracle {
     /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
         let data = {
-            let data_map = engine.states.get(0).unwrap().clone_data();
+            let data_map = engine.states.first().unwrap().clone_data();
             DataStore::new(data_map)
         };
 
