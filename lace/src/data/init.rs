@@ -149,6 +149,17 @@ fn categorical_col_model<R: rand::Rng>(
         (ValueMap::U8(_), dt) if is_categorical_int_dtype(dt) => {
             crate::codebook::data::series_to_opt_vec!(srs, u8)
         }
+        (ValueMap::Bool, DataType::Boolean) => {
+            srs
+            .bool()?
+            .into_iter()
+            .map(|maybe_bool|
+                maybe_bool.map(|b|
+                    ValueMap::Bool.ix(&b.into()).unwrap() as u8
+                )
+            )
+            .collect()
+        }
         _ => {
             return Err(CodebookError::UnsupportedDataType {
                 col_name: srs.name().to_owned(),

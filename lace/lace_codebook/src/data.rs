@@ -288,13 +288,7 @@ fn uint_categorical_coltype(
     k: usize,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    use lace_stats::rv::dist::SymmetricDirichlet;
-
-    let (hyper, prior) = if no_hypers {
-        (None, Some(SymmetricDirichlet::jeffreys(k).unwrap()))
-    } else {
-        (Some(CsdHyper::new(1.0, 1.0)), None)
-    };
+    let (hyper, prior) = hyper_and_prior_for_categorical(no_hypers, k);
 
     Ok(ColType::Categorical {
         k,
@@ -303,6 +297,31 @@ fn uint_categorical_coltype(
         value_map: ValueMap::U8(k),
     })
 }
+
+fn hyper_and_prior_for_categorical(no_hypers: bool, k: usize) -> (Option<CsdHyper>, Option<lace_stats::rv::prelude::SymmetricDirichlet>) {
+    use lace_stats::rv::dist::SymmetricDirichlet;
+
+    let (hyper, prior) = if no_hypers {
+        (None, Some(SymmetricDirichlet::jeffreys(k).unwrap()))
+    } else {
+        (Some(CsdHyper::new(1.0, 1.0)), None)
+    };
+    (hyper, prior)
+}
+
+fn bool_categorical_coltype(
+    no_hypers: bool,
+) -> Result<ColType, CodebookError> {
+    let (hyper, prior) = hyper_and_prior_for_categorical(no_hypers, 2);
+
+    Ok(ColType::Categorical {
+        k: 2,
+        hyper,
+        prior,
+        value_map: ValueMap::Bool,
+    })
+}
+
 
 fn string_categorical_coltype(
     srs: &Series,
@@ -359,7 +378,7 @@ pub fn series_to_colmd(
     let name = String::from(srs.name());
     let dtype = srs.dtype();
     let coltype = match dtype {
-        DataType::Boolean => uint_categorical_coltype(2, no_hypers),
+        DataType::Boolean => bool_categorical_coltype(no_hypers),
         DataType::UInt8 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt16 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt32 => uint_coltype(srs, cat_cutoff, no_hypers),
