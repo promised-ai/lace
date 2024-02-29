@@ -109,7 +109,13 @@ jobs:
           RUSTFLAGS: -C debuginfo=0
         run: cargo run -- regen-examples
 
-      - name: Run tests
+      - name: Run Lace tests
+        env:
+          RUSTFLAGS: -C debuginfo=0
+        run: cargo test --all-features
+
+      - name: Run CLI tests
+        working-directory: cli
         env:
           RUSTFLAGS: -C debuginfo=0
         run: cargo test --all-features
