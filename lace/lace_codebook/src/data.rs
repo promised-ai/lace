@@ -288,6 +288,23 @@ fn uint_categorical_coltype(
     k: usize,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
+    let (hyper, prior) = hyper_and_prior_for_categorical(no_hypers, k);
+
+    Ok(ColType::Categorical {
+        k,
+        hyper,
+        prior,
+        value_map: ValueMap::U8(k),
+    })
+}
+
+fn hyper_and_prior_for_categorical(
+    no_hypers: bool,
+    k: usize,
+) -> (
+    Option<CsdHyper>,
+    Option<lace_stats::rv::prelude::SymmetricDirichlet>,
+) {
     use lace_stats::rv::dist::SymmetricDirichlet;
 
     let (hyper, prior) = if no_hypers {
@@ -295,12 +312,17 @@ fn uint_categorical_coltype(
     } else {
         (Some(CsdHyper::new(1.0, 1.0)), None)
     };
+    (hyper, prior)
+}
+
+fn bool_categorical_coltype(no_hypers: bool) -> Result<ColType, CodebookError> {
+    let (hyper, prior) = hyper_and_prior_for_categorical(no_hypers, 2);
 
     Ok(ColType::Categorical {
-        k,
+        k: 2,
         hyper,
         prior,
-        value_map: ValueMap::U8(k),
+        value_map: ValueMap::Bool,
     })
 }
 
@@ -359,7 +381,7 @@ pub fn series_to_colmd(
     let name = String::from(srs.name());
     let dtype = srs.dtype();
     let coltype = match dtype {
-        DataType::Boolean => uint_categorical_coltype(2, no_hypers),
+        DataType::Boolean => bool_categorical_coltype(no_hypers),
         DataType::UInt8 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt16 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt32 => uint_coltype(srs, cat_cutoff, no_hypers),
@@ -708,7 +730,7 @@ mod test {
         count_or_continuous!(count_or_cts_i64_neg_small, -1_i64, 10, false);
 
         #[test]
-        fn bool_data_is_categorical() {
+        fn bool_data_is_bool() {
             let srs = Series::new(
                 "A",
                 (0..100).map(|x| x % 2 == 1).collect::<Vec<bool>>(),
@@ -716,11 +738,11 @@ mod test {
             let colmd = series_to_colmd(&srs, None, true).unwrap();
             match colmd.coltype {
                 ColType::Categorical {
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::Bool,
                     ..
                 } => (),
                 ColType::Categorical { value_map, .. } => {
-                    panic!("value map should be U8(2), was: {:?}", value_map)
+                    panic!("value map should be Bool, was: {:?}", value_map)
                 }
                 _ => panic!("wrong coltype"),
             }

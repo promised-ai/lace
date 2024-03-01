@@ -1008,4 +1008,41 @@ mod codebook {
 
         Ok(())
     }
+
+    #[test]
+    fn bool_data() -> Result<(), Box<dyn std::error::Error>> {
+        let output_dir = tempfile::Builder::new().tempdir().unwrap();
+        let mut data_file = tempfile::NamedTempFile::new().unwrap();
+
+        {
+            // Write CSV with 5 "True" and 5 "False values"
+            let f = data_file.as_file_mut();
+            writeln!(f, "ID,data")?;
+            for id in 1..5 {
+                writeln!(f, "{},{}", id, "True")?;
+            }
+            for id in 6..10 {
+                writeln!(f, "{},{}", id, "False")?;
+            }
+        }
+
+        // Default categorical cutoff should be 20
+        let output_default = Command::new(LACE_CMD)
+            .arg("run")
+            .arg("--csv")
+            .arg(data_file.path())
+            .arg("-n")
+            .arg("100")
+            .arg(output_dir.path())
+            .output()
+            .expect("Failed to execute process");
+
+        assert!(
+            output_default.status.success(),
+            "Process exited with error :\n{}",
+            String::from_utf8(output_default.stderr)?
+        );
+
+        Ok(())
+    }
 }
