@@ -278,10 +278,11 @@ mod test {
             present,
         };
         let mut rng = rand::thread_rng();
-        let asgn = crate::assignment::AssignmentBuilder::new(n)
+        let asgn = lace_stats::prior_process::Builder::new(n)
             .seed_from_rng(&mut rng)
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
         col.reassign(&asgn, &mut rng);
         (col, asgn)
     }

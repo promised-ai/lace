@@ -162,8 +162,8 @@ pub(crate) trait FeatureHelper: Feature {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assignment::AssignmentBuilder;
     use approx::*;
+    use lace_stats::prior_process::Builder as PriorProcessBuilder;
     use lace_stats::rv::dist::Gaussian;
     use lace_stats::rv::traits::Rv;
 
@@ -175,7 +175,7 @@ mod tests {
         let hyper = NixHyper::default();
         let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
         for _ in 0..100 {
-            let asgn = AssignmentBuilder::new(n_rows).build().unwrap();
+            let asgn = PriorProcessBuilder::new(n_rows).build().unwrap().asgn;
             let xs: Vec<f64> = g.sample(n_rows, &mut rng);
             let data = SparseContainer::from(xs);
             let mut feature =

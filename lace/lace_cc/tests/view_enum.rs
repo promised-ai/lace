@@ -5,17 +5,20 @@ mod enum_test;
 
 use std::collections::BTreeMap;
 
-use lace_stats::rv::misc::logsumexp;
 use rand::Rng;
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
 };
 use lace_cc::alg::RowAssignAlg;
-use lace_cc::assignment::{lcrp, AssignmentBuilder};
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::transition::ViewTransition;
 use lace_cc::view::{Builder, View};
+use lace_stats::assignment::lcrp;
+use lace_stats::prior_process::Builder as PriorProcessBuilder;
+use lace_stats::prior_process::{Dirichlet, Process};
+use lace_stats::rv::dist::Gamma;
+use lace_stats::rv::misc::logsumexp;
 
 const N_TRIES: u32 = 5;
 
@@ -38,15 +41,18 @@ fn calc_partition_ln_posterior<R: Rng>(
         // NOTE: We don't need seed control here because both alpha and the
         // assignment are set, but I'm setting the seed anyway in case the
         // assignment builder internals change
-        let asgn = AssignmentBuilder::from_vec(z)
-            .with_alpha(alpha)
+        let prior_process = PriorProcessBuilder::from_vec(z)
+            .with_process(Process::Dirichlet(Dirichlet {
+                alpha,
+                prior: Gamma::default(),
+            }))
             .seed_from_rng(&mut rng)
             .build()
             .unwrap();
 
-        let ln_pz = lcrp(n, &asgn.counts, alpha);
+        let ln_pz = lcrp(n, &prior_process.asgn.counts, alpha);
 
-        let view: View = Builder::from_assignment(asgn)
+        let view: View = Builder::from_prior_process(prior_process)
             .features(features.clone())
             .seed_from_rng(&mut rng)
             .build();
@@ -92,13 +98,16 @@ pub fn view_enum_test(
     let inc: f64 = ((n_runs * n_iters) as f64).recip();
 
     for _ in 0..n_runs {
-        let asgn = AssignmentBuilder::new(n_rows)
-            .with_alpha(1.0)
+        let prior_process = PriorProcessBuilder::new(n_rows)
+            .with_process(Process::Dirichlet(Dirichlet {
+                alpha: 1.0,
+                prior: Gamma::default(),
+            }))
             .seed_from_rng(&mut rng)
             .build()
             .unwrap();
 
-        let mut view = Builder::from_assignment(asgn)
+        let mut view = Builder::from_prior_process(prior_process)
             .features(features.clone())
             .seed_from_rng(&mut rng)
             .build();
@@ -106,11 +115,11 @@ pub fn view_enum_test(
         for _ in 0..n_iters {
             view.update(10, &transitions, &mut rng);
 
-            let normed = normalize_assignment(view.asgn.asgn.clone());
+            let normed = normalize_assignment(view.asgn().asgn.clone());
             let ix = partition_to_ix(&normed);
 
             if !posterior.contains_key(&ix) {
-                panic!("invalid index!\n{:?}\n{:?}", view.asgn.asgn, normed);
+                panic!("invalid index!\n{:?}\n{:?}", view.asgn().asgn, normed);
             }
 
             *est_posterior.entry(ix).or_insert(0.0) += inc;

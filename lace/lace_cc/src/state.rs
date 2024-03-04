@@ -7,6 +7,7 @@ use std::f64::NEG_INFINITY;
 
 use lace_data::{Datum, FeatureData};
 use lace_stats::assignment::Assignment;
+use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::prior_process::{
     PriorProcess, PriorProcessT, PriorProcessType, Process,
 };
@@ -22,7 +23,6 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::alg::{ColAssignAlg, RowAssignAlg};
-use crate::builders::AssignmentBuilder;
 use crate::config::StateUpdateConfig;
 use crate::feature::Component;
 use crate::feature::{ColModel, FType, Feature};
@@ -68,8 +68,7 @@ unsafe impl Send for State {}
 unsafe impl Sync for State {}
 
 impl State {
-    pub fn new(views: Vec<View>, asgn: Assignment, process: Process) -> Self {
-        let prior_process = PriorProcess { asgn, process };
+    pub fn new(views: Vec<View>, prior_process: PriorProcess) -> Self {
         let weights = prior_process.weight_vec(false);
 
         let mut state = State {
@@ -409,7 +408,7 @@ impl State {
         counter_start: usize,
         draw_process_params: bool,
         rng: &mut R,
-    ) -> (BTreeMap<usize, Assignment>, Vec<u64>) {
+    ) -> (BTreeMap<usize, PriorProcess>, Vec<u64>) {
         let mut seeds = Vec::with_capacity(m);
         let tmp_asgns = (0..m)
             .map(|i| {
@@ -427,8 +426,7 @@ impl State {
                 if draw_process_params {
                     process.reset_params(rng);
                 };
-                let tmp_asgn =
-                    asgn_bldr.with_prior_process(process).build().unwrap();
+                let tmp_asgn = asgn_bldr.with_process(process).build().unwrap();
 
                 seeds.push(seed);
 
@@ -482,7 +480,7 @@ impl State {
             self.create_tmp_assigns(m, n_views, draw_alpha, rng).0;
 
         tmp_asgns.iter().for_each(|(_, tmp_asgn)| {
-            let singleton_logp = ftr.asgn_score(tmp_asgn);
+            let singleton_logp = ftr.asgn_score(&tmp_asgn.asgn);
             ftr_logps.push(singleton_logp);
             logps.push(a_part + singleton_logp);
         });
@@ -495,10 +493,20 @@ impl State {
 
         // If we chose a singleton view...
         if v_new >= n_views {
+            // let process = {
+            //     // FIXME: this is not under seed control now that alpha
+            //     // generation has been separated from the assignment.
+            //     let mut process = self.views[0].prior_process.process.clone();
+            //     if draw_alpha {
+            //         process.reset_params(rng)
+            //     };
+            //     process
+            // };
+
             // This will error if v_new is not in the index, and that is a good.
             // thing.
             let tmp_asgn = tmp_asgns.remove(&v_new).unwrap();
-            let new_view = view::Builder::from_assignment(tmp_asgn)
+            let new_view = view::Builder::from_prior_process(tmp_asgn)
                 .seed_from_rng(rng)
                 .build();
             self.views.push(new_view);
@@ -634,7 +642,7 @@ impl State {
 
                     // TODO: might be faster with an iterator?
                     for asgn in tmp_asgns.values() {
-                        logps.push(ftr.asgn_score(asgn) + a_part);
+                        logps.push(ftr.asgn_score(&asgn.asgn) + a_part);
                     }
 
                     (col_ix, view_ix, logps, tmp_asgn_seeds)
@@ -683,14 +691,13 @@ impl State {
                         if draw_process_params {
                             process.reset_params(rng);
                         };
-                        let tmp_asgn = asgn_bldr
-                            .with_prior_process(process)
-                            .build()
-                            .unwrap();
+                        let tmp_asgn =
+                            asgn_bldr.with_process(process).build().unwrap();
 
-                        let new_view = view::Builder::from_assignment(tmp_asgn)
-                            .seed_from_rng(&mut rng)
-                            .build();
+                        let new_view =
+                            view::Builder::from_prior_process(tmp_asgn)
+                                .seed_from_rng(&mut rng)
+                                .build();
                         self.views.push(new_view);
                         v_new = n_views;
 
@@ -974,9 +981,9 @@ impl State {
             process.reset_params(rng);
         };
 
-        let asgn = asgn_bldr.with_prior_process(process).build().unwrap();
+        let prior_process = asgn_bldr.with_process(process).build().unwrap();
 
-        let view = view::Builder::from_assignment(asgn)
+        let view = view::Builder::from_prior_process(prior_process)
             .seed_from_rng(rng)
             .build();
 
@@ -1328,17 +1335,15 @@ impl GewekeModel for State {
                 })
             };
 
-            let asgn = if do_col_asgn_transition {
+            if do_col_asgn_transition {
                 AssignmentBuilder::new(n_cols)
             } else {
                 AssignmentBuilder::new(n_cols).flat()
             }
-            .with_prior_process(process.clone())
+            .with_process(process.clone())
             .seed_from_rng(&mut rng)
             .build()
-            .unwrap();
-
-            PriorProcess { process, asgn }
+            .unwrap()
         };
 
         let view_asgn_bldr = if do_row_asgn_transition {
@@ -1366,10 +1371,10 @@ impl GewekeModel for State {
                 let asgn = view_asgn_bldr
                     .clone()
                     .seed_from_rng(&mut rng)
-                    .with_prior_process(process)
+                    .with_process(process.clone())
                     .build()
                     .unwrap();
-                view::Builder::from_assignment(asgn)
+                view::Builder::from_prior_process(asgn)
                     .seed_from_rng(&mut rng)
                     .build()
             })

@@ -7,7 +7,6 @@ use crate::{
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
-use lace_stats::rv::dist::Gamma;
 use polars::prelude::{CsvReader, DataFrame, DataType, SerReader, Series};
 use std::convert::TryFrom;
 use std::path::Path;
@@ -459,7 +458,6 @@ pub fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
 pub fn codebook_from_csv<P: AsRef<Path>>(
     path: P,
     cat_cutoff: Option<u8>,
-    alpha_prior_opt: Option<Gamma>,
     state_prior_process: Option<PriorProcess>,
     view_prior_process: Option<PriorProcess>,
     no_hypers: bool,

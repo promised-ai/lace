@@ -3,6 +3,7 @@ use lace_data::SparseContainer;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::prior_process::Process;
 use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
@@ -12,7 +13,6 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
-use crate::builders::AssignmentBuilder;
 use crate::feature::{ColModel, Column, Feature};
 use crate::state::State;
 
@@ -176,13 +176,15 @@ impl Builder {
                 col_asgn.append(&mut vec![view_ix; to_drain]);
                 col_counts.push(to_drain);
                 let ftrs_view = ftrs.drain(0..to_drain).collect();
-                let asgn = AssignmentBuilder::new(n_rows)
+
+                let prior_process = AssignmentBuilder::new(n_rows)
                     .with_n_cats(n_cats)
                     .unwrap()
                     .seed_from_rng(&mut rng)
                     .build()
                     .unwrap();
-                crate::view::Builder::from_assignment(asgn)
+
+                crate::view::Builder::from_prior_process(prior_process)
                     .features(ftrs_view)
                     .seed_from_rng(&mut rng)
                     .build()
@@ -200,12 +202,13 @@ impl Builder {
             )
         });
 
-        let asgn = AssignmentBuilder::from_vec(col_asgn)
+        let process = AssignmentBuilder::from_vec(col_asgn)
             .seed_from_rng(&mut rng)
+            .with_process(process)
             .build()
             .unwrap();
 
-        Ok(State::new(views, asgn, process))
+        Ok(State::new(views, process))
     }
 }
 

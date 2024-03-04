@@ -4,6 +4,7 @@ use std::f64::NEG_INFINITY;
 use lace_data::{Datum, FeatureData};
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use lace_stats::assignment::Assignment;
+use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::prior_process::{
     PriorProcess, PriorProcessT, PriorProcessType, Process,
 };
@@ -17,7 +18,6 @@ use serde::{Deserialize, Serialize};
 
 // use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::alg::RowAssignAlg;
-use crate::builders::AssignmentBuilder;
 use crate::feature::geweke::GewekeColumnSummary;
 use crate::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::feature::{ColModel, FType, Feature};
@@ -68,6 +68,16 @@ impl Builder {
             n_rows: asgn.len(),
             asgn: Some(asgn),
             process: None, // is ignored in asgn set
+            ftrs: None,
+            seed: None,
+        }
+    }
+
+    pub fn from_prior_process(prior_process: PriorProcess) -> Self {
+        Builder {
+            n_rows: prior_process.asgn.len(),
+            asgn: Some(prior_process.asgn),
+            process: Some(prior_process.process),
             ftrs: None,
             seed: None,
         }
@@ -831,10 +841,11 @@ impl View {
                 .collect();
 
             AssignmentBuilder::from_vec(zs)
-                .with_prior_process(self.prior_process.process.clone())
+                .with_process(self.prior_process.process.clone())
                 .seed_from_rng(rng)
                 .build()
                 .unwrap()
+                .asgn
         };
 
         self.append_empty_component(rng);
@@ -969,10 +980,11 @@ impl View {
 
             // FIXME: create (draw) new process outside to carry forward alpha
             let asgn = AssignmentBuilder::from_vec(tmp_z)
-                .with_prior_process(self.prior_process.process.clone())
+                .with_process(self.prior_process.process.clone())
                 .seed_from_rng(rng)
                 .build()
-                .unwrap();
+                .unwrap()
+                .asgn;
 
             logp += lcrp(
                 asgn.len(),
@@ -1087,9 +1099,9 @@ fn view_geweke_asgn<R: Rng>(
     process_type: PriorProcessType,
     rng: &mut R,
 ) -> (AssignmentBuilder, Process) {
+    use lace_consts::geweke_alpha_prior;
     let process = match process_type {
         PriorProcessType::Dirichlet => {
-            use lace_consts::geweke_alpha_prior;
             use lace_stats::prior_process::Dirichlet;
             let inner = if do_process_params_transition {
                 Dirichlet::from_prior(geweke_alpha_prior(), rng)
@@ -1102,11 +1114,26 @@ fn view_geweke_asgn<R: Rng>(
             Process::Dirichlet(inner)
         }
         PriorProcessType::PitmanYor => {
-            unimplemented!()
+            use lace_stats::prior_process::PitmanYor;
+            use lace_stats::rv::dist::Beta;
+            let inner = if do_process_params_transition {
+                PitmanYor::from_prior(
+                    geweke_alpha_prior(),
+                    Beta::jeffreys(),
+                    rng,
+                )
+            } else {
+                PitmanYor {
+                    alpha: 1.0,
+                    d: 0.2,
+                    prior_alpha: geweke_alpha_prior(),
+                    prior_d: Beta::jeffreys(),
+                }
+            };
+            Process::PitmanYor(inner)
         }
     };
-    let mut bldr =
-        AssignmentBuilder::new(n_rows).with_prior_process(process.clone());
+    let mut bldr = AssignmentBuilder::new(n_rows).with_process(process.clone());
 
     if !do_row_asgn_transition {
         bldr = bldr.flat();
@@ -1125,6 +1152,7 @@ impl GewekeModel for View {
             .iter()
             .any(|&t| t == ViewTransition::FeaturePriors);
 
+        // FIXME: Redundant! asgn_builder builds a PriorProcess
         let (asgn_builder, process) = view_geweke_asgn(
             settings.n_rows,
             settings.do_process_params_transition(),
@@ -1147,12 +1175,15 @@ impl GewekeModel for View {
             .drain(..)
             .enumerate()
             .map(|(id, mut ftr)| {
-                ftr.geweke_init(&asgn, &mut rng);
+                ftr.geweke_init(&asgn.asgn, &mut rng);
                 (id, ftr)
             })
             .collect();
 
-        let prior_process = PriorProcess { process, asgn };
+        let prior_process = PriorProcess {
+            process,
+            asgn: asgn.asgn,
+        };
 
         View {
             ftrs,

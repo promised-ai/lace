@@ -21,6 +21,8 @@ struct Opt {
     pub no_view_alpha: bool,
     #[clap(long)]
     pub no_priors: bool,
+    #[clap(long)]
+    pub pitman_yor: bool,
 }
 
 fn main() {
@@ -42,13 +44,19 @@ fn main() {
                 .transitions
                 .push(ViewTransition::RowAssignment(opt.alg));
         }
+
         if !opt.no_view_alpha {
             settings
                 .transitions
                 .push(ViewTransition::PriorProcessParams);
         }
+
         if !opt.no_priors {
             settings.transitions.push(ViewTransition::FeaturePriors);
+        }
+
+        if opt.pitman_yor {
+            settings = settings.with_pitman_yor_process();
         }
 
         settings.transitions.push(ViewTransition::ComponentParams);

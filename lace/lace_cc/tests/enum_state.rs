@@ -15,13 +15,15 @@ use lace_stats::rv::misc::logsumexp;
 use rand::Rng;
 
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-use lace_cc::assignment::lcrp;
-use lace_cc::assignment::AssignmentBuilder;
 use lace_cc::config::StateUpdateConfig;
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::state::State;
 use lace_cc::transition::StateTransition;
 use lace_cc::view::{Builder, View};
+use lace_stats::assignment::lcrp;
+use lace_stats::prior_process::Builder as PriorProcessBuilder;
+use lace_stats::prior_process::{Dirichlet, Process};
+use lace_stats::rv::dist::Gamma;
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
@@ -84,25 +86,24 @@ fn state_from_partition<R: Rng>(
     mut features: Vec<ColModel>,
     mut rng: &mut R,
 ) -> State {
-    let asgn = AssignmentBuilder::from_vec(partition.col_partition.clone())
-        .with_alpha(1.0)
-        .seed_from_rng(&mut rng)
-        .build()
-        .unwrap();
-
     let mut views: Vec<View> = partition
         .row_partitions
         .iter()
         .map(|zr| {
+            let process = Process::Dirichlet(Dirichlet {
+                alpha: 1.0,
+                prior: Gamma::default(),
+            });
+
             // NOTE: We don't need seed control here because both alpha and the
             // assignment are set, but I'm setting the seed anyway in case the
             // assignment builder internals change
-            let asgn = AssignmentBuilder::from_vec(zr.clone())
-                .with_alpha(1.0)
+            let view_prior_process = PriorProcessBuilder::from_vec(zr.clone())
+                .with_process(process.clone())
                 .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
-            Builder::from_assignment(asgn)
+            Builder::from_prior_process(view_prior_process)
                 .seed_from_rng(&mut rng)
                 .build()
         })
@@ -114,7 +115,17 @@ fn state_from_partition<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, lace_consts::state_alpha_prior())
+    let state_prior_process =
+        PriorProcessBuilder::from_vec(partition.col_partition.clone())
+            .with_process(Process::Dirichlet(Dirichlet {
+                alpha: 1.0,
+                prior: Gamma::default(),
+            }))
+            .seed_from_rng(&mut rng)
+            .build()
+            .unwrap();
+
+    State::new(views, state_prior_process)
 }
 
 /// Generates a random start state from the prior, with default values chosen for the
@@ -125,28 +136,35 @@ fn gen_start_state<R: Rng>(
 ) -> State {
     let n_cols = features.len();
     let n_rows = features[0].len();
-    let asgn = AssignmentBuilder::new(n_cols)
-        .with_alpha(1.0)
+    let process = Process::Dirichlet(Dirichlet {
+        alpha: 1.0,
+        prior: Gamma::default(),
+    });
+
+    let state_prior_process = PriorProcessBuilder::new(n_cols)
+        .with_process(process)
         .seed_from_rng(&mut rng)
         .build()
         .unwrap();
 
-    let mut views: Vec<View> = (0..asgn.n_cats)
+    let mut views: Vec<View> = (0..state_prior_process.asgn.n_cats)
         .map(|_| {
-            let asgn = AssignmentBuilder::new(n_rows)
-                .with_alpha(1.0)
+            let view_prior_process = PriorProcessBuilder::new(n_rows)
+                .with_process(state_prior_process.process.clone())
                 .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
-            Builder::from_assignment(asgn).build()
+            Builder::from_prior_process(view_prior_process).build()
         })
         .collect();
 
-    asgn.iter()
+    state_prior_process
+        .asgn
+        .iter()
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, lace_consts::state_alpha_prior())
+    State::new(views, state_prior_process)
 }
 
 fn calc_state_ln_posterior<R: Rng>(
@@ -162,9 +180,9 @@ fn calc_state_ln_posterior<R: Rng>(
         .iter()
         .for_each(|part| {
             let state = state_from_partition(part, features.clone(), &mut rng);
-            let mut score = lcrp(state.n_cols(), &state.asgn.counts, 1.0);
+            let mut score = lcrp(state.n_cols(), &state.asgn().counts, 1.0);
             for view in state.views {
-                score += lcrp(view.n_rows(), &view.asgn.counts, 1.0);
+                score += lcrp(view.n_rows(), &view.asgn().counts, 1.0);
                 for ftr in view.ftrs.values() {
                     score += ftr.score();
                 }
@@ -184,13 +202,13 @@ fn calc_state_ln_posterior<R: Rng>(
 
 /// Extract the index from a State
 fn extract_state_index(state: &State) -> StateIndex {
-    let normed = normalize_assignment(state.asgn.asgn.clone());
+    let normed = normalize_assignment(state.asgn().asgn.clone());
     let col_ix: u64 = partition_to_ix(&normed);
     let row_ixs: Vec<u64> = state
         .views
         .iter()
         .map(|v| {
-            let zn = normalize_assignment(v.asgn.asgn.clone());
+            let zn = normalize_assignment(v.asgn().asgn.clone());
             partition_to_ix(&zn)
         })
         .collect();
@@ -235,21 +253,24 @@ pub fn state_enum_test<R: Rng>(
         let mut state = gen_start_state(features.clone(), &mut rng);
 
         // alphas should start out at 1.0
-        assert!((state.asgn.alpha - 1.0).abs() < 1E-16);
+        assert!((state.prior_process.alpha().unwrap() - 1.0).abs() < 1E-16);
         assert!(state
             .views
             .iter()
-            .all(|v| (v.asgn.alpha - 1.0).abs() < 1E-16));
+            .all(|v| (v.prior_process.alpha().unwrap() - 1.0).abs() < 1E-16));
 
         for _ in 0..n_iters {
             state.update(update_config.clone(), &mut rng);
 
             // all alphas should be 1.0
-            assert!((state.asgn.alpha - 1.0).abs() < 1E-16);
-            assert!(state
-                .views
-                .iter()
-                .all(|v| (v.asgn.alpha - 1.0).abs() < 1E-16));
+            assert!((state.prior_process.alpha().unwrap() - 1.0).abs() < 1E-16);
+            assert!(state.views.iter().all(|v| (v
+                .prior_process
+                .alpha()
+                .unwrap()
+                - 1.0)
+                .abs()
+                < 1E-16));
 
             let ix = extract_state_index(&state);
             *est_posterior.entry(ix).or_insert(0.0) += inc;

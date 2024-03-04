@@ -4,6 +4,7 @@ use lace_cc::feature::{ColModel, Column};
 use lace_cc::state::State;
 use lace_data::{FeatureData, SparseContainer};
 use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior_process::{Dirichlet, Process};
 use lace_stats::rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
 use lace_stats::rv::traits::Rv;
 use rand::Rng;
@@ -19,6 +20,13 @@ fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     ColModel::Continuous(ftr)
 }
 
+fn default_process<R: Rng>(rng: &mut R) -> Process {
+    Process::Dirichlet(Dirichlet::from_prior(
+        Gamma::new(1.0, 1.0).unwrap(),
+        rng,
+    ))
+}
+
 fn gen_all_gauss_state<R: Rng>(
     n_rows: usize,
     n_cols: usize,
@@ -28,10 +36,11 @@ fn gen_all_gauss_state<R: Rng>(
     for i in 0..n_cols {
         ftrs.push(gen_col(i, n_rows, &mut rng));
     }
+
     State::from_prior(
         ftrs,
-        Gamma::new(1.0, 1.0).unwrap(),
-        Gamma::new(1.0, 1.0).unwrap(),
+        default_process(rng),
+        default_process(rng),
         &mut rng,
     )
 }

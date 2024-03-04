@@ -1,9 +1,10 @@
-use crate::rv::dist::{Beta, Gamma};
 use lace_consts::rv::{misc::pflip, traits::Rv};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::assignment::Assignment;
+use crate::assignment::{Assignment, AssignmentError};
+use crate::rv::dist::{Beta, Gamma};
 
 const MAX_STICK_BREAKING_ITERS: u16 = 10_000;
 
@@ -90,6 +91,9 @@ impl PriorProcessT for Dirichlet {
     }
 
     fn draw_assignment<R: Rng>(&self, n: usize, rng: &mut R) -> Assignment {
+        if n == 0 {
+            return Assignment::empty();
+        }
         let mut counts = vec![1];
         let mut ps = vec![1.0, self.alpha];
         let mut zs = vec![0; n];
@@ -199,11 +203,59 @@ impl PriorProcessT for PitmanYor {
     }
 
     fn draw_assignment<R: Rng>(&self, n: usize, rng: &mut R) -> Assignment {
-        unimplemented!()
+        if n == 0 {
+            return Assignment::empty();
+        }
+
+        let mut counts = vec![1];
+        let mut ps = vec![1.0 - self.d, self.alpha + self.d];
+        let mut zs = vec![0; n];
+
+        for i in 1..n {
+            let zi = pflip(&ps, 1, rng)[0];
+            zs[i] = zi;
+            if zi < counts.len() {
+                ps[zi] += 1.0;
+                counts[zi] += 1;
+            } else {
+                ps[zi] = 1.0;
+                counts.push(1);
+                ps.push(self.alpha + self.d * counts.len() as f64);
+            };
+        }
+
+        Assignment {
+            asgn: zs,
+            n_cats: counts.len(),
+            counts,
+        }
     }
 
     fn update_params<R: Rng>(&mut self, asgn: &Assignment, rng: &mut R) -> f64 {
-        unimplemented!()
+        let cts = &asgn.counts;
+        let n: usize = asgn.len();
+        // TODO: this is not the best way to do this.
+        let ln_f_alpha = {
+            let loglike = |alpha: &f64| crate::assignment::lcrp(n, cts, *alpha);
+            let prior_ref = &self.prior_alpha;
+            let prior_draw = |rng: &mut R| prior_ref.draw(rng);
+            let mh_result =
+                crate::mh::mh_prior(self.alpha, loglike, prior_draw, 100, rng);
+            self.alpha = mh_result.x;
+            mh_result.score_x
+        };
+
+        let ln_f_d = {
+            let loglike = |alpha: &f64| crate::assignment::lcrp(n, cts, *alpha);
+            let prior_ref = &self.prior_alpha;
+            let prior_draw = |rng: &mut R| prior_ref.draw(rng);
+            let mh_result =
+                crate::mh::mh_prior(self.alpha, loglike, prior_draw, 100, rng);
+            self.d = mh_result.x;
+            mh_result.score_x
+        };
+
+        ln_f_alpha + ln_f_d
     }
 
     fn reset_params<R: Rng>(&mut self, rng: &mut R) {
@@ -349,15 +401,14 @@ fn sb_slice_extend<R: Rng>(
         weights.push(b_star);
         return Ok(weights);
     }
-    let n_cats = weights.len() as f64;
 
     let mut beta = Beta::new(1.0 + d, alpha).unwrap();
 
     let mut iters: u16 = 0;
     loop {
         if d > 0.0 {
-            let b = (iters as f64) + n_cats + 1.0;
-            beta.set_beta(alpha + b * d).unwrap();
+            let n_cats = weights.len() as f64;
+            beta.set_beta(alpha + d * n_cats).unwrap();
         }
 
         let vk: f64 = beta.draw(&mut rng);
@@ -374,7 +425,145 @@ fn sb_slice_extend<R: Rng>(
 
         iters += 1;
         if iters > MAX_STICK_BREAKING_ITERS {
-            return Err(TheStickIsDust(MAX_STICK_BREAKING_ITERS));
+            // return Err(TheStickIsDust(MAX_STICK_BREAKING_ITERS));
+            eprintln!(
+                "The stick is dust, n_cats: {}, u*: {}",
+                weights.len(),
+                u_star
+            );
+            return Ok(weights);
+        }
+    }
+}
+
+/// Constructs a PriorProcess
+#[derive(Clone, Debug)]
+pub struct Builder {
+    n: usize,
+    asgn: Option<Vec<usize>>,
+    process: Option<Process>,
+    seed: Option<u64>,
+}
+
+#[derive(Debug, Error, PartialEq)]
+pub enum BuildPriorProcessError {
+    #[error("assignment vector is empty")]
+    EmptyAssignmentVec,
+    #[error("there are {n_cats} categories but {n} data")]
+    NLessThanNCats { n: usize, n_cats: usize },
+    #[error("invalid assignment: {0}")]
+    AssignmentError(#[from] AssignmentError),
+}
+
+impl Builder {
+    /// Create a builder for `n`-length assignments
+    ///
+    /// # Arguments
+    /// - n: the number of data/entries in the assignment
+    pub fn new(n: usize) -> Self {
+        Self {
+            n,
+            asgn: None,
+            process: None,
+            seed: None,
+        }
+    }
+
+    /// Initialize the builder from an assignment vector
+    ///
+    /// # Note:
+    /// The validity of `asgn` will not be verified until `build` is called.
+    pub fn from_vec(asgn: Vec<usize>) -> Self {
+        Self {
+            n: asgn.len(),
+            asgn: Some(asgn),
+            process: None,
+            seed: None,
+        }
+    }
+
+    /// Select the process type
+    #[must_use]
+    pub fn with_process(mut self, process: Process) -> Self {
+        self.process = Some(process);
+        self
+    }
+
+    /// Set the RNG seed
+    #[must_use]
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
+        self
+    }
+
+    /// Set the RNG seed from another RNG
+    #[must_use]
+    pub fn seed_from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
+        self.seed = Some(rng.next_u64());
+        self
+    }
+
+    /// Use a *flat* assignment with one partition
+    #[must_use]
+    pub fn flat(mut self) -> Self {
+        self.asgn = Some(vec![0; self.n]);
+        self
+    }
+
+    /// Use an assignment with `n_cats`, evenly populated partitions/categories
+    pub fn with_n_cats(
+        mut self,
+        n_cats: usize,
+    ) -> Result<Self, BuildPriorProcessError> {
+        if n_cats > self.n {
+            Err(BuildPriorProcessError::NLessThanNCats { n: self.n, n_cats })
+        } else {
+            let asgn: Vec<usize> = (0..self.n).map(|i| i % n_cats).collect();
+            self.asgn = Some(asgn);
+            Ok(self)
+        }
+    }
+
+    /// Build the assignment and consume the builder
+    pub fn build(self) -> Result<PriorProcess, BuildPriorProcessError> {
+        use rand::rngs::StdRng;
+        use rand::SeedableRng;
+
+        let mut rng = self
+            .seed
+            .map_or_else(|| StdRng::from_entropy(), StdRng::seed_from_u64);
+
+        let process = self.process.unwrap_or_else(|| {
+            Process::Dirichlet(Dirichlet::from_prior(
+                lace_consts::general_alpha_prior(),
+                &mut rng,
+            ))
+        });
+
+        let n = self.n;
+        let asgn = self
+            .asgn
+            .unwrap_or_else(|| process.draw_assignment(n, &mut rng).asgn);
+
+        let n_cats: usize = asgn.iter().max().map(|&m| m + 1).unwrap_or(0);
+        let mut counts: Vec<usize> = vec![0; n_cats];
+        for z in &asgn {
+            counts[*z] += 1;
+        }
+
+        let asgn = Assignment {
+            asgn,
+            counts,
+            n_cats,
+        };
+
+        if crate::validate_assignment!(asgn) {
+            Ok(PriorProcess { process, asgn })
+        } else {
+            asgn.validate()
+                .emit_error()
+                .map_err(BuildPriorProcessError::AssignmentError)?;
+            Ok(PriorProcess { process, asgn })
         }
     }
 }
