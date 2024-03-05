@@ -1194,6 +1194,7 @@ dependencies = [
  "rand_xoshiro",
  "rayon",
  "serde",
+ "serde_json",
  "special",
  "thiserror",
 ]

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 use plotly::common::Mode;
 use plotly::layout::Layout;
@@ -35,6 +37,10 @@ struct Opt {
     pub no_priors: bool,
     #[clap(long)]
     pub plot_var: Option<String>,
+    #[clap(long, short, default_value = "10000")]
+    pub niters: usize,
+    #[clap(long)]
+    dst: Option<PathBuf>,
 }
 
 fn main() {
@@ -89,7 +95,7 @@ fn main() {
 
     // Initialize a tester given the settings and run.
     let mut geweke: GewekeTester<State> = GewekeTester::new(settings);
-    geweke.run(10_000, Some(1), &mut rng);
+    geweke.run(opt.niters, Some(5), &mut rng);
 
     // Reports the deviation from a perfect correspondence between the
     // forward and posterior CDFs. The best score is zero, the worst possible
@@ -125,5 +131,15 @@ fn main() {
         plot.add_trace(trace);
         plot.set_layout(Layout::new());
         plot.show();
+    }
+
+    if let Some(dst) = opt.dst {
+        let f = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(dst)
+            .unwrap();
+        serde_json::to_writer(f, &res).unwrap();
     }
 }

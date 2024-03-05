@@ -133,16 +133,13 @@ impl Builder {
             None => process.draw_assignment(self.n_rows, &mut rng),
         };
 
-        let prior_process = PriorProcess {
-            process,
-            asgn: asgn.clone(),
-        };
+        let prior_process = PriorProcess { process, asgn };
 
         let weights = prior_process.weight_vec(false);
         let mut ftr_tree = BTreeMap::new();
         if let Some(mut ftrs) = self.ftrs {
             for mut ftr in ftrs.drain(..) {
-                ftr.reassign(&asgn, &mut rng);
+                ftr.reassign(&prior_process.asgn, &mut rng);
                 ftr_tree.insert(ftr.id(), ftr);
             }
         }

@@ -402,39 +402,43 @@ impl State {
             .for_each(|view| view.assign_unassigned(&mut rng));
     }
 
-    fn create_tmp_assigns<R: Rng>(
+    fn create_tmp_assign(
         &self,
-        m: usize,
+        draw_process_params: bool,
+        seed: u64,
+    ) -> PriorProcess {
+        // assignment for a hypothetical singleton view
+        let mut rng = Xoshiro256Plus::seed_from_u64(seed);
+        let asgn_bldr =
+            AssignmentBuilder::new(self.n_rows()).with_seed(rng.gen());
+        // If we do not want to draw a view process params, take an
+        // existing process from the first view. This covers the case
+        // where we set the view process params and never transitions
+        // them, for example if we are doing geweke on a subset of
+        // transitions.
+        let mut process = self.views[0].prior_process.process.clone();
+        if draw_process_params {
+            process.reset_params(&mut rng);
+        };
+        asgn_bldr.with_process(process).build().unwrap()
+    }
+
+    fn create_tmp_assigns(
+        &self,
         counter_start: usize,
         draw_process_params: bool,
-        rng: &mut R,
-    ) -> (BTreeMap<usize, PriorProcess>, Vec<u64>) {
-        let mut seeds = Vec::with_capacity(m);
-        let tmp_asgns = (0..m)
-            .map(|i| {
-                let seed: u64 = rng.gen();
-
-                // assignment for a hypothetical singleton view
-                let asgn_bldr =
-                    AssignmentBuilder::new(self.n_rows()).with_seed(seed);
-                // If we do not want to draw a view process params, take an
-                // existing process from the first view. This covers the case
-                // where we set the view process params and never transitions
-                // them, for example if we are doing geweke on a subset of
-                // transitions.
-                let mut process = self.views[0].prior_process.process.clone();
-                if draw_process_params {
-                    process.reset_params(rng);
-                };
-                let tmp_asgn = asgn_bldr.with_process(process).build().unwrap();
-
-                seeds.push(seed);
+        seeds: &[u64],
+    ) -> BTreeMap<usize, PriorProcess> {
+        seeds
+            .iter()
+            .enumerate()
+            .map(|(i, &seed)| {
+                let tmp_asgn =
+                    self.create_tmp_assign(draw_process_params, seed);
 
                 (i + counter_start, tmp_asgn)
             })
-            .collect();
-
-        (tmp_asgns, seeds)
+            .collect()
     }
 
     /// Insert an unassigned feature into the `State` via the `Gibbs`
@@ -453,14 +457,17 @@ impl State {
         let col_ix = ftr.id();
         let n_cats = self.asgn().n_cats;
 
-        // singletone weight divided by the number of MC samples
+        // singleton weight divided by the number of MC samples
         let a_part = self.prior_process.process.ln_singleton_weight(n_cats)
             - (m as f64).ln();
 
         // score for each view. We will push the singleton view probabilities
         // later
         let mut logps = (0..n_cats)
-            .map(|k| self.prior_process.process.ln_gibbs_weight(k))
+            .map(|k| {
+                let n_k = self.prior_process.asgn.counts[k];
+                self.prior_process.process.ln_gibbs_weight(n_k)
+            })
             .collect::<Vec<f64>>();
 
         // maintain a vec that  holds just the likelihoods
@@ -476,8 +483,10 @@ impl State {
         let n_views = self.n_views();
 
         // here we create the monte carlo estimate for the singleton view
-        let mut tmp_asgns =
-            self.create_tmp_assigns(m, n_views, draw_alpha, rng).0;
+        let mut tmp_asgns = {
+            let seeds: Vec<u64> = (0..m).map(|_| rng.gen()).collect();
+            self.create_tmp_assigns(n_views, draw_alpha, &seeds)
+        };
 
         tmp_asgns.iter().for_each(|(_, tmp_asgn)| {
             let singleton_logp = ftr.asgn_score(&tmp_asgn.asgn);
@@ -493,16 +502,6 @@ impl State {
 
         // If we chose a singleton view...
         if v_new >= n_views {
-            // let process = {
-            //     // FIXME: this is not under seed control now that alpha
-            //     // generation has been separated from the assignment.
-            //     let mut process = self.views[0].prior_process.process.clone();
-            //     if draw_alpha {
-            //         process.reset_params(rng)
-            //     };
-            //     process
-            // };
-
             // This will error if v_new is not in the index, and that is a good.
             // thing.
             let tmp_asgn = tmp_asgns.remove(&v_new).unwrap();
@@ -547,12 +546,12 @@ impl State {
         if self.n_cols() == 1 {
             return;
         }
-        // The algorithm is not valid if the columns are not scanned in
-        // random order
         let draw_alpha = transitions
             .iter()
             .any(|&t| t == StateTransition::ViewPriorProcessParams);
 
+        // The algorithm is not valid if the columns are not scanned in
+        // random order
         let mut col_ixs: Vec<usize> = (0..self.n_cols()).collect();
         col_ixs.shuffle(rng);
 
@@ -597,6 +596,7 @@ impl State {
             n_cols / batch_size + 1
         };
 
+        // FIXME: Only works for Dirichlet Process!
         // The partial alpha required for the singleton columns. Since we have
         // `m` singletons to try, we have to divide alpha by m so the singleton
         // proposal as a whole has the correct mass
@@ -631,11 +631,13 @@ impl State {
                         .collect();
 
                     // Always propose new singletons
-                    let (tmp_asgns, tmp_asgn_seeds) = self.create_tmp_assigns(
-                        m,
+                    let tmp_asgn_seeds: Vec<u64> =
+                        (0..m).map(|_| t_rng.gen()).collect();
+
+                    let tmp_asgns = self.create_tmp_assigns(
                         self.n_views(),
                         draw_process_params,
-                        &mut t_rng,
+                        &tmp_asgn_seeds,
                     );
 
                     let ftr = self.feature(col_ix);
@@ -684,20 +686,15 @@ impl State {
                         // Moved to a singleton
                         let seed_ix = v_new - n_views;
                         let seed = seeds[seed_ix];
-                        let asgn_bldr = AssignmentBuilder::new(self.n_rows())
-                            .with_seed(seed);
-                        let mut process =
-                            self.views[0].prior_process.process.clone();
-                        if draw_process_params {
-                            process.reset_params(rng);
-                        };
-                        let tmp_asgn =
-                            asgn_bldr.with_process(process).build().unwrap();
+
+                        let prior_process =
+                            self.create_tmp_assign(draw_process_params, seed);
 
                         let new_view =
-                            view::Builder::from_prior_process(tmp_asgn)
+                            view::Builder::from_prior_process(prior_process)
                                 .seed_from_rng(&mut rng)
                                 .build();
+
                         self.views.push(new_view);
                         v_new = n_views;
 

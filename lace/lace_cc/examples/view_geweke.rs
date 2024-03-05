@@ -23,6 +23,8 @@ struct Opt {
     pub no_priors: bool,
     #[clap(long)]
     pub pitman_yor: bool,
+    #[clap(long, short, default_value = "10000")]
+    pub niters: usize,
 }
 
 fn main() {
@@ -66,7 +68,7 @@ fn main() {
 
     // Initialize a tester given the settings and run.
     let mut geweke: GewekeTester<View> = GewekeTester::new(settings);
-    geweke.run(10_000, Some(5), &mut rng);
+    geweke.run(opt.niters, Some(5), &mut rng);
 
     // Reports the deviation from a perfect correspondence between the
     // forward and posterior CDFs. The best score is zero, the worst possible
