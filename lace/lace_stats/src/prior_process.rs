@@ -133,8 +133,7 @@ impl PriorProcessT for Dirichlet {
     }
 
     fn reset_params<R: Rng>(&mut self, rng: &mut R) {
-        // TODO: remove clones
-        *self = Self::from_prior(self.prior.clone(), rng);
+        self.alpha = self.prior.draw(rng);
     }
 }
 
@@ -259,12 +258,8 @@ impl PriorProcessT for PitmanYor {
     }
 
     fn reset_params<R: Rng>(&mut self, rng: &mut R) {
-        // TODO: remove clones
-        *self = Self::from_prior(
-            self.prior_alpha.clone(),
-            self.prior_d.clone(),
-            rng,
-        );
+        self.alpha = self.prior_alpha.draw(rng);
+        self.d = self.prior_d.draw(rng);
     }
 }
 

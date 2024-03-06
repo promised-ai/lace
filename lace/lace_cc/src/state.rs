@@ -334,6 +334,7 @@ impl State {
             }
             ColAssignAlg::Gibbs => {
                 self.reassign_cols_gibbs(transitions, rng);
+                // // FIXME: below alg doesn't pass enum tests
                 // self.reassign_cols_gibbs_precomputed(transitions, rng);
 
                 // NOTE: The oracle functions use the weights to compute probabilities.
@@ -455,19 +456,20 @@ impl State {
         // `m` parameter is the number of samples for the integration.
         let m: usize = 1; // TODO: Should this be a parameter in ColAssignAlg?
         let col_ix = ftr.id();
-        let n_cats = self.asgn().n_cats;
+        let n_views = self.n_views();
 
         // singleton weight divided by the number of MC samples
-        let a_part = self.prior_process.process.ln_singleton_weight(n_cats)
-            - (m as f64).ln();
+        let p_singleton =
+            self.prior_process.process.ln_singleton_weight(n_views)
+                - (m as f64).ln();
 
         // score for each view. We will push the singleton view probabilities
         // later
-        let mut logps = (0..n_cats)
-            .map(|k| {
-                let n_k = self.prior_process.asgn.counts[k];
-                self.prior_process.process.ln_gibbs_weight(n_k)
-            })
+        let mut logps = self
+            .asgn()
+            .counts
+            .iter()
+            .map(|&n_k| self.prior_process.process.ln_gibbs_weight(n_k))
             .collect::<Vec<f64>>();
 
         // maintain a vec that  holds just the likelihoods
@@ -480,8 +482,6 @@ impl State {
             logps[ix] += lp;
         }
 
-        let n_views = self.n_views();
-
         // here we create the monte carlo estimate for the singleton view
         let mut tmp_asgns = {
             let seeds: Vec<u64> = (0..m).map(|_| rng.gen()).collect();
@@ -491,7 +491,7 @@ impl State {
         tmp_asgns.iter().for_each(|(_, tmp_asgn)| {
             let singleton_logp = ftr.asgn_score(&tmp_asgn.asgn);
             ftr_logps.push(singleton_logp);
-            logps.push(a_part + singleton_logp);
+            logps.push(p_singleton + singleton_logp);
         });
 
         debug_assert_eq!(n_views + m, logps.len());

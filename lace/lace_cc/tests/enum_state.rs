@@ -328,6 +328,7 @@ mod tests {
                         FType::$ftype,
                         &mut rng,
                     );
+                    eprintln!("err: {err}");
                     err < 0.01
                 }
                 assert!(flaky_test_passes(N_TRIES, test_fn));
