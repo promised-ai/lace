@@ -468,6 +468,16 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     gsum + k.mul_add(alpha.ln(), cpnt_2)
 }
 
+pub fn lpyp(n: usize, cts: &[usize], alpha: f64, d: f64) -> f64 {
+    let k: f64 = cts.len() as f64;
+    let gsum = cts.iter().fold(0.0, |acc, ct| {
+        acc + ::special::Gamma::ln_gamma(*ct as f64 - d).0
+    });
+    let cpnt_2 = ::special::Gamma::ln_gamma(alpha + k * d).0
+        - ::special::Gamma::ln_gamma(n as f64 + alpha - 1.0).0;
+    gsum + k.mul_add(alpha.ln(), cpnt_2)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

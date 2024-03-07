@@ -682,10 +682,10 @@ impl View {
             // If not empty, do a Gibbs step
             let mut logps: Vec<f64> =
                 Vec::with_capacity(self.asgn().n_cats + 1);
+
             self.asgn().counts.iter().enumerate().for_each(|(k, &ct)| {
-                logps.push(
-                    (ct as f64).ln() + self.predictive_score_at(row_ix, k),
-                );
+                let w = self.prior_process.process.ln_gibbs_weight(ct);
+                logps.push(w + self.predictive_score_at(row_ix, k));
             });
 
             logps.push(

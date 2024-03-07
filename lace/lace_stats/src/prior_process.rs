@@ -217,7 +217,7 @@ impl PriorProcessT for PitmanYor {
                 ps[zi] += 1.0;
                 counts[zi] += 1;
             } else {
-                ps[zi] = 1.0;
+                ps[zi] = 1.0 - self.d;
                 counts.push(1);
                 ps.push(self.alpha + self.d * counts.len() as f64);
             };
@@ -330,6 +330,15 @@ impl PriorProcessT for Process {
     }
 }
 
+impl Default for Process {
+    fn default() -> Self {
+        Self::Dirichlet(Dirichlet {
+            alpha: 1.0,
+            prior: lace_consts::general_alpha_prior(),
+        })
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PriorProcess {
     pub process: Process,
@@ -362,6 +371,13 @@ impl PriorProcess {
         match &self.process {
             Process::Dirichlet(inner) => Some(inner.alpha),
             Process::PitmanYor(inner) => Some(inner.alpha),
+        }
+    }
+
+    pub fn d(&self) -> Option<f64> {
+        match &self.process {
+            Process::Dirichlet(inner) => Some(0.0),
+            Process::PitmanYor(inner) => Some(inner.d),
         }
     }
 }

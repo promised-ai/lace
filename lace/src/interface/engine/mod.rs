@@ -124,6 +124,26 @@ fn col_models_from_data_src<R: rand::Rng>(
     crate::data::df_to_col_models(codebook, df, rng)
 }
 
+fn emit_prior_process<R: rand::Rng>(
+    prior_process: crate::codebook::PriorProcess,
+    rng: &mut R,
+) -> lace_stats::prior_process::Process {
+    use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
+    match prior_process {
+        crate::codebook::PriorProcess::Dirichlet { alpha_prior } => {
+            let inner = Dirichlet::from_prior(alpha_prior, rng);
+            Process::Dirichlet(inner)
+        }
+        crate::codebook::PriorProcess::PitmanYor {
+            alpha_prior,
+            d_prior,
+        } => {
+            let inner = PitmanYor::from_prior(alpha_prior, d_prior, rng);
+            Process::PitmanYor(inner)
+        }
+    }
+}
+
 /// Maintains and samples states
 impl Engine {
     /// Create a new engine
@@ -154,23 +174,23 @@ impl Engine {
             col_models_from_data_src(codebook, data_source, &mut rng)
                 .map_err(NewEngineError::DataParseError)?;
 
-        let state_prior_process = codebook
-            .state_prior_process
-            .clone()
-            .unwrap_or_else(lace_consts::state_alpha_prior);
+        let state_prior_process = emit_prior_process(
+            codebook.state_prior_process.clone().unwrap_or_default(),
+            &mut rng,
+        );
 
-        let view_alpha_prior = codebook
-            .view_alpha_prior
-            .clone()
-            .unwrap_or_else(lace_consts::view_alpha_prior);
+        let view_prior_process = emit_prior_process(
+            codebook.view_prior_process.clone().unwrap_or_default(),
+            &mut rng,
+        );
 
         let states: Vec<State> = (0..n_states)
             .map(|_| {
                 let features = col_models.clone();
                 State::from_prior(
                     features,
-                    state_alpha_prior.clone(),
-                    view_alpha_prior.clone(),
+                    state_prior_process.clone(),
+                    view_prior_process.clone(),
                     &mut rng,
                 )
             })
@@ -837,7 +857,7 @@ impl Engine {
         Ok(())
     }
 
-    /// Run the Gibbs reassignment kernel on a specific column and row withing
+    /// Run the Gibbs reassignment kernel on a specific column and row within
     /// a view. Used when the user would like to focus more updating on
     /// specific regions of the table.
     ///
@@ -867,7 +887,7 @@ impl Engine {
             .for_each(|(state, mut trng)| {
                 state.reassign_col_gibbs(col_ix, true, &mut trng);
                 let view = {
-                    let view_ix = state.asgn.asgn[col_ix];
+                    let view_ix = state.asgn().asgn[col_ix];
                     &mut state.views[view_ix]
                 };
 
@@ -875,8 +895,8 @@ impl Engine {
 
                 // Make sure the view weights are correct so oracle functions
                 // reflect the update correctly.
-                view.weights = view.asgn.weights();
-                debug_assert!(view.asgn.validate().is_valid());
+                view.weights = view.prior_process.weight_vec(false);
+                debug_assert!(view.asgn().validate().is_valid());
             });
     }
 
