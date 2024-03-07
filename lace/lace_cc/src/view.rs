@@ -473,7 +473,14 @@ impl View {
         add_empty_component: bool,
         mut rng: &mut impl Rng,
     ) {
-        let dirvec = self.prior_process.weight_vec(add_empty_component);
+        let dirvec =
+            self.prior_process.weight_vec_unnormed(add_empty_component);
+
+        if dirvec.iter().any(|&p| p < 0.0) {
+            eprintln!("{:?}", dirvec);
+            eprintln!("{:?}\n", self.prior_process.process);
+        }
+
         let dir = Dirichlet::new(dirvec).unwrap();
         self.weights = dir.draw(&mut rng)
     }
@@ -817,7 +824,7 @@ impl View {
     }
 
     fn sams_merge<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
-        use lace_stats::assignment::lcrp;
+        use lace_stats::assignment::lpyp;
         use std::cmp::Ordering;
 
         let zi = self.asgn().asgn[i];
@@ -854,10 +861,11 @@ impl View {
 
         // FIXME: only works for CRP
         let logp_mrg = self.logm(self.n_cats())
-            + lcrp(
+            + lpyp(
                 asgn.len(),
                 &asgn.counts,
                 self.prior_process.alpha().unwrap(),
+                self.prior_process.d().unwrap(),
             );
 
         self.drop_component(self.n_cats());
@@ -868,16 +876,17 @@ impl View {
     }
 
     fn sams_split<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
-        use lace_stats::assignment::lcrp;
+        use lace_stats::assignment::lpyp;
 
         let zi = self.asgn().asgn[i];
 
         // FIXME: only works for CRP
         let logp_mrg = self.logm(zi)
-            + lcrp(
+            + lpyp(
                 self.asgn().len(),
                 &self.asgn().counts,
                 self.prior_process.alpha().unwrap(),
+                self.prior_process.d().unwrap(),
             );
         let (logp_spt, logq_spt, asgn_opt) =
             self.propose_split(i, j, false, rng);
@@ -897,7 +906,7 @@ impl View {
         calc_reverse: bool,
         rng: &mut R,
     ) -> (f64, f64, Option<Assignment>) {
-        use lace_stats::assignment::lcrp;
+        use lace_stats::assignment::lpyp;
 
         let zi = self.asgn().asgn[i];
         let zj = self.asgn().asgn[j];
@@ -959,11 +968,11 @@ impl View {
         let mut logp = self.logm(zi_tmp) + self.logm(zj_tmp);
 
         let asgn = if calc_reverse {
-            // FIXME: only works for CRP
-            logp += lcrp(
+            logp += lpyp(
                 self.asgn().len(),
                 &self.asgn().counts,
                 self.prior_process.alpha().unwrap(),
+                self.prior_process.d().unwrap(),
             );
             None
         } else {
@@ -983,10 +992,11 @@ impl View {
                 .unwrap()
                 .asgn;
 
-            logp += lcrp(
+            logp += lpyp(
                 asgn.len(),
                 &asgn.counts,
                 self.prior_process.alpha().unwrap(),
+                self.prior_process.d().unwrap(),
             );
             Some(asgn)
         };

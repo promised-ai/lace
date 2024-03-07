@@ -235,7 +235,8 @@ impl PriorProcessT for PitmanYor {
         let n: usize = asgn.len();
         // TODO: this is not the best way to do this.
         let ln_f_alpha = {
-            let loglike = |alpha: &f64| crate::assignment::lcrp(n, cts, *alpha);
+            let loglike =
+                |alpha: &f64| crate::assignment::lpyp(n, cts, *alpha, self.d);
             let prior_ref = &self.prior_alpha;
             let prior_draw = |rng: &mut R| prior_ref.draw(rng);
             let mh_result =
@@ -245,11 +246,12 @@ impl PriorProcessT for PitmanYor {
         };
 
         let ln_f_d = {
-            let loglike = |alpha: &f64| crate::assignment::lcrp(n, cts, *alpha);
-            let prior_ref = &self.prior_alpha;
+            let loglike =
+                |d: &f64| crate::assignment::lpyp(n, cts, self.alpha, *d);
+            let prior_ref = &self.prior_d;
             let prior_draw = |rng: &mut R| prior_ref.draw(rng);
             let mh_result =
-                crate::mh::mh_prior(self.alpha, loglike, prior_draw, 100, rng);
+                crate::mh::mh_prior(self.d, loglike, prior_draw, 100, rng);
             self.d = mh_result.x;
             mh_result.score_x
         };

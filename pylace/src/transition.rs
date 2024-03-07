@@ -56,7 +56,7 @@ impl RowKernel {
     }
 }
 
-/// A particular state transition withing the Markov chain
+/// A particular state transition within the Markov chain
 #[pyclass]
 #[derive(Clone, Copy)]
 pub(crate) struct StateTransition(lace::cc::transition::StateTransition);
@@ -79,18 +79,18 @@ impl StateTransition {
         ))
     }
 
-    /// The state alpha (controls the assignment of columns to views)
-    /// transition.
+    /// The state prior process parameters (controls the assignment of
+    /// columns to views) transition.
     #[staticmethod]
-    fn state_alpha() -> Self {
-        Self(lace::cc::transition::StateTransition::StateAlpha)
+    fn state_prior_process_params() -> Self {
+        Self(lace::cc::transition::StateTransition::StatePriorProcessParams)
     }
 
-    /// The view alpha (controls the assignment of rows to categories within
-    /// each view) transition.
+    /// The view prior process parameters (controls the assignment of rows to
+    /// categories within each view) transition.
     #[staticmethod]
-    fn view_alphas() -> Self {
-        Self(lace::cc::transition::StateTransition::ViewAlphas)
+    fn view_prior_process_params() -> Self {
+        Self(lace::cc::transition::StateTransition::ViewPriorProcessParams)
     }
 
     /// Re-sample the feature prior parameters
@@ -149,8 +149,8 @@ impl std::fmt::Display for StateTransition {
             }
             St::FeaturePriors => write!(f, "FeaturePriors"),
             St::ComponentParams => write!(f, "ComponentParams"),
-            St::StateAlpha => write!(f, "StateAlpha"),
-            St::ViewAlphas => write!(f, "ViewAlphas"),
+            St::StatePriorProcessParams => write!(f, "StatePriorProcessParams"),
+            St::ViewPriorProcessParams => write!(f, "ViewPriorProcessParams"),
         }
     }
 }

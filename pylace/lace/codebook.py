@@ -289,18 +289,13 @@ class Codebook:
         codebook.codebook.rename(name)
         return codebook
 
-    def set_state_alpha_prior(self, shape: float = 1.0, rate: float = 1.0):
+    def set_state_alpha_prior(self, prior_process: _lc.PriorProcess):
         """
-        Return a copy of the codebook with a new state CRP alpha prior.
+        Return a copy of the codebook with a new state PriorProcess.
 
         Parameters
         ----------
-        shape: float, optional
-            The shape of the Gamma distribution prior on alpha: a positive
-            floating point value in (0, Inf). Default is 1.
-        rate: float, optional
-            The rate of the Gamma distribution prior on alpha: a positive
-            floating point value in (0, Inf). Default is 1.
+        prior_process: core.PriorProcess
 
         Examples
         --------
@@ -320,21 +315,16 @@ class Codebook:
           rows: 50
         """
         codebook = copy.copy(self)
-        codebook.codebook.set_state_alpha_prior(shape, rate)
+        codebook.codebook.set_state_prior_process(prior_process)
         return codebook
 
-    def set_view_alpha_prior(self, shape: float = 1.0, rate: float = 1.0):
+    def set_view_prior_process(self, prior_process: _lc.PriorProcess):
         """
-        Return a copy of the codebook with a new view CRP alpha prior.
+        Return a copy of the codebook with a new view PriorProcess.
 
         Parameters
         ----------
-        shape: float, optional
-            The shape of the Gamma distribution prior on alpha: a positive
-            floating point value in (0, Inf). Default is 1.
-        rate: float, optional
-            The rate of the Gamma distribution prior on alpha: a positive
-            floating point value in (0, Inf). Default is 1.
+        prior_process: core.PriorProcess
 
         Examples
         --------
@@ -354,7 +344,7 @@ class Codebook:
           rows: 50
         """
         codebook = copy.copy(self)
-        codebook.codebook.set_view_alpha_prior(shape, rate)
+        codebook.codebook.set_view_prior_process(prior_process)
         return codebook
 
     def append_column_metadata(self, col_metadata: List[_lc.ColumnMetadata]):

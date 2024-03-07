@@ -15,6 +15,7 @@ from lace.core import (
     RowKernel,
     StateTransition,
     ValueMap,
+    PriorProcess,
 )
 from lace.engine import Engine
 
@@ -34,6 +35,7 @@ __all__ = [
     "CountHyper",
     "CountPrior",
     "ValueMap",
+    "PriorProcess",
 ]
 
 __version__ = "0.6.0"
