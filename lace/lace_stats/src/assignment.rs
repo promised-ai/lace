@@ -468,14 +468,29 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     gsum + k.mul_add(alpha.ln(), cpnt_2)
 }
 
+fn ln_py_bracket(x: f64, m: usize, alpha: f64) -> f64 {
+    if m == 0 {
+        return 0.0;
+    }
+    (1..=m)
+        .map(|m_i| (x + (m_i as f64 - 1.0) * alpha).ln())
+        .sum::<f64>()
+}
+
+/// Formula from:
+/// Pitman, Jim. "Exchangeable and partially exchangeable random partitions."
+///   Probability theory and related fields 102.2 (1995): 145-158.
+///   https://www.stat.berkeley.edu/~aldous/206-Exch/Papers/pitman95a.pdf
 pub fn lpyp(n: usize, cts: &[usize], alpha: f64, d: f64) -> f64 {
-    let k: f64 = cts.len() as f64;
-    let gsum = cts.iter().fold(0.0, |acc, ct| {
-        acc + ::special::Gamma::ln_gamma(*ct as f64 - d).0
-    });
-    let cpnt_2 = ::special::Gamma::ln_gamma(alpha + k * d).0
-        - ::special::Gamma::ln_gamma(n as f64 + alpha - 1.0).0;
-    gsum + k.mul_add(alpha.ln(), cpnt_2)
+    let k = cts.len();
+    let n = cts.iter().copied().sum::<usize>();
+    let term_a = ln_py_bracket(alpha + d, k - 1, d);
+    let term_b = ln_py_bracket(alpha - 1.0, n - 1, 1.0);
+    let term_c = cts
+        .iter()
+        .map(|&ct_i| ln_py_bracket(1.0 - d, ct_i - 1, 1.0))
+        .sum::<f64>();
+    term_a - term_b + term_c
 }
 
 #[cfg(test)]
