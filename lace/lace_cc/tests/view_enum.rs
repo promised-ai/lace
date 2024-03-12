@@ -195,30 +195,48 @@ macro_rules! view_enum_test {
             assert!(flaky_test_passes(N_TRIES, test_fn));
         }
     };
-    ($ftype: ident, $proctype: ident, [$($row_alg: ident),+]) => {
+    ($modname: ident, $ftype: ident, $proctype: ident, [$($row_alg: ident),+]) => {
         #[allow(non_snake_case)]
-        mod $ftype {
+        mod $modname {
             use super::*;
-            mod $proctype {
-                use super::*;
-                $(
-                    view_enum_test!($ftype, $proctype, $row_alg);
-                )+
-            }
+            $(
+                view_enum_test!($ftype, $proctype, $row_alg);
+            )+
         }
     };
-    ($(($ftype: ident, $proctype: ident, $row_algs: tt)),+) => {
+    ($(($modname: ident, $ftype: ident, $proctype: ident, $row_algs: tt)),+) => {
         $(
-            view_enum_test!($ftype, $proctype, $row_algs);
+            view_enum_test!($modname, $ftype, $proctype, $row_algs);
         )+
 
     };
 }
 
 view_enum_test!(
-    // (Continuous, Dirichlet, [Gibbs, Slice, Sams]),
-    (Continuous, PitmanYor, [Gibbs, Slice, Sams]),
-    (Categorical, Dirichlet, [Gibbs, Slice, Sams]),
-    // (Categorical, PitmanYor, [Gibbs, Slice, Sams]),
-    (Count, Dirichlet, [Gibbs, Slice, Sams]) // (Count, PitmanYor, [Gibbs, Slice, Sams])
+    (
+        ve_continuous_dp,
+        Continuous,
+        Dirichlet,
+        [Gibbs, Slice, Sams]
+    ),
+    (
+        ve_continuous_pyp,
+        Continuous,
+        PitmanYor,
+        [Gibbs, Slice, Sams]
+    ),
+    (
+        ve_categorical_dp,
+        Categorical,
+        Dirichlet,
+        [Gibbs, Slice, Sams]
+    ),
+    (
+        ve_categorical_pyp,
+        Categorical,
+        PitmanYor,
+        [Gibbs, Slice, Sams]
+    ),
+    (ve_count_dp, Count, Dirichlet, [Gibbs, Slice, Sams]),
+    (ve_count_pyp, Count, PitmanYor, [Gibbs, Slice, Sams])
 );

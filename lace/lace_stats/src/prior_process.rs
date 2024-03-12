@@ -32,6 +32,8 @@ pub trait PriorProcessT {
     fn update_params<R: Rng>(&mut self, asgn: &Assignment, rng: &mut R) -> f64;
 
     fn reset_params<R: Rng>(&mut self, rng: &mut R);
+
+    fn ln_f_partition(&self, asgn: &Assignment) -> f64;
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -134,6 +136,10 @@ impl PriorProcessT for Dirichlet {
 
     fn reset_params<R: Rng>(&mut self, rng: &mut R) {
         self.alpha = self.prior.draw(rng);
+    }
+
+    fn ln_f_partition(&self, asgn: &Assignment) -> f64 {
+        crate::assignment::lcrp(asgn.len(), &asgn.counts, self.alpha)
     }
 }
 
@@ -263,6 +269,10 @@ impl PriorProcessT for PitmanYor {
         self.alpha = self.prior_alpha.draw(rng);
         self.d = self.prior_d.draw(rng);
     }
+
+    fn ln_f_partition(&self, asgn: &Assignment) -> f64 {
+        crate::assignment::lpyp(asgn.len(), &asgn.counts, self.alpha, self.d)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -330,6 +340,13 @@ impl PriorProcessT for Process {
             Self::PitmanYor(proc) => proc.reset_params(rng),
         }
     }
+
+    fn ln_f_partition(&self, asgn: &Assignment) -> f64 {
+        match self {
+            Self::Dirichlet(proc) => proc.ln_f_partition(asgn),
+            Self::PitmanYor(proc) => proc.ln_f_partition(asgn),
+        }
+    }
 }
 
 impl Default for Process {
@@ -381,6 +398,10 @@ impl PriorProcess {
             Process::Dirichlet(inner) => Some(0.0),
             Process::PitmanYor(inner) => Some(inner.d),
         }
+    }
+
+    pub fn ln_f_partition(&self, asgn: &Assignment) -> f64 {
+        self.process.ln_f_partition(asgn)
     }
 }
 

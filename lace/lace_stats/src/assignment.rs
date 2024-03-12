@@ -485,12 +485,21 @@ pub fn lpyp(n: usize, cts: &[usize], alpha: f64, d: f64) -> f64 {
     let k = cts.len();
     let n = cts.iter().copied().sum::<usize>();
     let term_a = ln_py_bracket(alpha + d, k - 1, d);
-    let term_b = ln_py_bracket(alpha - 1.0, n - 1, 1.0);
+    let term_b = ln_py_bracket(alpha + 1.0, n - 1, 1.0);
     let term_c = cts
         .iter()
         .map(|&ct_i| ln_py_bracket(1.0 - d, ct_i - 1, 1.0))
         .sum::<f64>();
-    term_a - term_b + term_c
+    let ln_f = term_a - term_b + term_c;
+
+    // if !ln_f.is_finite() {
+    //     eprintln!("PYP:\na: {alpha}\nd: {d}\ncounts: {cts:?}");
+    //     eprintln!("ta: {term_a}");
+    //     eprintln!("tb: {term_b}");
+    //     eprintln!("tc: {term_c}");
+    // }
+
+    ln_f
 }
 
 #[cfg(test)]
