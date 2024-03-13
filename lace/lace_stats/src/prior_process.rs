@@ -100,9 +100,9 @@ impl PriorProcessT for Dirichlet {
         let mut ps = vec![1.0, self.alpha];
         let mut zs = vec![0; n];
 
-        for i in 1..n {
+        for z in zs.iter_mut().take(n).skip(1) {
             let zi = pflip(&ps, 1, rng)[0];
-            zs[i] = zi;
+            *z = zi;
             if zi < counts.len() {
                 ps[zi] += 1.0;
                 counts[zi] += 1;
@@ -172,7 +172,7 @@ impl PriorProcessT for PitmanYor {
     }
 
     fn ln_singleton_weight(&self, n_cats: usize) -> f64 {
-        (self.alpha + self.d * (n_cats as f64)).ln()
+        self.d.mul_add(n_cats as f64, self.alpha).ln()
     }
 
     fn weight_vec(
@@ -185,7 +185,7 @@ impl PriorProcessT for PitmanYor {
             asgn.counts.iter().map(|&ct| ct as f64 - self.d).collect();
 
         let z = if append_new {
-            weights.push(self.alpha + self.d * asgn.n_cats as f64);
+            weights.push(self.d.mul_add(asgn.n_cats as f64, self.alpha));
             asgn.len() as f64 + self.alpha
         } else {
             asgn.len() as f64
@@ -216,16 +216,16 @@ impl PriorProcessT for PitmanYor {
         let mut ps = vec![1.0 - self.d, self.alpha + self.d];
         let mut zs = vec![0; n];
 
-        for i in 1..n {
+        for z in zs.iter_mut().take(n).skip(1) {
             let zi = pflip(&ps, 1, rng)[0];
-            zs[i] = zi;
+            *z = zi;
             if zi < counts.len() {
                 ps[zi] += 1.0;
                 counts[zi] += 1;
             } else {
                 ps[zi] = 1.0 - self.d;
                 counts.push(1);
-                ps.push(self.alpha + self.d * counts.len() as f64);
+                ps.push(self.d.mul_add(counts.len() as f64, self.alpha));
             };
         }
 
@@ -238,11 +238,10 @@ impl PriorProcessT for PitmanYor {
 
     fn update_params<R: Rng>(&mut self, asgn: &Assignment, rng: &mut R) -> f64 {
         let cts = &asgn.counts;
-        let n: usize = asgn.len();
         // TODO: this is not the best way to do this.
         let ln_f_alpha = {
             let loglike =
-                |alpha: &f64| crate::assignment::lpyp(n, cts, *alpha, self.d);
+                |alpha: &f64| crate::assignment::lpyp(cts, *alpha, self.d);
             let prior_ref = &self.prior_alpha;
             let prior_draw = |rng: &mut R| prior_ref.draw(rng);
             let mh_result =
@@ -253,7 +252,7 @@ impl PriorProcessT for PitmanYor {
 
         let ln_f_d = {
             let loglike =
-                |d: &f64| crate::assignment::lpyp(n, cts, self.alpha, *d);
+                |d: &f64| crate::assignment::lpyp(cts, self.alpha, *d);
             let prior_ref = &self.prior_d;
             let prior_draw = |rng: &mut R| prior_ref.draw(rng);
             let mh_result =
@@ -271,7 +270,7 @@ impl PriorProcessT for PitmanYor {
     }
 
     fn ln_f_partition(&self, asgn: &Assignment) -> f64 {
-        crate::assignment::lpyp(asgn.len(), &asgn.counts, self.alpha, self.d)
+        crate::assignment::lpyp(&asgn.counts, self.alpha, self.d)
     }
 }
 
@@ -386,20 +385,6 @@ impl PriorProcess {
         self.process.update_params(&self.asgn, rng)
     }
 
-    pub fn alpha(&self) -> Option<f64> {
-        match &self.process {
-            Process::Dirichlet(inner) => Some(inner.alpha),
-            Process::PitmanYor(inner) => Some(inner.alpha),
-        }
-    }
-
-    pub fn d(&self) -> Option<f64> {
-        match &self.process {
-            Process::Dirichlet(inner) => Some(0.0),
-            Process::PitmanYor(inner) => Some(inner.d),
-        }
-    }
-
     pub fn ln_f_partition(&self, asgn: &Assignment) -> f64 {
         self.process.ln_f_partition(asgn)
     }
@@ -442,7 +427,7 @@ fn sb_slice_extend<R: Rng>(
     loop {
         if d > 0.0 {
             let n_cats = weights.len() as f64;
-            beta.set_beta(alpha + d * n_cats).unwrap();
+            beta.set_beta(d.mul_add(n_cats, alpha)).unwrap();
         }
 
         let vk: f64 = beta.draw(&mut rng);
@@ -565,7 +550,7 @@ impl Builder {
 
         let mut rng = self
             .seed
-            .map_or_else(|| StdRng::from_entropy(), StdRng::seed_from_u64);
+            .map_or_else(StdRng::from_entropy, StdRng::seed_from_u64);
 
         let process = self.process.unwrap_or_else(|| {
             Process::Dirichlet(Dirichlet::from_prior(

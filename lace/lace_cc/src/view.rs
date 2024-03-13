@@ -824,7 +824,6 @@ impl View {
     }
 
     fn sams_merge<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
-        use lace_stats::assignment::lpyp;
         use std::cmp::Ordering;
 
         let zi = self.asgn().asgn[i];
@@ -859,14 +858,8 @@ impl View {
             }
         });
 
-        // FIXME: only works for CRP
-        let logp_mrg = self.logm(self.n_cats())
-            + lpyp(
-                asgn.len(),
-                &asgn.counts,
-                self.prior_process.alpha().unwrap(),
-                self.prior_process.d().unwrap(),
-            );
+        let logp_mrg =
+            self.logm(self.n_cats()) + self.prior_process.ln_f_partition(&asgn);
 
         self.drop_component(self.n_cats());
 
@@ -876,18 +869,11 @@ impl View {
     }
 
     fn sams_split<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
-        use lace_stats::assignment::lpyp;
-
         let zi = self.asgn().asgn[i];
 
         // FIXME: only works for CRP
-        let logp_mrg = self.logm(zi)
-            + lpyp(
-                self.asgn().len(),
-                &self.asgn().counts,
-                self.prior_process.alpha().unwrap(),
-                self.prior_process.d().unwrap(),
-            );
+        let logp_mrg =
+            self.logm(zi) + self.prior_process.ln_f_partition(self.asgn());
         let (logp_spt, logq_spt, asgn_opt) =
             self.propose_split(i, j, false, rng);
 
@@ -906,8 +892,6 @@ impl View {
         calc_reverse: bool,
         rng: &mut R,
     ) -> (f64, f64, Option<Assignment>) {
-        use lace_stats::assignment::lpyp;
-
         let zi = self.asgn().asgn[i];
         let zj = self.asgn().asgn[j];
 
@@ -968,12 +952,7 @@ impl View {
         let mut logp = self.logm(zi_tmp) + self.logm(zj_tmp);
 
         let asgn = if calc_reverse {
-            logp += lpyp(
-                self.asgn().len(),
-                &self.asgn().counts,
-                self.prior_process.alpha().unwrap(),
-                self.prior_process.d().unwrap(),
-            );
+            logp += self.prior_process.ln_f_partition(self.asgn());
             None
         } else {
             tmp_z.iter_mut().for_each(|z| {
@@ -992,12 +971,7 @@ impl View {
                 .unwrap()
                 .asgn;
 
-            logp += lpyp(
-                asgn.len(),
-                &asgn.counts,
-                self.prior_process.alpha().unwrap(),
-                self.prior_process.d().unwrap(),
-            );
+            logp += self.prior_process.ln_f_partition(&asgn);
             Some(asgn)
         };
 
@@ -1281,7 +1255,10 @@ impl GewekeSummarize for View {
                 None
             },
             alpha: if settings.do_process_params_transition() {
-                Some(self.prior_process.alpha().unwrap())
+                Some(match self.prior_process.process {
+                    Process::Dirichlet(ref inner) => inner.alpha,
+                    Process::PitmanYor(ref inner) => inner.alpha,
+                })
             } else {
                 None
             },

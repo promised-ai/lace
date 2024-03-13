@@ -1,10 +1,9 @@
 use std::collections::BTreeMap;
 
 use lace_cc::component::ConjugateComponent;
-use lace_cc::feature::{ColModel, Column, MissingNotAtRandom};
-use lace_cc::state::{State, StateDiagnostics};
+use lace_cc::feature::{ColModel, Column};
+use lace_cc::state::StateDiagnostics;
 use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
-use lace_cc::view::View;
 use lace_data::{FeatureData, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
@@ -19,7 +18,7 @@ use rand_xoshiro::Xoshiro256Plus;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::sync::OnceLock;
 
-use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
+use crate::{impl_metadata_version, MetadataVersion};
 
 pub const METADATA_VERSION: i32 = 0;
 

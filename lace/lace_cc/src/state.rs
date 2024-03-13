@@ -103,7 +103,7 @@ impl State {
         rng: &mut R,
     ) -> Self {
         let n_cols = ftrs.len();
-        let n_rows = ftrs.get(0).map(|f| f.len()).unwrap_or(0);
+        let n_rows = ftrs.first().map(|f| f.len()).unwrap_or(0);
         let prior_process =
             PriorProcess::from_process(state_process, n_cols, rng);
         let mut views: Vec<View> = (0..prior_process.asgn.n_cats)
@@ -168,7 +168,7 @@ impl State {
     /// Get the number of rows
     #[inline]
     pub fn n_rows(&self) -> usize {
-        self.views.get(0).map(|v| v.n_rows()).unwrap_or(0)
+        self.views.first().map(|v| v.n_rows()).unwrap_or(0)
     }
 
     /// Get the number of columns
@@ -448,7 +448,7 @@ impl State {
     pub fn insert_feature<R: Rng>(
         &mut self,
         ftr: ColModel,
-        draw_alpha: bool,
+        update_process_params: bool,
         rng: &mut R,
     ) -> f64 {
         // Number of singleton features. For assigning to a singleton, we have
@@ -485,7 +485,7 @@ impl State {
         // here we create the monte carlo estimate for the singleton view
         let mut tmp_asgns = {
             let seeds: Vec<u64> = (0..m).map(|_| rng.gen()).collect();
-            self.create_tmp_assigns(n_views, draw_alpha, &seeds)
+            self.create_tmp_assigns(n_views, update_process_params, &seeds)
         };
 
         tmp_asgns.iter().for_each(|(_, tmp_asgn)| {
@@ -524,11 +524,11 @@ impl State {
     pub fn reassign_col_gibbs<R: Rng>(
         &mut self,
         col_ix: usize,
-        draw_alpha: bool,
+        update_process_params: bool,
         rng: &mut R,
     ) -> f64 {
         let ftr = self.extract_ftr(col_ix);
-        self.insert_feature(ftr, draw_alpha, rng)
+        self.insert_feature(ftr, update_process_params, rng)
     }
 
     /// Reassign all columns using the Gibbs transition.
@@ -546,7 +546,8 @@ impl State {
         if self.n_cols() == 1 {
             return;
         }
-        let draw_alpha = transitions
+
+        let update_process_params = transitions
             .iter()
             .any(|&t| t == StateTransition::ViewPriorProcessParams);
 
@@ -556,7 +557,7 @@ impl State {
         col_ixs.shuffle(rng);
 
         col_ixs.drain(..).for_each(|col_ix| {
-            self.reassign_col_gibbs(col_ix, draw_alpha, rng);
+            self.reassign_col_gibbs(col_ix, update_process_params, rng);
         })
     }
 
@@ -1266,7 +1267,10 @@ impl GewekeSummarize for State {
                 None
             },
             alpha: if settings.do_process_params_transition() {
-                Some(self.prior_process.alpha().unwrap())
+                Some(match self.prior_process.process {
+                    Process::Dirichlet(ref inner) => inner.alpha,
+                    Process::PitmanYor(ref inner) => inner.alpha,
+                })
             } else {
                 None
             },
@@ -1553,9 +1557,15 @@ mod test {
                 cols_always_flat = false;
             }
 
-            if !basically_one(state.prior_process.alpha().unwrap()) {
+            let alpha = match state.prior_process.process {
+                Process::Dirichlet(ref inner) => inner.alpha,
+                Process::PitmanYor(ref inner) => inner.alpha,
+            };
+
+            if !basically_one(alpha) {
                 state_alpha_1 = false;
             }
+
             // 2. Check the column priors
             for view in state.views.iter() {
                 // Check the view assignment priors
@@ -1563,8 +1573,12 @@ mod test {
                 if view.asgn().asgn.iter().any(|&zi| zi != 0) {
                     rows_always_flat = false;
                 }
+                let view_alpha = match view.prior_process.process {
+                    Process::Dirichlet(ref inner) => inner.alpha,
+                    Process::PitmanYor(ref inner) => inner.alpha,
+                };
 
-                if !basically_one(view.prior_process.alpha().unwrap()) {
+                if !basically_one(view_alpha) {
                     view_alphas_1 = false;
                 }
             }

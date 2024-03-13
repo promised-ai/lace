@@ -14,7 +14,6 @@ use lace_cc::alg::RowAssignAlg;
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::transition::ViewTransition;
 use lace_cc::view::{Builder, View};
-use lace_stats::assignment::{lcrp, lpyp};
 use lace_stats::prior_process::Builder as PriorProcessBuilder;
 use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
 use lace_stats::rv::dist::{Beta, Gamma};
@@ -70,11 +69,8 @@ fn calc_partition_ln_posterior<R: Rng>(
             .build()
             .unwrap();
 
-        let alpha = prior_process.alpha().unwrap();
-        let d = prior_process.d().unwrap();
-
         // let ln_pz = lcrp(n, &prior_process.asgn.counts, alpha);
-        let ln_pz = lpyp(n, &prior_process.asgn.counts, alpha, d);
+        let ln_pz = prior_process.ln_f_partition(&prior_process.asgn);
 
         let view: View = Builder::from_prior_process(prior_process)
             .features(features.clone())

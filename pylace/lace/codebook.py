@@ -289,7 +289,7 @@ class Codebook:
         codebook.codebook.rename(name)
         return codebook
 
-    def set_state_alpha_prior(self, prior_process: _lc.PriorProcess):
+    def set_state_prior_process(self, prior_process: _lc.PriorProcess):
         """
         Return a copy of the codebook with a new state PriorProcess.
 

@@ -194,7 +194,7 @@ impl From<v1::DatalessStateAndDiagnostics> for DatalessStateAndDiagnostics {
     fn from(state_and_diag: v1::DatalessStateAndDiagnostics) -> Self {
         Self {
             state: state_and_diag.state.into(),
-            diagnostics: state_and_diag.diagnostics.into(),
+            diagnostics: state_and_diag.diagnostics,
         }
     }
 }

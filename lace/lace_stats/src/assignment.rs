@@ -321,143 +321,6 @@ impl Assignment {
     }
 }
 
-// /// Constructs `Assignment`s
-// #[derive(Clone, Debug)]
-// pub struct AssignmentBuilder {
-//     n: usize,
-//     asgn: Option<Vec<usize>>,
-//     prior_process: Option<Process>,
-//     seed: Option<u64>,
-// }
-
-// #[derive(Debug, Error, PartialEq)]
-// pub enum BuildAssignmentError {
-//     #[error("alpha is zero")]
-//     AlphaIsZero,
-//     #[error("non-finite alpha: {alpha}")]
-//     AlphaNotFinite { alpha: f64 },
-//     #[error("assignment vector is empty")]
-//     EmptyAssignmentVec,
-//     #[error("there are {n_cats} categories but {n} data")]
-//     NLessThanNCats { n: usize, n_cats: usize },
-//     #[error("invalid assignment: {0}")]
-//     AssignmentError(#[from] AssignmentError),
-// }
-
-// impl AssignmentBuilder {
-//     /// Create a builder for `n`-length assignments
-//     ///
-//     /// # Arguments
-//     /// - n: the number of data/entries in the assignment
-//     pub fn new(n: usize) -> Self {
-//         AssignmentBuilder {
-//             n,
-//             asgn: None,
-//             prior_process: None,
-//             seed: None,
-//         }
-//     }
-
-//     /// Initialize the builder from an assignment vector
-//     ///
-//     /// # Note:
-//     /// The validity of `asgn` will not be verified until `build` is called.
-//     pub fn from_vec(asgn: Vec<usize>) -> Self {
-//         AssignmentBuilder {
-//             n: asgn.len(),
-//             asgn: Some(asgn),
-//             prior_process: None,
-//             seed: None,
-//         }
-//     }
-
-//     /// Add a prior on the `Crp` `alpha` parameter
-//     #[must_use]
-//     pub fn with_prior_process(mut self, process: Process) -> Self {
-//         self.prior_process = Some(process);
-//         self
-//     }
-
-//     /// Set the RNG seed
-//     #[must_use]
-//     pub fn with_seed(mut self, seed: u64) -> Self {
-//         self.seed = Some(seed);
-//         self
-//     }
-
-//     /// Set the RNG seed from another RNG
-//     #[must_use]
-//     pub fn seed_from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
-//         self.seed = Some(rng.next_u64());
-//         self
-//     }
-
-//     /// Use a *flat* assignment with one partition
-//     #[must_use]
-//     pub fn flat(mut self) -> Self {
-//         self.asgn = Some(vec![0; self.n]);
-//         self
-//     }
-
-//     /// Use an assignment with `n_cats`, evenly populated partitions/categories
-//     pub fn with_n_cats(
-//         mut self,
-//         n_cats: usize,
-//     ) -> Result<Self, BuildAssignmentError> {
-//         if n_cats > self.n {
-//             Err(BuildAssignmentError::NLessThanNCats { n: self.n, n_cats })
-//         } else {
-//             let asgn: Vec<usize> = (0..self.n).map(|i| i % n_cats).collect();
-//             self.asgn = Some(asgn);
-//             Ok(self)
-//         }
-//     }
-
-//     /// Build the assignment and consume the builder
-//     pub fn build(self) -> Result<Assignment, BuildAssignmentError> {
-//         use lace_stats::prior_process::{Dirichlet, PriorProcessT};
-
-//         let mut rng = self.seed.map_or_else(
-//             || Xoshiro256Plus::from_entropy(),
-//             Xoshiro256Plus::seed_from_u64,
-//         );
-
-//         let process = self.prior_process.unwrap_or_else(|| {
-//             Process::Dirichlet(Dirichlet::from_prior(
-//                 lace_consts::general_alpha_prior(),
-//                 &mut rng,
-//             ))
-//         });
-
-//         let n = self.n;
-//         let asgn = self
-//             .asgn
-//             .unwrap_or_else(|| process.draw_assignment(n, &mut rng).asgn);
-
-//         let n_cats: usize = asgn.iter().max().map(|&m| m + 1).unwrap_or(0);
-//         let mut counts: Vec<usize> = vec![0; n_cats];
-//         for z in &asgn {
-//             counts[*z] += 1;
-//         }
-
-//         let asgn_out = Assignment {
-//             asgn,
-//             counts,
-//             n_cats,
-//         };
-
-//         if lace_stats::validate_assignment!(asgn_out) {
-//             Ok(asgn_out)
-//         } else {
-//             asgn_out
-//                 .validate()
-//                 .emit_error()
-//                 .map_err(BuildAssignmentError::AssignmentError)
-//                 .map(|_| asgn_out)
-//         }
-//     }
-// }
-
 pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let k: f64 = cts.len() as f64;
     let gsum = cts.iter().fold(0.0, |acc, ct| {
@@ -473,7 +336,7 @@ fn ln_py_bracket(x: f64, m: usize, alpha: f64) -> f64 {
         return 0.0;
     }
     (1..=m)
-        .map(|m_i| (x + (m_i as f64 - 1.0) * alpha).ln())
+        .map(|m_i| (m_i as f64 - 1.0).mul_add(alpha, x).ln())
         .sum::<f64>()
 }
 
@@ -481,7 +344,7 @@ fn ln_py_bracket(x: f64, m: usize, alpha: f64) -> f64 {
 /// Pitman, Jim. "Exchangeable and partially exchangeable random partitions."
 ///   Probability theory and related fields 102.2 (1995): 145-158.
 ///   https://www.stat.berkeley.edu/~aldous/206-Exch/Papers/pitman95a.pdf
-pub fn lpyp(n: usize, cts: &[usize], alpha: f64, d: f64) -> f64 {
+pub fn lpyp(cts: &[usize], alpha: f64, d: f64) -> f64 {
     let k = cts.len();
     let n = cts.iter().copied().sum::<usize>();
     let term_a = ln_py_bracket(alpha + d, k - 1, d);
@@ -490,16 +353,7 @@ pub fn lpyp(n: usize, cts: &[usize], alpha: f64, d: f64) -> f64 {
         .iter()
         .map(|&ct_i| ln_py_bracket(1.0 - d, ct_i - 1, 1.0))
         .sum::<f64>();
-    let ln_f = term_a - term_b + term_c;
-
-    // if !ln_f.is_finite() {
-    //     eprintln!("PYP:\na: {alpha}\nd: {d}\ncounts: {cts:?}");
-    //     eprintln!("ta: {term_a}");
-    //     eprintln!("tb: {term_b}");
-    //     eprintln!("tc: {term_c}");
-    // }
-
-    ln_f
+    term_a - term_b + term_c
 }
 
 #[cfg(test)]

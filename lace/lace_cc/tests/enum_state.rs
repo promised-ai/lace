@@ -20,7 +20,6 @@ use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::state::State;
 use lace_cc::transition::StateTransition;
 use lace_cc::view::{Builder, View};
-use lace_stats::assignment::lcrp;
 use lace_stats::prior_process::Builder as PriorProcessBuilder;
 use lace_stats::prior_process::{
     Dirichlet, PitmanYor, PriorProcessT, PriorProcessType, Process,

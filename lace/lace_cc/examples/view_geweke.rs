@@ -23,7 +23,7 @@ struct Opt {
     pub no_priors: bool,
     #[clap(long)]
     pub pitman_yor: bool,
-    #[clap(long, short, default_value = "10000")]
+    #[clap(long, short = 'i', default_value = "10000")]
     pub niters: usize,
 }
 
