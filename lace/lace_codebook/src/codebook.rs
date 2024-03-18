@@ -786,8 +786,8 @@ mod tests {
                   !Categorical
                     k: 2
                     value_map: !u8 2
-            state_alpha_prior: ~
-            view_alpha_prior: ~
+            state_prior_process: ~
+            view_prior_process: ~
             comments: ~
             row_names:
                 - one
@@ -819,8 +819,8 @@ mod tests {
                 coltype:
                   !Categorical
                     k: 2
-            state_alpha_prior: ~
-            view_alpha_prior: ~
+            state_prior_process: ~
+            view_prior_process: ~
             comments: ~
             row_names:
                 - one
@@ -835,8 +835,8 @@ mod tests {
     fn serialize_metadata_list() {
         let codebook = Codebook {
             table_name: "my-table".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
+            state_prior_process: None,
+            view_prior_process: None,
             comments: None,
             row_names: RowNameList::new(),
             col_metadata: ColMetadataList::try_from(vec![
@@ -879,8 +879,8 @@ mod tests {
         let raw = indoc!(
             r#"
             table_name: my-table
-            state_alpha_prior: null
-            view_alpha_prior: null
+            state_prior_process: null
+            view_prior_process: null
             col_metadata:
             - name: one
               coltype: !Continuous
@@ -916,8 +916,8 @@ mod tests {
     fn serialize_then_deserialize() {
         let codebook = Codebook {
             table_name: "my-table".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
+            state_prior_process: None,
+            view_prior_process: None,
             comments: None,
             row_names: RowNameList::new(),
             col_metadata: ColMetadataList::try_from(vec![

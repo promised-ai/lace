@@ -19,7 +19,7 @@ fn main() {
     // println!("t_old: {}s", t_old.as_secs_f64());
 
     let now = Instant::now();
-    let _codebook = csv_new(path, None, None, true);
+    let _codebook = csv_new(path, None, None, None, true);
     let t_new = now.elapsed();
 
     println!("t_new: {}s", t_new.as_secs_f64());
