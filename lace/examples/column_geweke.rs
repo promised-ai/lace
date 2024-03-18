@@ -1,5 +1,6 @@
 use lace::prelude::*;
 use lace_geweke::*;
+use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
@@ -18,7 +19,7 @@ fn main() {
         ViewTransition::PriorProcessParams,
         ViewTransition::RowAssignment(RowAssignAlg::Slice),
     ];
-    let asgn = AssignmentBuilder::new(10).flat().build().unwrap();
+    let asgn = AssignmentBuilder::new(10).flat().build().unwrap().asgn;
 
     let settings = ColumnGewekeSettings::new(asgn, transitions);
 

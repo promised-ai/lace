@@ -6,11 +6,12 @@ use std::f64::consts::LN_2;
 use lace_cc::component::ConjugateComponent;
 use lace_cc::feature::{Column, Feature};
 use lace_data::SparseContainer;
-use lace_stats::assignment::{Assignment, Builder};
+use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
+    Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
 use lace_stats::rv::traits::Rv;
 use rand::Rng;
@@ -67,7 +68,7 @@ fn three_component_column() -> GaussCol {
 #[test]
 fn feature_with_flat_assign_should_have_one_component() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build().unwrap();
+    let asgn = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
 
     let col = gauss_fixture(&mut rng, &asgn);
 
@@ -78,7 +79,7 @@ fn feature_with_flat_assign_should_have_one_component() {
 fn feature_with_random_assign_should_have_k_component() {
     let mut rng = rand::thread_rng();
     for _ in 0..50 {
-        let asgn = AssignmentBuilder::new(5).build().unwrap();
+        let asgn = AssignmentBuilder::new(5).build().unwrap().asgn;
         let col = gauss_fixture(&mut rng, &asgn);
 
         assert_eq!(col.components.len(), asgn.n_cats);
@@ -90,7 +91,7 @@ fn feature_with_random_assign_should_have_k_component() {
 #[test]
 fn append_empty_component_appends_one() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build().unwrap();
+    let asgn = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let mut col = gauss_fixture(&mut rng, &asgn);
 
     assert_eq!(col.components.len(), 1);
@@ -103,13 +104,11 @@ fn append_empty_component_appends_one() {
 #[test]
 fn reassign_to_more_components() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap();
+    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let asgn_b = Assignment {
-        alpha: 1.0,
         asgn: vec![0, 0, 0, 1, 1],
         counts: vec![3, 2],
         n_cats: 2,
-        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let mut col = gauss_fixture(&mut rng, &asgn_a);
@@ -237,13 +236,11 @@ fn gauss_accum_scores_2_cats_no_missing() {
 #[test]
 fn asgn_score_under_asgn_gaussian_magnitude() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap();
+    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let asgn_b = Assignment {
-        alpha: 1.0,
         asgn: vec![0, 0, 0, 1, 1],
         counts: vec![3, 2],
         n_cats: 2,
-        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let col = gauss_fixture(&mut rng, &asgn_a);
@@ -339,13 +336,11 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
 #[test]
 fn asgn_score_under_asgn_cat_u8_magnitude() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap();
+    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let asgn_b = Assignment {
-        alpha: 1.0,
         asgn: vec![0, 1, 1, 0, 1],
         counts: vec![2, 3],
         n_cats: 2,
-        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let col = categorical_fixture_u8(&mut rng, &asgn_a);
@@ -364,9 +359,9 @@ fn asgn_score_under_asgn_cat_u8_magnitude() {
 // Gaussian
 // --------
 #[test]
-fn update_componet_params_should_draw_different_values_for_gaussian() {
+fn update_component_params_should_draw_different_values_for_gaussian() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build().unwrap();
+    let asgn = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let mut col = gauss_fixture(&mut rng, &asgn);
 
     let cpnt_a = col.components[0].clone();
@@ -390,7 +385,7 @@ fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
 
         let mut col = Column::new(0, data, prior, hyper.clone());
 
-        let asgn = AssignmentBuilder::new(n).flat().build().unwrap();
+        let asgn = AssignmentBuilder::new(n).flat().build().unwrap().asgn;
         let asgn_score = col.asgn_score(&asgn);
         col.reassign(&asgn, &mut rng);
 
