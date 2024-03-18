@@ -505,7 +505,7 @@ mod test {
         let file = write_to_tempfile(&data);
 
         let codebook =
-            codebook_from_csv(file.path(), None, None, false).unwrap();
+            codebook_from_csv(file.path(), None, None, None, false).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);

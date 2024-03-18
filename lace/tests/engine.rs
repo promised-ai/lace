@@ -55,7 +55,7 @@ fn loaded_engine_should_have_same_rng_state() {
     engine_2.run(5).unwrap();
 
     for (s1, s2) in engine_1.states.iter().zip(engine_2.states.iter()) {
-        assert_eq!(s1.asgn.asgn, s2.asgn.asgn);
+        assert_eq!(s1.asgn.asgn(), s2.asgn.asgn());
     }
 }
 

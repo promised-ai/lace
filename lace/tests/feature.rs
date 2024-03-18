@@ -3,10 +3,10 @@ extern crate approx;
 
 use std::f64::consts::LN_2;
 
-use lace_cc::assignment::{Assignment, AssignmentBuilder};
 use lace_cc::component::ConjugateComponent;
 use lace_cc::feature::{Column, Feature};
 use lace_data::SparseContainer;
+use lace_stats::assignment::{Assignment, Builder};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::rv::dist::{

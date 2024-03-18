@@ -359,17 +359,17 @@ pub fn lpyp(cts: &[usize], alpha: f64, d: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prior_process::Builder as AssignmentBuilder;
+    use crate::prior_process::{Dirichlet, Process};
     use crate::rv::dist::Gamma;
     use approx::*;
 
     #[test]
     fn zero_count_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
             n_cats: 1,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -388,11 +388,9 @@ mod tests {
     #[test]
     fn bad_counts_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
             n_cats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -411,11 +409,9 @@ mod tests {
     #[test]
     fn low_n_cats_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             n_cats: 1,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -434,11 +430,9 @@ mod tests {
     #[test]
     fn high_n_cats_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             n_cats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -457,11 +451,9 @@ mod tests {
     #[test]
     fn no_zero_cat_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
             n_cats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -483,29 +475,34 @@ mod tests {
 
         // do the test 100 times because it's random
         for _ in 0..100 {
-            let asgn = AssignmentBuilder::new(n).build().unwrap();
+            let asgn = AssignmentBuilder::new(n).build().unwrap().asgn;
             assert!(asgn.validate().is_valid());
         }
     }
 
     #[test]
-    fn from_prior_should_have_valid_alpha_and_proper_length() {
+    fn from_prior_process_should_have_valid_alpha_and_proper_length() {
         let n: usize = 50;
+        let mut rng = rand::thread_rng();
+        let process = Process::Dirichlet(Dirichlet::from_prior(
+            Gamma::new(1.0, 1.0).unwrap(),
+            &mut rng,
+        ));
         let asgn = AssignmentBuilder::new(n)
-            .with_prior(Gamma::new(1.0, 1.0).unwrap())
+            .with_process(process)
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
 
         assert!(!asgn.is_empty());
         assert_eq!(asgn.len(), n);
         assert!(asgn.validate().is_valid());
-        assert!(asgn.alpha > 0.0);
     }
 
     #[test]
     fn flat_partition_validation() {
         let n: usize = 50;
-        let asgn = AssignmentBuilder::new(n).flat().build().unwrap();
+        let asgn = AssignmentBuilder::new(n).flat().build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 1);
         assert_eq!(asgn.counts.len(), 1);
@@ -516,7 +513,7 @@ mod tests {
     #[test]
     fn from_vec() {
         let z = vec![0, 1, 2, 0, 1, 0];
-        let asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts[0], 3);
         assert_eq!(asgn.counts[1], 2);
@@ -529,7 +526,8 @@ mod tests {
             .with_n_cats(5)
             .expect("Whoops!")
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.n_cats, 5);
         assert_eq!(asgn.counts[0], 20);
@@ -545,7 +543,8 @@ mod tests {
             .with_n_cats(5)
             .expect("Whoops!")
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.n_cats, 5);
         assert_eq!(asgn.counts[0], 21);
@@ -640,7 +639,7 @@ mod tests {
     #[test]
     fn unassign_non_singleton() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -655,7 +654,7 @@ mod tests {
     #[test]
     fn unassign_singleton_low() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -670,7 +669,7 @@ mod tests {
     #[test]
     fn unassign_singleton_high() {
         let z: Vec<usize> = vec![0, 0, 1, 1, 1, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![2, 3, 1]);
@@ -685,7 +684,7 @@ mod tests {
     #[test]
     fn unassign_singleton_middle() {
         let z: Vec<usize> = vec![0, 0, 1, 2, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![2, 1, 3]);
@@ -700,7 +699,7 @@ mod tests {
     #[test]
     fn reassign_to_existing_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -721,7 +720,7 @@ mod tests {
     #[test]
     fn reassign_to_new_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -768,13 +767,22 @@ mod tests {
 
     #[test]
     fn from_rng_seed_control_works() {
-        let mut rng_1 = Xoshiro256Plus::seed_from_u64(17_834_795);
-        let mut rng_2 = Xoshiro256Plus::seed_from_u64(17_834_795);
-        let asgn_1 =
-            AssignmentBuilder::new(25).seed_from_rng(&mut rng_1).build();
-        let asgn_2 =
-            AssignmentBuilder::new(25).seed_from_rng(&mut rng_2).build();
-        let asgn_3 = AssignmentBuilder::new(25).build();
+        use rand::rngs::SmallRng;
+        use rand::SeedableRng;
+
+        let mut rng_1 = SmallRng::seed_from_u64(17_834_795);
+        let mut rng_2 = SmallRng::seed_from_u64(17_834_795);
+        let asgn_1 = AssignmentBuilder::new(25)
+            .seed_from_rng(&mut rng_1)
+            .build()
+            .unwrap()
+            .asgn;
+        let asgn_2 = AssignmentBuilder::new(25)
+            .seed_from_rng(&mut rng_2)
+            .build()
+            .unwrap()
+            .asgn;
+        let asgn_3 = AssignmentBuilder::new(25).build().unwrap().asgn;
         assert_eq!(asgn_1, asgn_2);
         assert_ne!(asgn_1, asgn_3);
     }
