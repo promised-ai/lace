@@ -299,11 +299,12 @@ impl Assignment {
     /// # Example
     ///
     /// ```
-    /// # use lace_cc::assignment::AssignmentBuilder;
+    /// # use lace_stats::prior_process::Builder;
     ///
-    /// let mut assignment = AssignmentBuilder::from_vec(vec![0, 0, 1])
+    /// let mut assignment = Builder::from_vec(vec![0, 0, 1])
     ///     .build()
-    ///     .unwrap();
+    ///     .unwrap()
+    ///     .asgn;
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1]);
     ///
@@ -555,79 +556,6 @@ mod tests {
     }
 
     #[test]
-    fn dirvec_with_alpha_1() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.0)
-            .build()
-            .unwrap();
-        let dv = asgn.dirvec(false);
-
-        assert_eq!(dv.len(), 3);
-        assert_relative_eq!(dv[0], 3.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[1], 2.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[2], 1.0, epsilon = 10E-10);
-    }
-
-    #[test]
-    fn dirvec_with_alpha_15() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.5)
-            .build()
-            .unwrap();
-        let dv = asgn.dirvec(true);
-
-        assert_eq!(dv.len(), 4);
-        assert_relative_eq!(dv[0], 3.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[1], 2.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[2], 1.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[3], 1.5, epsilon = 10E-10);
-    }
-
-    #[test]
-    fn log_dirvec_with_alpha_1() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.0)
-            .build()
-            .unwrap();
-        let ldv = asgn.log_dirvec(false);
-
-        assert_eq!(ldv.len(), 3);
-        assert_relative_eq!(ldv[0], 3.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[1], 2.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[2], 1.0_f64.ln(), epsilon = 10E-10);
-    }
-
-    #[test]
-    fn log_dirvec_with_alpha_15() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.5)
-            .build()
-            .unwrap();
-
-        let ldv = asgn.log_dirvec(true);
-
-        assert_eq!(ldv.len(), 4);
-        assert_relative_eq!(ldv[0], 3.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[1], 2.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[2], 1.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[3], 1.5_f64.ln(), epsilon = 10E-10);
-    }
-
-    #[test]
-    fn weights() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.0)
-            .build()
-            .unwrap();
-        let weights = asgn.weights();
-
-        assert_eq!(weights.len(), 3);
-        assert_relative_eq!(weights[0], 3.0 / 6.0, epsilon = 10E-10);
-        assert_relative_eq!(weights[1], 2.0 / 6.0, epsilon = 10E-10);
-        assert_relative_eq!(weights[2], 1.0 / 6.0, epsilon = 10E-10);
-    }
-
-    #[test]
     fn lcrp_all_ones() {
         let lcrp_1 = lcrp(4, &[1, 1, 1, 1], 1.0);
         assert_relative_eq!(lcrp_1, -3.178_053_830_347_95, epsilon = 10E-8);
@@ -739,28 +667,18 @@ mod tests {
     }
 
     #[test]
-    fn dirvec_with_unassigned_entry() {
-        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z)
-            .with_alpha(1.0)
-            .build()
-            .unwrap();
-
-        asgn.unassign(5);
-
-        let dv = asgn.dirvec(false);
-
-        assert_eq!(dv.len(), 3);
-        assert_relative_eq!(dv[0], 1.0, epsilon = 10e-10);
-        assert_relative_eq!(dv[1], 3.0, epsilon = 10e-10);
-        assert_relative_eq!(dv[2], 1.0, epsilon = 10e-10);
-    }
-
-    #[test]
     fn manual_seed_control_works() {
-        let asgn_1 = AssignmentBuilder::new(25).with_seed(17_834_795).build();
-        let asgn_2 = AssignmentBuilder::new(25).with_seed(17_834_795).build();
-        let asgn_3 = AssignmentBuilder::new(25).build();
+        let asgn_1 = AssignmentBuilder::new(50)
+            .with_seed(17_834_795)
+            .build()
+            .unwrap()
+            .asgn;
+        let asgn_2 = AssignmentBuilder::new(50)
+            .with_seed(17_834_795)
+            .build()
+            .unwrap()
+            .asgn;
+        let asgn_3 = AssignmentBuilder::new(50).build().unwrap().asgn;
         assert_eq!(asgn_1, asgn_2);
         assert_ne!(asgn_1, asgn_3);
     }
@@ -772,17 +690,17 @@ mod tests {
 
         let mut rng_1 = SmallRng::seed_from_u64(17_834_795);
         let mut rng_2 = SmallRng::seed_from_u64(17_834_795);
-        let asgn_1 = AssignmentBuilder::new(25)
+        let asgn_1 = AssignmentBuilder::new(50)
             .seed_from_rng(&mut rng_1)
             .build()
             .unwrap()
             .asgn;
-        let asgn_2 = AssignmentBuilder::new(25)
+        let asgn_2 = AssignmentBuilder::new(50)
             .seed_from_rng(&mut rng_2)
             .build()
             .unwrap()
             .asgn;
-        let asgn_3 = AssignmentBuilder::new(25).build().unwrap().asgn;
+        let asgn_3 = AssignmentBuilder::new(50).build().unwrap().asgn;
         assert_eq!(asgn_1, asgn_2);
         assert_ne!(asgn_1, asgn_3);
     }

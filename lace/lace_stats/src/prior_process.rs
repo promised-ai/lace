@@ -590,6 +590,7 @@ impl Builder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::*;
 
     const TOL: f64 = 1E-12;
 
@@ -611,21 +612,124 @@ mod tests {
         }
 
         #[test]
-        fn should_return_error_for_zero_u_star() {
-            let mut rng = rand::thread_rng();
-            let weights_in: Vec<f64> = vec![0.8, 0.2];
-            let u_star = 0.0;
-            let res = sb_slice_extend(weights_in, 1.0, 0.0, u_star, &mut rng);
-            assert!(res.is_err());
-        }
-
-        #[test]
         fn smoke() {
             let mut rng = rand::thread_rng();
             let weights_in: Vec<f64> = vec![0.8, 0.2];
             let u_star = 0.1;
             let res = sb_slice_extend(weights_in, 1.0, 0.0, u_star, &mut rng);
             assert!(res.is_ok());
+        }
+    }
+
+    mod build {
+        use super::*;
+
+        fn dir_process(alpha: f64) -> Process {
+            let inner = Dirichlet {
+                alpha,
+                prior: Gamma::default(),
+            };
+            Process::Dirichlet(inner)
+        }
+
+        #[test]
+        fn dirvec_with_alpha_1() {
+            let proc = Builder::from_vec(vec![0, 1, 2, 0, 1, 0])
+                .with_process(dir_process(1.0))
+                .build()
+                .unwrap();
+            let dv = proc.weight_vec_unnormed(false);
+
+            assert_eq!(dv.len(), 3);
+            assert_relative_eq!(dv[0], 3.0, epsilon = 10E-10);
+            assert_relative_eq!(dv[1], 2.0, epsilon = 10E-10);
+            assert_relative_eq!(dv[2], 1.0, epsilon = 10E-10);
+        }
+
+        #[test]
+        fn dirvec_with_alpha_15() {
+            let proc = Builder::from_vec(vec![0, 1, 2, 0, 1, 0])
+                .with_process(dir_process(1.5))
+                .build()
+                .unwrap();
+            let dv = proc.weight_vec_unnormed(true);
+
+            assert_eq!(dv.len(), 4);
+            assert_relative_eq!(dv[0], 3.0, epsilon = 10E-10);
+            assert_relative_eq!(dv[1], 2.0, epsilon = 10E-10);
+            assert_relative_eq!(dv[2], 1.0, epsilon = 10E-10);
+            assert_relative_eq!(dv[3], 1.5, epsilon = 10E-10);
+        }
+
+        #[test]
+        fn log_dirvec_with_alpha_1() {
+            let proc = Builder::from_vec(vec![0, 1, 2, 0, 1, 0])
+                .with_process(dir_process(1.0))
+                .build()
+                .unwrap();
+
+            let ldv = (0..3)
+                .map(|k| proc.process.ln_gibbs_weight(proc.asgn.counts[k]))
+                .collect::<Vec<f64>>();
+
+            assert_eq!(ldv.len(), 3);
+            assert_relative_eq!(ldv[0], 3.0_f64.ln(), epsilon = 10E-10);
+            assert_relative_eq!(ldv[1], 2.0_f64.ln(), epsilon = 10E-10);
+            assert_relative_eq!(ldv[2], 1.0_f64.ln(), epsilon = 10E-10);
+        }
+
+        #[test]
+        fn log_dirvec_with_alpha_15() {
+            let proc = Builder::from_vec(vec![0, 1, 2, 0, 1, 0])
+                .with_process(dir_process(1.5))
+                .build()
+                .unwrap();
+
+            let ldv = (0..3)
+                .map(|k| proc.process.ln_gibbs_weight(proc.asgn.counts[k]))
+                .chain(std::iter::once_with(|| {
+                    proc.process.ln_singleton_weight(3)
+                }))
+                .collect::<Vec<f64>>();
+
+            assert_eq!(ldv.len(), 4);
+            assert_relative_eq!(ldv[0], 3.0_f64.ln(), epsilon = 10E-10);
+            assert_relative_eq!(ldv[1], 2.0_f64.ln(), epsilon = 10E-10);
+            assert_relative_eq!(ldv[2], 1.0_f64.ln(), epsilon = 10E-10);
+            assert_relative_eq!(ldv[3], 1.5_f64.ln(), epsilon = 10E-10);
+        }
+
+        #[test]
+        fn weights() {
+            let proc = Builder::from_vec(vec![0, 1, 2, 0, 1, 0])
+                .with_process(dir_process(1.0))
+                .build()
+                .unwrap();
+
+            let weights = proc.weight_vec(false);
+
+            assert_eq!(weights.len(), 3);
+            assert_relative_eq!(weights[0], 3.0 / 6.0, epsilon = 10E-10);
+            assert_relative_eq!(weights[1], 2.0 / 6.0, epsilon = 10E-10);
+            assert_relative_eq!(weights[2], 1.0 / 6.0, epsilon = 10E-10);
+        }
+
+        #[test]
+        fn dirvec_with_unassigned_entry() {
+            let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
+            let mut proc = Builder::from_vec(z)
+                .with_process(dir_process(1.0))
+                .build()
+                .unwrap();
+
+            proc.asgn.unassign(5);
+
+            let dv = proc.weight_vec_unnormed(false);
+
+            assert_eq!(dv.len(), 3);
+            assert_relative_eq!(dv[0], 1.0, epsilon = 10e-10);
+            assert_relative_eq!(dv[1], 3.0, epsilon = 10e-10);
+            assert_relative_eq!(dv[2], 1.0, epsilon = 10e-10);
         }
     }
 }
