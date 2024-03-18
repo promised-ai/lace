@@ -93,7 +93,7 @@ fn state_from_partition<R: Rng>(
         .map(|zr| {
             let process = Process::Dirichlet(Dirichlet {
                 alpha: 1.0,
-                prior: Gamma::default(),
+                alpha_prior: Gamma::default(),
             });
 
             // NOTE: We don't need seed control here because both alpha and the
@@ -120,7 +120,7 @@ fn state_from_partition<R: Rng>(
         PriorProcessBuilder::from_vec(partition.col_partition.clone())
             .with_process(Process::Dirichlet(Dirichlet {
                 alpha: 1.0,
-                prior: Gamma::default(),
+                alpha_prior: Gamma::default(),
             }))
             .seed_from_rng(&mut rng)
             .build()
@@ -133,13 +133,13 @@ fn emit_process(proc_type: PriorProcessType) -> Process {
     match proc_type {
         PriorProcessType::Dirichlet => Process::Dirichlet(Dirichlet {
             alpha: 1.0,
-            prior: Gamma::default(),
+            alpha_prior: Gamma::default(),
         }),
         PriorProcessType::PitmanYor => Process::PitmanYor(PitmanYor {
             alpha: 1.2,
             d: 0.2,
-            prior_alpha: Gamma::default(),
-            prior_d: Beta::jeffreys(),
+            alpha_prior: Gamma::default(),
+            d_prior: Beta::jeffreys(),
         }),
     }
 }

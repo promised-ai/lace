@@ -158,7 +158,7 @@ impl From<v1::Assignment> for PriorProcess {
             },
             process: Process::Dirichlet(lace_stats::prior_process::Dirichlet {
                 alpha: asgn.alpha,
-                prior: asgn.prior,
+                alpha_prior: asgn.prior,
             }),
         }
     }

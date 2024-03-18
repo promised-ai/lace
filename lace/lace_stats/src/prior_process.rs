@@ -37,16 +37,17 @@ pub trait PriorProcessT {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename = "snake_case")]
 pub struct Dirichlet {
     pub alpha: f64,
-    pub prior: Gamma,
+    pub alpha_prior: Gamma,
 }
 
 impl Dirichlet {
-    pub fn from_prior<R: Rng>(prior: Gamma, rng: &mut R) -> Self {
+    pub fn from_prior<R: Rng>(alpha_prior: Gamma, rng: &mut R) -> Self {
         Self {
-            alpha: prior.draw(rng),
-            prior,
+            alpha: alpha_prior.draw(rng),
+            alpha_prior,
         }
     }
 }
@@ -126,7 +127,7 @@ impl PriorProcessT for Dirichlet {
         let cts = &asgn.counts;
         let n: usize = asgn.len();
         let loglike = |alpha: &f64| crate::assignment::lcrp(n, cts, *alpha);
-        let prior_ref = &self.prior;
+        let prior_ref = &self.alpha_prior;
         let prior_draw = |rng: &mut R| prior_ref.draw(rng);
         let mh_result =
             crate::mh::mh_prior(self.alpha, loglike, prior_draw, 100, rng);
@@ -135,7 +136,7 @@ impl PriorProcessT for Dirichlet {
     }
 
     fn reset_params<R: Rng>(&mut self, rng: &mut R) {
-        self.alpha = self.prior.draw(rng);
+        self.alpha = self.alpha_prior.draw(rng);
     }
 
     fn ln_f_partition(&self, asgn: &Assignment) -> f64 {
@@ -144,24 +145,25 @@ impl PriorProcessT for Dirichlet {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename = "snake_case")]
 pub struct PitmanYor {
     pub alpha: f64,
     pub d: f64,
-    pub prior_alpha: Gamma,
-    pub prior_d: Beta,
+    pub alpha_prior: Gamma,
+    pub d_prior: Beta,
 }
 
 impl PitmanYor {
     pub fn from_prior<R: Rng>(
-        prior_alpha: Gamma,
-        prior_d: Beta,
+        alpha_prior: Gamma,
+        d_prior: Beta,
         rng: &mut R,
     ) -> Self {
         Self {
-            alpha: prior_alpha.draw(rng),
-            d: prior_d.draw(rng),
-            prior_alpha,
-            prior_d,
+            alpha: alpha_prior.draw(rng),
+            d: d_prior.draw(rng),
+            alpha_prior,
+            d_prior,
         }
     }
 }
@@ -242,7 +244,7 @@ impl PriorProcessT for PitmanYor {
         let ln_f_alpha = {
             let loglike =
                 |alpha: &f64| crate::assignment::lpyp(cts, *alpha, self.d);
-            let prior_ref = &self.prior_alpha;
+            let prior_ref = &self.alpha_prior;
             let prior_draw = |rng: &mut R| prior_ref.draw(rng);
             let mh_result =
                 crate::mh::mh_prior(self.alpha, loglike, prior_draw, 100, rng);
@@ -253,7 +255,7 @@ impl PriorProcessT for PitmanYor {
         let ln_f_d = {
             let loglike =
                 |d: &f64| crate::assignment::lpyp(cts, self.alpha, *d);
-            let prior_ref = &self.prior_d;
+            let prior_ref = &self.d_prior;
             let prior_draw = |rng: &mut R| prior_ref.draw(rng);
             let mh_result =
                 crate::mh::mh_prior(self.d, loglike, prior_draw, 100, rng);
@@ -265,8 +267,8 @@ impl PriorProcessT for PitmanYor {
     }
 
     fn reset_params<R: Rng>(&mut self, rng: &mut R) {
-        self.alpha = self.prior_alpha.draw(rng);
-        self.d = self.prior_d.draw(rng);
+        self.alpha = self.alpha_prior.draw(rng);
+        self.d = self.d_prior.draw(rng);
     }
 
     fn ln_f_partition(&self, asgn: &Assignment) -> f64 {
@@ -275,6 +277,7 @@ impl PriorProcessT for PitmanYor {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum Process {
     Dirichlet(Dirichlet),
     PitmanYor(PitmanYor),
@@ -352,7 +355,7 @@ impl Default for Process {
     fn default() -> Self {
         Self::Dirichlet(Dirichlet {
             alpha: 1.0,
-            prior: lace_consts::general_alpha_prior(),
+            alpha_prior: lace_consts::general_alpha_prior(),
         })
     }
 }
@@ -627,7 +630,7 @@ mod tests {
         fn dir_process(alpha: f64) -> Process {
             let inner = Dirichlet {
                 alpha,
-                prior: Gamma::default(),
+                alpha_prior: Gamma::default(),
             };
             Process::Dirichlet(inner)
         }

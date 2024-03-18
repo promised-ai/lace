@@ -12,7 +12,7 @@ mod partition {
 
     fn crp_draw<R: rand::Rng>(n: usize, alpha: f64, rng: &mut R) -> Assignment {
         let process = Dirichlet {
-            prior: Gamma::default(), // doesn't matter here,
+            alpha_prior: Gamma::default(), // doesn't matter here,
             alpha,
         };
         process.draw_assignment(n, rng)

@@ -1089,7 +1089,7 @@ fn view_geweke_asgn<R: Rng>(
             } else {
                 Dirichlet {
                     alpha: 1.0,
-                    prior: geweke_alpha_prior(),
+                    alpha_prior: geweke_alpha_prior(),
                 }
             };
             Process::Dirichlet(inner)
@@ -1107,8 +1107,8 @@ fn view_geweke_asgn<R: Rng>(
                 PitmanYor {
                     alpha: 1.0,
                     d: 0.2,
-                    prior_alpha: geweke_alpha_prior(),
-                    prior_d: Beta::jeffreys(),
+                    alpha_prior: geweke_alpha_prior(),
+                    d_prior: Beta::jeffreys(),
                 }
             };
             Process::PitmanYor(inner)

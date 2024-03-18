@@ -722,7 +722,7 @@ mod tests {
         let asgn = Builder::new(5)
             .with_process(Process::Dirichlet(Dirichlet {
                 alpha: 1.0,
-                prior: Gamma::default(),
+                alpha_prior: Gamma::default(),
             }))
             .flat()
             .build()
@@ -743,7 +743,7 @@ mod tests {
         let asgn = Builder::new(5)
             .with_process(Process::Dirichlet(Dirichlet {
                 alpha: 1.0,
-                prior: Gamma::default(),
+                alpha_prior: Gamma::default(),
             }))
             .flat()
             .build()

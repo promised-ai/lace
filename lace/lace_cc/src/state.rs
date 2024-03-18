@@ -1331,7 +1331,7 @@ impl GewekeModel for State {
                 ))
             } else {
                 Process::Dirichlet(PDirichlet {
-                    prior: geweke_alpha_prior(),
+                    alpha_prior: geweke_alpha_prior(),
                     alpha: 1.0,
                 })
             };
@@ -1364,7 +1364,7 @@ impl GewekeModel for State {
                     ))
                 } else {
                     Process::Dirichlet(PDirichlet {
-                        prior: geweke_alpha_prior(),
+                        alpha_prior: geweke_alpha_prior(),
                         alpha: 1.0,
                     })
                 };
