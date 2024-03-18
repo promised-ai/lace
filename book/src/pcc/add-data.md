@@ -1,6 +1,6 @@
 # Adding data to a model
 
-Lace allow you to add and edit data without having to completely re-train.
+Lace allows you to add and edit data without having to completely re-train.
 
 You can edit existing cells,
 

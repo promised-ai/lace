@@ -16,6 +16,7 @@
     - [Data Simulation](./pcc/simulate.md)
     - [In- and out-of-table operations](./pcc/inouttable.md)
     - [Adding data to a model](./pcc/add-data.md)
+    - [Missing and missing-not-at-random data](./pcc/mnar.md)
 - [Preparing your data](./data/basics.md)
 - [Codebook reference](./codebook-ref.md)
 - [Appendix](./appendix/appendix.md)
