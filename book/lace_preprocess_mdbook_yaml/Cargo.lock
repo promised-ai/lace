@@ -1019,7 +1019,7 @@ dependencies = [
 
 [[package]]
 name = "lace_codebook"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "lace_consts",
  "lace_data",
@@ -1040,7 +1040,7 @@ dependencies = [
 
 [[package]]
 name = "lace_data"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lace_utils",
  "serde",
@@ -1068,7 +1068,7 @@ dependencies = [
 
 [[package]]
 name = "lace_stats"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "itertools",
  "lace_consts",
@@ -1082,9 +1082,10 @@ dependencies = [
 
 [[package]]
 name = "lace_utils"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "rand",
+ "rayon",
 ]
 
 [[package]]
@@ -2200,14 +2201,15 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
 name = "rv"
-version = "0.16.2"
+version = "0.16.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ad4c180111696893363158f59ee1b15500947365270b7460a432fc207f926bf"
+checksum = "c07e0a3b756794c7ea2f05d93760ffb946ff4f94b255d92444d94c19fd71f4ab"
 dependencies = [
  "doc-comment",
  "lru",
  "nalgebra",
  "num",
+ "num-traits",
  "peroxide",
  "rand",
  "rand_distr",
