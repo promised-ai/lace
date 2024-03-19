@@ -2630,7 +2630,7 @@ mod prior_in_codebook {
     use lace_cc::feature::ColModel;
     use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
     use lace_stats::prior::nix::NixHyper;
-    use lace_stats::rv::dist::{Gamma, NormalInvChiSquared};
+    use lace_stats::rv::dist::NormalInvChiSquared;
     use lace_stats::rv::traits::Rv;
     use std::convert::TryInto;
     use std::io::Write;
@@ -2691,12 +2691,12 @@ mod prior_in_codebook {
             "
         ---
         table_name: table
-        state_alpha_prior:
-            !Gamma
+        state_prior_process: !dirichlet
+            alpha_prior:
                 shape: 1.0
                 rate: 1.0
-        view_alpha_prior:
-            !Gamma
+        view_prior_process: !dirichlet
+            alpha_prior:
                 shape: 1.0
                 rate: 1.0
         col_metadata:

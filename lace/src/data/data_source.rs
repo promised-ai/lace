@@ -148,19 +148,19 @@ impl DataSource {
         use crate::codebook::{data, formats};
         let codebook = match &self {
             DataSource::Ipc(path) => {
-                formats::codebook_from_ipc(path, None, None, false)
+                formats::codebook_from_ipc(path, None, None, None, false)
             }
             DataSource::Csv(path) => {
-                formats::codebook_from_csv(path, None, None, false)
+                formats::codebook_from_csv(path, None, None, None, false)
             }
             DataSource::Json(path) => {
-                formats::codebook_from_json(path, None, None, false)
+                formats::codebook_from_json(path, None, None, None, false)
             }
             DataSource::Parquet(path) => {
-                formats::codebook_from_parquet(path, None, None, false)
+                formats::codebook_from_parquet(path, None, None, None, false)
             }
             DataSource::Polars(df) => {
-                data::df_to_codebook(df, None, None, false)
+                data::df_to_codebook(df, None, None, None, false)
             }
             DataSource::Empty => Ok(Codebook::default()),
         }?;
