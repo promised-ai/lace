@@ -52,6 +52,12 @@ impl Dirichlet {
     }
 }
 
+impl std::fmt::Display for Dirichlet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Dirichlet(α({}) ~ {})", self.alpha, self.alpha_prior)
+    }
+}
+
 impl PriorProcessT for Dirichlet {
     fn ln_gibbs_weight(&self, n_k: usize) -> f64 {
         (n_k as f64).ln()
@@ -151,6 +157,16 @@ pub struct PitmanYor {
     pub d: f64,
     pub alpha_prior: Gamma,
     pub d_prior: Beta,
+}
+
+impl std::fmt::Display for PitmanYor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Pitman-Yor(α({}) ~ {}, d({}) ~ {})",
+            self.alpha, self.alpha_prior, self.d, self.d_prior
+        )
+    }
 }
 
 impl PitmanYor {

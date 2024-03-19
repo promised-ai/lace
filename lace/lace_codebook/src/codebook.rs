@@ -352,6 +352,22 @@ pub enum PriorProcess {
     PitmanYor { alpha_prior: Gamma, d_prior: Beta },
 }
 
+impl std::fmt::Display for PriorProcess {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PriorProcess::Dirichlet { alpha_prior } => {
+                write!(f, "DP(α ~ {})", alpha_prior)
+            }
+            PriorProcess::PitmanYor {
+                alpha_prior,
+                d_prior,
+            } => {
+                write!(f, "PYP(α ~ {}, d ~ {})", alpha_prior, d_prior)
+            }
+        }
+    }
+}
+
 impl Default for PriorProcess {
     fn default() -> Self {
         Self::Dirichlet {

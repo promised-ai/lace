@@ -274,14 +274,14 @@ class Codebook:
         >>> codebook = Animals().codebook
         >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
         >>> codebook.rename("Dennis")
         Codebook 'Dennis'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
         """
@@ -300,17 +300,19 @@ class Codebook:
         Examples
         --------
         >>> from lace.examples import Animals
+        >>> from lace import PriorProcess
         >>> codebook = Animals().codebook
         >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
-        >>> codebook.set_state_alpha_prior(2.0, 3.1)
+        >>> process = PriorProcess.pitman_yor(1.0, 2.0, 0.5, 0.5)
+        >>> codebook.set_state_prior_process(process)
         Codebook 'my_table'
-          state_alpha_prior: G(α: 2, β: 3.1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: PYP(α ~ G(α: 1, β: 2), d ~ Beta(α: 0.5, β: 0.5))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
         """
@@ -329,17 +331,19 @@ class Codebook:
         Examples
         --------
         >>> from lace.examples import Animals
+        >>> from lace import PriorProcess
         >>> codebook = Animals().codebook
         >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
-        >>> codebook.set_view_alpha_prior(2.0, 3.1)
+        >>> process = PriorProcess.pitman_yor(1.0, 2.0, 0.5, 0.5)
+        >>> codebook.set_view_prior_process(process)
         Codebook 'my_table'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 2, β: 3.1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: PYP(α ~ G(α: 1, β: 2), d ~ Beta(α: 0.5, β: 0.5))
           columns: 85
           rows: 50
         """

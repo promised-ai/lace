@@ -12,10 +12,10 @@ from lace.core import (
     ContinuousPrior,
     CountHyper,
     CountPrior,
+    PriorProcess,
     RowKernel,
     StateTransition,
     ValueMap,
-    PriorProcess,
 )
 from lace.engine import Engine
 

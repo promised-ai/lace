@@ -609,19 +609,19 @@ impl Codebook {
     pub fn __repr__(&self) -> String {
         format!(
             "Codebook '{}'\
-            \n  state_alpha_prior: {}\
-            \n  view_alpha_prior: {}\
+            \n  state_prior_process: {}\
+            \n  view_prior_process: {}\
             \n  columns: {}\
             \n  rows: {}",
             self.0.table_name,
             self.0
                 .state_prior_process
                 .clone()
-                .map_or_else(|| String::from("None"), |p| format!("{:?}", p)),
+                .map_or_else(|| String::from("None"), |p| format!("{}", p)),
             self.0
                 .view_prior_process
                 .clone()
-                .map_or_else(|| String::from("None"), |p| format!("{:?}", p)),
+                .map_or_else(|| String::from("None"), |p| format!("{}", p)),
             self.0.col_metadata.len(),
             self.0.row_names.len()
         )
