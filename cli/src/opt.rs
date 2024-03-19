@@ -46,6 +46,7 @@ impl std::str::FromStr for Transition {
 // into an enum-derived ArgGroup.
 #[derive(Parser, Debug)]
 pub struct RunArgs {
+    /// Directory to save Lace data in. If it does not exist, `run` will create it
     #[clap(name = "LACEFILE_OUT")]
     pub output: PathBuf,
     /// Optional path to codebook

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.7.1] - 2024-02-27
+
+### Added
+
+- Added support for pickling `lace.Engine`
+- Improved error reports for certain methods
+
+### Changed
+
+- Updated dependencies for pylace:
+    `pandas`: 1.3 -> 2.2
+    `pyarrow`: 14.0 -> 15.0
+
+### Fixed
+
+- Fixed `__version__` property
+
 ## [python-0.7.0] - 2024-02-07
 
 ### Added
@@ -261,7 +278,8 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.7.0...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.7.1...HEAD
+[python-0.7.1]: https://github.com/promised-ai/lace/compare/python-0.7.0...python-0.7.1
 [python-0.7.0]: https://github.com/promised-ai/lace/compare/python-0.6.0...python-0.7.0
 [rust-0.7.0]: https://github.com/promised-ai/lace/compare/rust-0.6.0...rust-0.7.0
 [python-0.6.0]: https://github.com/promised-ai/lace/compare/python-0.5.0...python-0.6.0

@@ -1,5 +1,7 @@
 """The Python bindings for the Lace ML tool."""
 
+from importlib import metadata
+
 from lace import core
 from lace.codebook import Codebook
 from lace.core import (
@@ -38,4 +40,4 @@ __all__ = [
     "PriorProcess",
 ]
 
-__version__ = "0.6.0"
+__version__ = metadata.version("pylace")

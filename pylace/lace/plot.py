@@ -44,6 +44,7 @@ def diagnostics(
     >>> from lace.plot import diagnostics
     >>> diagnostics(Satellites(), log_x=True).show()  # doctest:+ELLIPSIS
     {...}
+
     """
     diag = engine.diagnostics(name)
     step = np.arange(diag.shape[0])
@@ -148,6 +149,7 @@ def prediction_uncertainty(
     ... )
     >>> fig.show()  # doctest:+ELLIPSIS
     {...}
+
     """
     pred, unc = engine.predict(target, given=given)
 
@@ -380,6 +382,7 @@ def state(
     ... )
     >>> _ = plt.axis("off")
     >>> plt.show()
+
     """
     if ax is None:
         ax = plt.gca()
@@ -585,6 +588,7 @@ def prediction_explanation(
     ... )
     >>> fig.show()  # doctest:+ELLIPSIS
     {...}
+
     """
     if method is None:
         method = "ablative-err"

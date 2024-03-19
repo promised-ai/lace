@@ -113,6 +113,7 @@ def infer_column_metadata(
         inferred to be count type (default: 20)
     no_hypres: bool, optional
         If True, the prior will be fixed and hyper priors will be ignored
+
     """
     mds = []
     for column in df.columns:
@@ -162,7 +163,7 @@ _COMMON_TRANSITIONS = {
 
 
 def _get_common_transitions(name: str) -> List[StateTransition]:
-    transitions = _COMMON_TRANSITIONS.get(name, None)
+    transitions = _COMMON_TRANSITIONS.get(name)
     if transitions is None:
         keys_str = ", ".join(_COMMON_TRANSITIONS.keys())
         raise ValueError(
