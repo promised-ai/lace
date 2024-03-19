@@ -39,10 +39,10 @@ pub enum StateTransition {
     #[serde(rename = "row_assignment")]
     RowAssignment(RowAssignAlg),
     /// Update the alpha (discount) parameter on the column-to-views CRP
-    #[serde(rename = "state_alpha")]
+    #[serde(rename = "state_prior_process_params")]
     StatePriorProcessParams,
     /// Update the alpha (discount) parameters on the row-to-categories CRP
-    #[serde(rename = "view_alphas")]
+    #[serde(rename = "view_prior_process_params")]
     ViewPriorProcessParams,
     /// Update the feature (column) prior parameters
     #[serde(rename = "feature_priors")]
