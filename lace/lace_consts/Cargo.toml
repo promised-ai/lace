@@ -10,5 +10,6 @@ description = "Default constants for Lace"
 
 [dependencies]
 # rv = { path = "/Users/bax/Documents/redpoll/rv", features = ["serde1", "arraydist", "experimental"] }
-rv = { git = "https://gitlab.com/baxe/rv.git", branch="feature/experimental", features = ["serde1", "arraydist", "experimental"] }
+# rv = { git = "https://gitlab.com/baxe/rv.git", branch="feature/experimental", features = ["serde1", "arraydist", "experimental"] }
+rv = { git = "https://github.com/promised-ai/rv.git", branch="cs-experimental", features = ["serde1", "arraydist", "experimental"] }
 # rv = { version = "0.16.2", features = ["serde1", "arraydist"] }
