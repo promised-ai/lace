@@ -193,11 +193,11 @@ mod tests {
         for (state_1, state_2) in
             engine_1.states.iter().zip(engine_2.states.iter())
         {
-            assert_eq!(&state_1.asgn, &state_2.asgn);
+            assert_eq!(state_1.asgn(), state_2.asgn());
             for (view_1, view_2) in
                 state_1.views.iter().zip(state_2.views.iter())
             {
-                assert_eq!(&view_1.asgn, &view_2.asgn);
+                assert_eq!(view_1.asgn(), view_2.asgn());
             }
         }
 
@@ -208,11 +208,11 @@ mod tests {
         for (state_1, state_2) in
             engine_1.states.iter().zip(engine_2.states.iter())
         {
-            assert_eq!(&state_1.asgn, &state_2.asgn);
+            assert_eq!(state_1.asgn(), state_2.asgn());
             for (view_1, view_2) in
                 state_1.views.iter().zip(state_2.views.iter())
             {
-                assert_eq!(&view_1.asgn, &view_2.asgn);
+                assert_eq!(view_1.asgn(), view_2.asgn());
             }
         }
     }

@@ -1,10 +1,12 @@
 table_name: my_table
-state_alpha_prior:
-  shape: 1.0
-  rate: 1.0
-view_alpha_prior:
-  shape: 1.0
-  rate: 1.0
+state_prior_process: !dirichlet
+  alpha_prior:
+    shape: 1.0
+    rate: 1.0
+view_prior_process: !dirichlet
+  alpha_prior:
+    shape: 1.0
+    rate: 1.0
 col_metadata:
 - name: black
   coltype: !Categorical

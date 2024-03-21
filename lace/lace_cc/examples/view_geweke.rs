@@ -1,18 +1,17 @@
 use clap::Parser;
-use lace::prelude::*;
-use lace_cc::view::ViewGewekeSettings;
-use lace_geweke::GewekeTester;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+
+use lace_cc::alg::RowAssignAlg;
+use lace_cc::feature::FType;
+use lace_cc::transition::ViewTransition;
+use lace_cc::view::{View, ViewGewekeSettings};
+use lace_geweke::GewekeTester;
 
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]
 struct Opt {
-    #[clap(
-        long,
-        default_value = "gibbs",
-        value_parser = ["finite_cpu", "gibbs", "slice", "sams"],
-    )]
+    #[clap(long, default_value = "gibbs")]
     pub alg: RowAssignAlg,
     #[clap(short, long, default_value = "20")]
     pub nrows: usize,
@@ -22,6 +21,10 @@ struct Opt {
     pub no_view_alpha: bool,
     #[clap(long)]
     pub no_priors: bool,
+    #[clap(long)]
+    pub pitman_yor: bool,
+    #[clap(long, short = 'i', default_value = "10000")]
+    pub niters: usize,
 }
 
 fn main() {
@@ -43,11 +46,19 @@ fn main() {
                 .transitions
                 .push(ViewTransition::RowAssignment(opt.alg));
         }
+
         if !opt.no_view_alpha {
-            settings.transitions.push(ViewTransition::Alpha);
+            settings
+                .transitions
+                .push(ViewTransition::PriorProcessParams);
         }
+
         if !opt.no_priors {
             settings.transitions.push(ViewTransition::FeaturePriors);
+        }
+
+        if opt.pitman_yor {
+            settings = settings.with_pitman_yor_process();
         }
 
         settings.transitions.push(ViewTransition::ComponentParams);
@@ -57,7 +68,7 @@ fn main() {
 
     // Initialize a tester given the settings and run.
     let mut geweke: GewekeTester<View> = GewekeTester::new(settings);
-    geweke.run(10_000, Some(5), &mut rng);
+    geweke.run(opt.niters, Some(5), &mut rng);
 
     // Reports the deviation from a perfect correspondence between the
     // forward and posterior CDFs. The best score is zero, the worst possible

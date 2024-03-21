@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::anyhow;
 use log::debug;
 use mdbook::{
@@ -12,7 +10,15 @@ use regex::Regex;
 
 use serde::Deserialize;
 
-type GammaMap = HashMap<String, lace_stats::rv::dist::Gamma>;
+#[derive(Deserialize)]
+struct ViewPriorProcess {
+    pub view_prior_process: lace_codebook::PriorProcess,
+}
+
+#[derive(Deserialize)]
+struct StatePriorProcess {
+    pub state_prior_process: lace_codebook::PriorProcess,
+}
 
 fn check_deserialize_yaml<T>(input: &str) -> anyhow::Result<()>
 where
@@ -54,17 +60,14 @@ macro_rules! check_deserialize_arm {
     }
 }
 
-fn check_deserialize_dyn(
-    input: &str,
-    type_name: &str,
-    format: &str,
-) -> anyhow::Result<()> {
+fn check_deserialize_dyn(input: &str, type_name: &str, format: &str) -> anyhow::Result<()> {
     check_deserialize_arm!(
         input,
         type_name,
         format,
         [
-            GammaMap,
+            ViewPriorProcess,
+            StatePriorProcess,
             lace_codebook::ColMetadata,
             lace_codebook::ColMetadataList
         ]
@@ -80,35 +83,21 @@ impl YamlTester {
         YamlTester
     }
 
-    fn examine_chapter_content(
-        &self,
-        content: &str,
-        re: &Regex,
-    ) -> anyhow::Result<()> {
+    fn examine_chapter_content(&self, content: &str, re: &Regex) -> anyhow::Result<()> {
         let parser = Parser::new(content);
         let mut code_block = Some(String::new());
 
         for event in parser {
             match event {
-                Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(
-                    ref code_block_string,
-                ))) => {
+                Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) => {
                     if re.is_match(code_block_string) {
-                        debug!(
-                            "YAML Block Start, identifier string={}",
-                            code_block_string
-                        );
+                        debug!("YAML Block Start, identifier string={}", code_block_string);
                         code_block = Some(String::new());
                     }
                 }
-                Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(
-                    ref code_block_string,
-                ))) => {
+                Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) => {
                     if let Some(captures) = re.captures(code_block_string) {
-                        debug!(
-                            "Code Block End, identifier string={}",
-                            code_block_string
-                        );
+                        debug!("Code Block End, identifier string={}", code_block_string);
 
                         let serialization_format = captures
                             .get(1)
@@ -119,21 +108,13 @@ impl YamlTester {
                             .get(2)
                             .ok_or(anyhow!("No deserialize type found"))?
                             .as_str();
-                        debug!(
-                            "Target deserialization type is {}",
-                            target_type
-                        );
+                        debug!("Target deserialization type is {}", target_type);
 
                         let final_block = code_block.take();
-                        let final_block =
-                            final_block.ok_or(anyhow!("No YAML text found"))?;
+                        let final_block = final_block.ok_or(anyhow!("No YAML text found"))?;
                         debug!("Code block ended up as\n{}", final_block);
 
-                        check_deserialize_dyn(
-                            &final_block,
-                            target_type,
-                            serialization_format,
-                        )?;
+                        check_deserialize_dyn(&final_block, target_type, serialization_format)?;
                     }
                 }
                 Event::Text(ref text) => {
@@ -154,11 +135,7 @@ impl Preprocessor for YamlTester {
         "lace-yaml-tester"
     }
 
-    fn run(
-        &self,
-        _ctx: &PreprocessorContext,
-        book: Book,
-    ) -> anyhow::Result<Book> {
+    fn run(&self, _ctx: &PreprocessorContext, book: Book) -> anyhow::Result<Book> {
         debug!("Starting the run");
         let re = Regex::new(r"^(yaml|json).*,deserializeTo=([^,]+)").unwrap();
         for book_item in book.iter() {

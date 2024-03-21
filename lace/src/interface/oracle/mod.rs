@@ -220,8 +220,8 @@ mod tests {
     fn dummy_codebook_from_state(state: &State) -> Codebook {
         Codebook {
             table_name: "my_table".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
+            state_prior_process: None,
+            view_prior_process: None,
             col_metadata: (0..state.n_cols())
                 .map(|ix| {
                     let ftr = state.feature(ix);
@@ -647,7 +647,7 @@ mod tests {
                     //   draw from appropriate component from that view
                     let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
                     col_ixs.iter().for_each(|col_ix| {
-                        let view_ix = state.asgn.asgn[*col_ix];
+                        let view_ix = state.asgn().asgn[*col_ix];
                         let k = cpnt_ixs[&view_ix];
                         let x =
                             state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);

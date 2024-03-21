@@ -4,9 +4,19 @@ use enum_test::*;
 
 mod partition {
     use super::*;
-    use lace_cc::misc::crp_draw;
+    use lace_stats::assignment::Assignment;
+    use lace_stats::prior_process::{Dirichlet, PriorProcessT};
+    use lace_stats::rv::dist::Gamma;
     use rand::rngs::StdRng;
     use rand::SeedableRng;
+
+    fn crp_draw<R: rand::Rng>(n: usize, alpha: f64, rng: &mut R) -> Assignment {
+        let process = Dirichlet {
+            alpha_prior: Gamma::default(), // doesn't matter here,
+            alpha,
+        };
+        process.draw_assignment(n, rng)
+    }
 
     #[test]
     fn empty_partition() {

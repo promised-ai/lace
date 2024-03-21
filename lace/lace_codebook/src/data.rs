@@ -1,11 +1,12 @@
+use crate::codebook::PriorProcess;
 use crate::error::{CodebookError, ReadError};
 use crate::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, ValueMap,
 };
+
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
-use lace_stats::rv::dist::Gamma;
 use polars::prelude::{CsvReader, DataFrame, DataType, SerReader, Series};
 use std::convert::TryFrom;
 use std::path::Path;
@@ -428,7 +429,8 @@ fn rownames_from_index(id_srs: &Series) -> Result<RowNameList, CodebookError> {
 pub fn df_to_codebook(
     df: &DataFrame,
     cat_cutoff: Option<u8>,
-    alpha_prior_opt: Option<Gamma>,
+    state_prior_process: Option<PriorProcess>,
+    view_prior_process: Option<PriorProcess>,
     no_hypers: bool,
 ) -> Result<Codebook, CodebookError> {
     let (col_metadata, row_names) = {
@@ -457,13 +459,10 @@ pub fn df_to_codebook(
         (col_metadata, row_names)
     };
 
-    let alpha_prior =
-        alpha_prior_opt.unwrap_or_else(lace_consts::general_alpha_prior);
-
     Ok(Codebook {
         table_name: "my_table".into(),
-        state_alpha_prior: Some(alpha_prior.clone()),
-        view_alpha_prior: Some(alpha_prior),
+        state_prior_process,
+        view_prior_process,
         col_metadata,
         row_names,
         comments: None,
@@ -481,11 +480,18 @@ pub fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
 pub fn codebook_from_csv<P: AsRef<Path>>(
     path: P,
     cat_cutoff: Option<u8>,
-    alpha_prior_opt: Option<Gamma>,
+    state_prior_process: Option<PriorProcess>,
+    view_prior_process: Option<PriorProcess>,
     no_hypers: bool,
 ) -> Result<crate::Codebook, crate::CodebookError> {
     let df = read_csv(path).unwrap();
-    df_to_codebook(&df, cat_cutoff, alpha_prior_opt, no_hypers)
+    df_to_codebook(
+        &df,
+        cat_cutoff,
+        state_prior_process,
+        view_prior_process,
+        no_hypers,
+    )
 }
 
 #[cfg(test)]
@@ -521,7 +527,7 @@ mod test {
         let file = write_to_tempfile(&data);
 
         let codebook =
-            codebook_from_csv(file.path(), None, None, false).unwrap();
+            codebook_from_csv(file.path(), None, None, None, false).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);

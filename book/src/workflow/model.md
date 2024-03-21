@@ -219,7 +219,7 @@ engine.update(
     save_path="mydata.lace",
     transitions=[
         StateTransition.row_assignment(RowKernel.slice()),
-        StateTransition.view_alphas(),
+        StateTransition.view_prior_process_params(),
     ],
 )
 ```

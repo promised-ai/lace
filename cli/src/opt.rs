@@ -21,8 +21,8 @@ pub enum Transition {
     ColumnAssignment,
     ComponentParams,
     RowAssignment,
-    StateAlpha,
-    ViewAlphas,
+    StatePriorProcessParams,
+    ViewPriorProcessParams,
     FeaturePriors,
 }
 
@@ -33,8 +33,8 @@ impl std::str::FromStr for Transition {
         match s {
             "column_assignment" => Ok(Self::ColumnAssignment),
             "row_assignment" => Ok(Self::RowAssignment),
-            "state_alpha" => Ok(Self::StateAlpha),
-            "view_alphas" => Ok(Self::ViewAlphas),
+            "state_prior_process_params" => Ok(Self::StatePriorProcessParams),
+            "view_prior_process_params" => Ok(Self::ViewPriorProcessParams),
             "feature_priors" => Ok(Self::FeaturePriors),
             "component_params" => Ok(Self::ComponentParams),
             _ => Err(format!("cannot parse '{s}'")),
@@ -142,17 +142,17 @@ impl RunArgs {
         let transitions = match self.transitions {
             None => vec![
                 StateTransition::ColumnAssignment(col_alg),
-                StateTransition::StateAlpha,
+                StateTransition::StatePriorProcessParams,
                 StateTransition::RowAssignment(row_alg),
-                StateTransition::ViewAlphas,
+                StateTransition::ViewPriorProcessParams,
                 StateTransition::FeaturePriors,
             ],
             Some(ref ts) => ts
                 .iter()
                 .map(|t| match t {
                     Transition::FeaturePriors => StateTransition::FeaturePriors,
-                    Transition::StateAlpha => StateTransition::StateAlpha,
-                    Transition::ViewAlphas => StateTransition::ViewAlphas,
+                    Transition::StatePriorProcessParams => StateTransition::StatePriorProcessParams,
+                    Transition::ViewPriorProcessParams => StateTransition::ViewPriorProcessParams,
                     Transition::ComponentParams => StateTransition::ComponentParams,
                     Transition::RowAssignment => StateTransition::RowAssignment(row_alg),
                     Transition::ColumnAssignment => StateTransition::ColumnAssignment(col_alg),
@@ -264,9 +264,6 @@ pub struct CodebookArgs {
     /// Parquet input filename
     #[clap(long = "parquet", group = "src")]
     pub parquet_src: Option<PathBuf>,
-    /// CRP alpha prior on columns and rows
-    #[clap(long, default_value = "1.0, 1.0")]
-    pub alpha_prior: GammaParameters,
     /// Codebook out. May be either json or yaml
     #[clap(name = "CODEBOOK_OUT")]
     pub output: PathBuf,
@@ -343,16 +340,16 @@ mod tests {
     #[test]
     fn view_alphas_from_str() {
         assert_eq!(
-            Transition::from_str("view_alphas").unwrap(),
-            Transition::ViewAlphas
+            Transition::from_str("view_prior_process_params").unwrap(),
+            Transition::ViewPriorProcessParams
         );
     }
 
     #[test]
     fn state_alpha_from_str() {
         assert_eq!(
-            Transition::from_str("state_alpha").unwrap(),
-            Transition::StateAlpha
+            Transition::from_str("state_prior_process_params").unwrap(),
+            Transition::StatePriorProcessParams
         );
     }
 

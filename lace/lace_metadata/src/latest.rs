@@ -1,28 +1,18 @@
 use std::collections::BTreeMap;
 
-use lace_cc::assignment::Assignment;
-use lace_cc::component::ConjugateComponent;
-use lace_cc::feature::{ColModel, Column, MissingNotAtRandom};
-use lace_cc::state::{State, StateDiagnostics};
-use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
+use lace_cc::feature::{ColModel, MissingNotAtRandom};
+use lace_cc::state::{State, StateDiagnostics, StateScoreComponents};
 use lace_cc::view::View;
-use lace_data::{FeatureData, SparseContainer};
-use lace_stats::prior::csd::CsdHyper;
-use lace_stats::prior::nix::NixHyper;
-use lace_stats::prior::pg::PgHyper;
-use lace_stats::rv::dist::{
-    Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
-    NormalInvChiSquared, Poisson, SymmetricDirichlet,
-};
-use lace_stats::MixtureType;
+use lace_stats::assignment::Assignment;
+use lace_stats::prior_process::{PriorProcess, Process};
 
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::sync::OnceLock;
+use serde::{Deserialize, Serialize};
 
+use crate::versions::v1;
 use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
 
-pub const METADATA_VERSION: i32 = 0;
+pub const METADATA_VERSION: i32 = 1;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -35,24 +25,8 @@ pub struct Metadata {
     pub states: Vec<DatalessStateAndDiagnostics>,
     pub state_ids: Vec<usize>,
     pub codebook: Codebook,
-    pub data: Option<DataStore>,
+    pub data: Option<v1::DataStore>,
     pub rng: Option<Xoshiro256Plus>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct DataStore(BTreeMap<usize, FeatureData>);
-
-impl From<lace_data::DataStore> for DataStore {
-    fn from(data: lace_data::DataStore) -> Self {
-        Self(data.0)
-    }
-}
-
-impl From<DataStore> for lace_data::DataStore {
-    fn from(data: DataStore) -> Self {
-        Self(data.0)
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,16 +39,9 @@ pub struct DatalessStateAndDiagnostics {
 #[serde(deny_unknown_fields)]
 pub struct DatalessState {
     pub views: Vec<DatalessView>,
-    pub asgn: Assignment,
+    pub prior_process: PriorProcess,
     pub weights: Vec<f64>,
-    pub view_alpha_prior: Gamma,
-    pub loglike: f64,
-    #[serde(default)]
-    pub log_prior: f64,
-    #[serde(default)]
-    pub log_view_alpha_prior: f64,
-    #[serde(default)]
-    pub log_state_alpha_prior: f64,
+    pub score: StateScoreComponents,
 }
 
 /// Marks a state as having no data in its columns
@@ -85,13 +52,9 @@ impl From<lace_cc::state::State> for DatalessStateAndDiagnostics {
         Self {
             state: DatalessState {
                 views: state.views.drain(..).map(|view| view.into()).collect(),
-                asgn: state.asgn,
+                prior_process: state.prior_process,
                 weights: state.weights,
-                view_alpha_prior: state.view_alpha_prior,
-                loglike: state.loglike,
-                log_prior: state.log_prior,
-                log_view_alpha_prior: state.log_view_alpha_prior,
-                log_state_alpha_prior: state.log_state_alpha_prior,
+                score: state.score,
             },
             diagnostics: state.diagnostics,
         }
@@ -113,21 +76,24 @@ impl From<DatalessStateAndDiagnostics> for EmptyState {
                     .map(|id| {
                         let dl_ftr = dl_view.ftrs.remove(&id).unwrap();
                         let cm: ColModel = match dl_ftr {
-                            DatalessColModel::Continuous(cm) => {
-                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
+                            v1::DatalessColModel::Continuous(cm) => {
+                                let ecm: v1::EmptyColumn<_, _, _, _> =
+                                    cm.into();
                                 ColModel::Continuous(ecm.0)
                             }
-                            DatalessColModel::Categorical(cm) => {
-                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
+                            v1::DatalessColModel::Categorical(cm) => {
+                                let ecm: v1::EmptyColumn<_, _, _, _> =
+                                    cm.into();
                                 ColModel::Categorical(ecm.0)
                             }
-                            DatalessColModel::Count(cm) => {
-                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
+                            v1::DatalessColModel::Count(cm) => {
+                                let ecm: v1::EmptyColumn<_, _, _, _> =
+                                    cm.into();
                                 ColModel::Count(ecm.0)
                             }
-                            DatalessColModel::MissingNotAtRandom(mnar) => {
+                            v1::DatalessColModel::MissingNotAtRandom(mnar) => {
                                 let fx: ColModel = (*mnar.fx).into();
-                                let missing: EmptyColumn<_, _, _, _> =
+                                let missing: v1::EmptyColumn<_, _, _, _> =
                                     mnar.missing.into();
                                 ColModel::MissingNotAtRandom(
                                     MissingNotAtRandom {
@@ -142,7 +108,7 @@ impl From<DatalessStateAndDiagnostics> for EmptyState {
                     .collect();
 
                 View {
-                    asgn: dl_view.asgn,
+                    prior_process: dl_view.prior_process,
                     weights: dl_view.weights,
                     ftrs,
                 }
@@ -151,13 +117,9 @@ impl From<DatalessStateAndDiagnostics> for EmptyState {
 
         EmptyState(State {
             views,
-            asgn: dl_state.state.asgn,
+            prior_process: dl_state.state.prior_process,
             weights: dl_state.state.weights,
-            view_alpha_prior: dl_state.state.view_alpha_prior,
-            loglike: dl_state.state.loglike,
-            log_prior: dl_state.state.log_prior,
-            log_view_alpha_prior: dl_state.state.log_view_alpha_prior,
-            log_state_alpha_prior: dl_state.state.log_state_alpha_prior,
+            score: dl_state.state.score,
             diagnostics: dl_state.diagnostics,
         })
     }
@@ -166,8 +128,8 @@ impl From<DatalessStateAndDiagnostics> for EmptyState {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct DatalessView {
-    pub ftrs: BTreeMap<usize, DatalessColModel>,
-    pub asgn: Assignment,
+    pub ftrs: BTreeMap<usize, v1::DatalessColModel>,
+    pub prior_process: PriorProcess,
     pub weights: Vec<f64>,
 }
 
@@ -180,166 +142,107 @@ impl From<View> for DatalessView {
                     .map(|k| (*k, view.ftrs.remove(k).unwrap().into()))
                     .collect()
             },
-            asgn: view.asgn,
+            prior_process: view.prior_process,
             weights: view.weights,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub enum DatalessColModel {
-    Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NixHyper>),
-    Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
-    Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
-    MissingNotAtRandom(DatalessMissingNotAtRandom),
-}
-
-impl From<ColModel> for DatalessColModel {
-    fn from(col_model: ColModel) -> DatalessColModel {
-        match col_model {
-            ColModel::Categorical(col) => {
-                DatalessColModel::Categorical(col.into())
-            }
-            ColModel::Continuous(col) => {
-                DatalessColModel::Continuous(col.into())
-            }
-            ColModel::Count(col) => DatalessColModel::Count(col.into()),
-            ColModel::MissingNotAtRandom(mnar) => {
-                DatalessColModel::MissingNotAtRandom(
-                    DatalessMissingNotAtRandom {
-                        fx: Box::new((*mnar.fx).into()),
-                        missing: mnar.present.into(),
-                    },
-                )
-            }
+impl From<v1::Assignment> for PriorProcess {
+    fn from(asgn: v1::Assignment) -> Self {
+        Self {
+            asgn: Assignment {
+                asgn: asgn.asgn,
+                counts: asgn.counts,
+                n_cats: asgn.n_cats,
+            },
+            process: Process::Dirichlet(lace_stats::prior_process::Dirichlet {
+                alpha: asgn.alpha,
+                alpha_prior: asgn.prior,
+            }),
         }
     }
 }
 
-impl From<DatalessColModel> for ColModel {
-    fn from(col_model: DatalessColModel) -> Self {
-        match col_model {
-            DatalessColModel::Continuous(cm) => {
-                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
-                Self::Continuous(empty_col.0)
-            }
-            DatalessColModel::Count(cm) => {
-                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
-                Self::Count(empty_col.0)
-            }
-            DatalessColModel::Categorical(cm) => {
-                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
-                Self::Categorical(empty_col.0)
-            }
-            _ => unimplemented!(),
+impl From<v1::DatalessView> for DatalessView {
+    fn from(view: v1::DatalessView) -> Self {
+        Self {
+            ftrs: view.ftrs,
+            prior_process: view.asgn.into(),
+            weights: view.weights,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct DatalessMissingNotAtRandom {
-    fx: Box<DatalessColModel>,
-    missing: DatalessColumn<bool, Bernoulli, Beta, ()>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct DatalessColumn<X, Fx, Pr, H>
-where
-    X: LaceDatum,
-    Fx: LaceLikelihood<X>,
-    Pr: LacePrior<X, Fx, H>,
-    H: Serialize + DeserializeOwned,
-    MixtureType: From<Mixture<Fx>>,
-    Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
-{
-    pub id: usize,
-    #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
-    pub components: Vec<ConjugateComponent<X, Fx, Pr>>,
-    #[serde(bound(deserialize = "Pr: serde::de::DeserializeOwned"))]
-    pub prior: Pr,
-    #[serde(bound(deserialize = "H: serde::de::DeserializeOwned"))]
-    pub hyper: H,
-    #[serde(default)]
-    pub ignore_hyper: bool,
-}
-
-macro_rules! col2dataless {
-    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
-        impl From<Column<$x, $fx, $pr, $h>>
-            for DatalessColumn<$x, $fx, $pr, $h>
-        {
-            fn from(col: Column<$x, $fx, $pr, $h>) -> Self {
-                DatalessColumn {
-                    id: col.id,
-                    components: col.components,
-                    prior: col.prior,
-                    hyper: col.hyper,
-                    ignore_hyper: col.ignore_hyper,
-                }
-            }
+impl From<v1::DatalessState> for DatalessState {
+    fn from(mut state: v1::DatalessState) -> Self {
+        Self {
+            views: state.views.drain(..).map(|view| view.into()).collect(),
+            prior_process: state.asgn.into(),
+            weights: state.weights,
+            score: StateScoreComponents {
+                ln_likelihood: state.loglike,
+                ln_prior: state.log_prior,
+                ln_state_prior_process: state.log_state_alpha_prior,
+                ln_view_prior_process: state.log_view_alpha_prior,
+            },
         }
-    };
+    }
 }
 
-col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
-col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-col2dataless!(u32, Poisson, Gamma, PgHyper);
-col2dataless!(bool, Bernoulli, Beta, ());
-
-struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
-where
-    X: LaceDatum,
-    Fx: LaceLikelihood<X>,
-    Fx::Stat: LaceStat,
-    Pr: LacePrior<X, Fx, H>,
-    H: Serialize + DeserializeOwned,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
-    MixtureType: From<Mixture<Fx>>;
-
-macro_rules! dataless2col {
-    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
-        impl From<DatalessColumn<$x, $fx, $pr, $h>>
-            for EmptyColumn<$x, $fx, $pr, $h>
-        {
-            fn from(
-                col_dl: DatalessColumn<$x, $fx, $pr, $h>,
-            ) -> EmptyColumn<$x, $fx, $pr, $h> {
-                EmptyColumn(Column {
-                    id: col_dl.id,
-                    components: col_dl.components,
-                    prior: col_dl.prior,
-                    hyper: col_dl.hyper,
-                    data: SparseContainer::default(),
-                    ln_m_cache: OnceLock::new(),
-                    ignore_hyper: col_dl.ignore_hyper,
-                })
-            }
+impl From<v1::DatalessStateAndDiagnostics> for DatalessStateAndDiagnostics {
+    fn from(state_and_diag: v1::DatalessStateAndDiagnostics) -> Self {
+        Self {
+            state: state_and_diag.state.into(),
+            diagnostics: state_and_diag.diagnostics,
         }
-    };
+    }
 }
 
-dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
-dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-dataless2col!(u32, Poisson, Gamma, PgHyper);
-dataless2col!(bool, Bernoulli, Beta, ());
+impl From<v1::Codebook> for Codebook {
+    fn from(codebook: v1::Codebook) -> Self {
+        Self(lace_codebook::Codebook {
+            table_name: codebook.table_name,
+            state_prior_process: codebook.state_alpha_prior.map(
+                |alpha_prior| lace_codebook::PriorProcess::Dirichlet {
+                    alpha_prior,
+                },
+            ),
+            view_prior_process: codebook.view_alpha_prior.map(|alpha_prior| {
+                lace_codebook::PriorProcess::Dirichlet { alpha_prior }
+            }),
+            col_metadata: codebook.col_metadata,
+            comments: codebook.comments,
+            row_names: codebook.row_names,
+        })
+    }
+}
+
+impl From<v1::Metadata> for Metadata {
+    fn from(mut metadata: v1::Metadata) -> Self {
+        Self {
+            states: metadata
+                .states
+                .drain(..)
+                .map(|state| state.into())
+                .collect(),
+            state_ids: metadata.state_ids,
+            codebook: metadata.codebook.into(),
+            data: metadata.data,
+            rng: metadata.rng,
+        }
+    }
+}
 
 impl_metadata_version!(Metadata, METADATA_VERSION);
 impl_metadata_version!(Codebook, METADATA_VERSION);
-impl_metadata_version!(DatalessColModel, METADATA_VERSION);
 impl_metadata_version!(DatalessView, METADATA_VERSION);
 impl_metadata_version!(DatalessState, METADATA_VERSION);
-impl_metadata_version!(DataStore, METADATA_VERSION);
 
 // Create the loaders module for latest
 crate::loaders!(
     DatalessStateAndDiagnostics,
-    DataStore,
+    v1::DataStore,
     Codebook,
     rand_xoshiro::Xoshiro256Plus
 );

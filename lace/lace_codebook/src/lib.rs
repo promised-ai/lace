@@ -17,14 +17,19 @@
 //! let codebook_str = indoc!("
 //!     ---
 //!     table_name: two column dataset
-//!     state_alpha_prior:
-//!       !Gamma
-//!         shape: 1.0
-//!         rate: 1.0
-//!     view_alpha_prior:
-//!       !Gamma
-//!         shape: 1.0
-//!         rate: 1.0
+//!     state_prior_process:
+//!       !dirichlet
+//!         alpha_prior:
+//!           shape: 1.0
+//!           rate: 1.0
+//!     view_prior_process:
+//!       !pitman_yor
+//!         alpha_prior:
+//!           shape: 1.0
+//!           rate: 1.0
+//!         d_prior:
+//!           alpha: 1.0
+//!           beta: 2.0
 //!     col_metadata:
 //!       - name: col_1
 //!         notes: first column with all fields filled in

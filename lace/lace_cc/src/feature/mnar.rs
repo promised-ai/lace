@@ -1,6 +1,6 @@
 use super::{ColModel, Column, Component, FType, Feature, FeatureHelper};
-use crate::assignment::Assignment;
 use lace_data::{Datum, FeatureData, SparseContainer};
+use lace_stats::assignment::Assignment;
 use lace_stats::rv::dist::{Bernoulli, Beta};
 use lace_stats::MixtureType;
 use rand::Rng;
@@ -278,10 +278,11 @@ mod test {
             present,
         };
         let mut rng = rand::thread_rng();
-        let asgn = crate::assignment::AssignmentBuilder::new(n)
+        let asgn = lace_stats::prior_process::Builder::new(n)
             .seed_from_rng(&mut rng)
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
         col.reassign(&asgn, &mut rng);
         (col, asgn)
     }

@@ -62,6 +62,26 @@ pub enum GenerateStateError {
     BuildState(#[from] BuildStateError),
 }
 
+fn emit_prior_process<R: rand::Rng>(
+    prior_process: crate::codebook::PriorProcess,
+    rng: &mut R,
+) -> lace_stats::prior_process::Process {
+    use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
+    match prior_process {
+        crate::codebook::PriorProcess::Dirichlet { alpha_prior } => {
+            let inner = Dirichlet::from_prior(alpha_prior, rng);
+            Process::Dirichlet(inner)
+        }
+        crate::codebook::PriorProcess::PitmanYor {
+            alpha_prior,
+            d_prior,
+        } => {
+            let inner = PitmanYor::from_prior(alpha_prior, d_prior, rng);
+            Process::PitmanYor(inner)
+        }
+    }
+}
+
 impl BencherSetup {
     fn gen_state(
         &mut self,
@@ -74,15 +94,22 @@ impl BencherSetup {
             } => crate::codebook::data::read_csv(path)
                 .map_err(GenerateStateError::Read)
                 .and_then(|df| {
-                    let state_alpha_prior = codebook
-                        .state_alpha_prior
-                        .clone()
-                        .unwrap_or_else(lace_consts::state_alpha_prior);
+                    let state_prior_process = {
+                        let prior_process = codebook
+                            .state_prior_process
+                            .clone()
+                            .unwrap_or_default();
+                        emit_prior_process(prior_process, rng)
+                    };
 
-                    let view_alpha_prior = codebook
-                        .view_alpha_prior
-                        .clone()
-                        .unwrap_or_else(lace_consts::view_alpha_prior);
+                    let view_prior_process = {
+                        let prior_process = codebook
+                            .view_prior_process
+                            .clone()
+                            .unwrap_or_default();
+                        emit_prior_process(prior_process, rng)
+                    };
+
                     let mut codebook_tmp = Box::<Codebook>::default();
 
                     // swap codebook into something we can take ownership of
@@ -94,8 +121,8 @@ impl BencherSetup {
 
                             State::from_prior(
                                 features,
-                                state_alpha_prior,
-                                view_alpha_prior,
+                                state_prior_process,
+                                view_prior_process,
                                 &mut rng,
                             )
                         })

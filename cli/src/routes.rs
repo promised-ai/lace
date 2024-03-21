@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
-use lace::stats::rv::dist::Gamma;
 use lace::update_handler::{CtrlC, ProgressBar, Timeout};
 use lace::{Engine, EngineBuilder};
 
@@ -23,7 +22,6 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
         String::from("State"),
         String::from("Iters"),
         String::from("Views"),
-        String::from("Alpha"),
         String::from("Score"),
     ];
 
@@ -36,9 +34,8 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
             vec![
                 format!("{id}"),
                 format!("{}", n_iters),
-                format!("{}", state.asgn.n_cats),
-                format!("{:.6}", state.asgn.alpha),
-                format!("{:.6}", state.loglike),
+                format!("{}", state.asgn().n_cats),
+                format!("{:.6}", state.score.ln_likelihood + state.score.ln_prior),
             ]
         })
         .collect();
@@ -202,13 +199,6 @@ pub fn run(cmd: opt::RunArgs) -> i32 {
 
 macro_rules! codebook_from {
     ($path: ident, $fn: ident, $cmd: ident) => {{
-        let alpha_prior: Gamma = match $cmd.alpha_prior.try_into() {
-            Ok(gamma) => gamma,
-            Err(err) => {
-                eprint!("Invalid Gamma parameters to CRP prior: {err}");
-                return 1;
-            }
-        };
         if !$path.exists() {
             eprintln!("Input {:?} not found", $path);
             return 1;
@@ -217,7 +207,8 @@ macro_rules! codebook_from {
         let codebook = match lace::codebook::formats::$fn(
             $path,
             Some($cmd.category_cutoff),
-            Some(alpha_prior),
+            None,
+            None,
             $cmd.no_hyper,
         ) {
             Ok(codebook) => codebook,

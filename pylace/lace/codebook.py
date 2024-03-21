@@ -280,14 +280,14 @@ class Codebook:
         >>> codebook = Animals().codebook
         >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
         >>> codebook.rename("Dennis")
         Codebook 'Dennis'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
 
@@ -296,74 +296,68 @@ class Codebook:
         codebook.codebook.rename(name)
         return codebook
 
-    def set_state_alpha_prior(self, shape: float = 1.0, rate: float = 1.0):
+    def set_state_prior_process(self, prior_process: _lc.PriorProcess):
         """
-        Return a copy of the codebook with a new state CRP alpha prior.
+        Return a copy of the codebook with a new state PriorProcess.
 
         Parameters
         ----------
-        shape: float, optional
-            The shape of the Gamma distribution prior on alpha: a positive
-            floating point value in (0, Inf). Default is 1.
-        rate: float, optional
-            The rate of the Gamma distribution prior on alpha: a positive
-            floating point value in (0, Inf). Default is 1.
+        prior_process: core.PriorProcess
 
         Examples
         --------
         >>> from lace.examples import Animals
+        >>> from lace import PriorProcess
         >>> codebook = Animals().codebook
         >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
-        >>> codebook.set_state_alpha_prior(2.0, 3.1)
+        >>> process = PriorProcess.pitman_yor(1.0, 2.0, 0.5, 0.5)
+        >>> codebook.set_state_prior_process(process)
         Codebook 'my_table'
-          state_alpha_prior: G(α: 2, β: 3.1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: PYP(α ~ G(α: 1, β: 2), d ~ Beta(α: 0.5, β: 0.5))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
 
         """
         codebook = copy.copy(self)
-        codebook.codebook.set_state_alpha_prior(shape, rate)
+        codebook.codebook.set_state_prior_process(prior_process)
         return codebook
 
-    def set_view_alpha_prior(self, shape: float = 1.0, rate: float = 1.0):
+    def set_view_prior_process(self, prior_process: _lc.PriorProcess):
         """
-        Return a copy of the codebook with a new view CRP alpha prior.
+        Return a copy of the codebook with a new view PriorProcess.
 
         Parameters
         ----------
-        shape: float, optional
-            The shape of the Gamma distribution prior on alpha: a positive
-            floating point value in (0, Inf). Default is 1.
-        rate: float, optional
-            The rate of the Gamma distribution prior on alpha: a positive
-            floating point value in (0, Inf). Default is 1.
+        prior_process: core.PriorProcess
 
         Examples
         --------
         >>> from lace.examples import Animals
+        >>> from lace import PriorProcess
         >>> codebook = Animals().codebook
         >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 1, β: 1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: DP(α ~ G(α: 1, β: 1))
           columns: 85
           rows: 50
-        >>> codebook.set_view_alpha_prior(2.0, 3.1)
+        >>> process = PriorProcess.pitman_yor(1.0, 2.0, 0.5, 0.5)
+        >>> codebook.set_view_prior_process(process)
         Codebook 'my_table'
-          state_alpha_prior: G(α: 1, β: 1)
-          view_alpha_prior: G(α: 2, β: 3.1)
+          state_prior_process: DP(α ~ G(α: 1, β: 1))
+          view_prior_process: PYP(α ~ G(α: 1, β: 2), d ~ Beta(α: 0.5, β: 0.5))
           columns: 85
           rows: 50
 
         """
         codebook = copy.copy(self)
-        codebook.codebook.set_view_alpha_prior(shape, rate)
+        codebook.codebook.set_view_prior_process(prior_process)
         return codebook
 
     def append_column_metadata(self, col_metadata: List[_lc.ColumnMetadata]):

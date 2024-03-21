@@ -259,7 +259,7 @@ impl CoreEngine {
             );
             Err(PyErr::new::<PyIndexError, _>(msg))
         } else {
-            Ok(self.engine.states[state_ix].asgn.asgn.clone())
+            Ok(self.engine.states[state_ix].asgn().asgn.clone())
         }
     }
 
@@ -275,7 +275,7 @@ impl CoreEngine {
             let asgns = self.engine.states[state_ix]
                 .views
                 .iter()
-                .map(|view| view.asgn.asgn.clone())
+                .map(|view| view.asgn().asgn.clone())
                 .collect();
             Ok(asgns)
         }
@@ -385,7 +385,7 @@ impl CoreEngine {
             .map(|xs| PySeries(Series::new("mi", xs)))
     }
 
-    /// Row similarlity
+    /// Row similarity
     ///
     /// Parameters
     /// ----------
@@ -1388,6 +1388,7 @@ fn core(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<metadata::CategoricalPrior>()?;
     m.add_class::<metadata::CountHyper>()?;
     m.add_class::<metadata::CountPrior>()?;
+    m.add_class::<metadata::PriorProcess>()?;
     m.add_class::<update_handler::PyEngineUpdateConfig>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;

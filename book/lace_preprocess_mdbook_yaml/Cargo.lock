@@ -2201,14 +2201,15 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
 name = "rv"
-version = "0.16.4"
+version = "0.16.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a650cc227f4eb01b043fb7580097d6830c688a8f33cd9eabbced2026d11abf5"
+checksum = "c07e0a3b756794c7ea2f05d93760ffb946ff4f94b255d92444d94c19fd71f4ab"
 dependencies = [
  "doc-comment",
  "lru",
  "nalgebra",
  "num",
+ "num-traits",
  "peroxide",
  "rand",
  "rand_distr",

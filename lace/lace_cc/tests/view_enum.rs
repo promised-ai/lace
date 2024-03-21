@@ -5,19 +5,44 @@ mod enum_test;
 
 use std::collections::BTreeMap;
 
-use lace_stats::rv::misc::logsumexp;
 use rand::Rng;
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
 };
 use lace_cc::alg::RowAssignAlg;
-use lace_cc::assignment::{lcrp, AssignmentBuilder};
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::transition::ViewTransition;
 use lace_cc::view::{Builder, View};
+use lace_stats::prior_process::Builder as PriorProcessBuilder;
+use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
+use lace_stats::rv::dist::{Beta, Gamma};
+use lace_stats::rv::misc::logsumexp;
 
 const N_TRIES: u32 = 5;
+
+#[derive(Clone, Copy, Debug)]
+pub enum ProcessType {
+    Dirichlet,
+    PitmanYor,
+}
+
+impl From<ProcessType> for Process {
+    fn from(proc: ProcessType) -> Self {
+        match proc {
+            ProcessType::Dirichlet => Process::Dirichlet(Dirichlet {
+                alpha: 1.0,
+                alpha_prior: Gamma::default(),
+            }),
+            ProcessType::PitmanYor => Process::PitmanYor(PitmanYor {
+                alpha: 1.2,
+                d: 0.2,
+                alpha_prior: Gamma::default(),
+                d_prior: Beta::jeffreys(),
+            }),
+        }
+    }
+}
 
 /// Compute the posterior of all assignments of the features under CRP(alpha)
 ///
@@ -26,7 +51,7 @@ const N_TRIES: u32 = 5;
 #[allow(clippy::ptr_arg)]
 fn calc_partition_ln_posterior<R: Rng>(
     features: &Vec<ColModel>,
-    alpha: f64,
+    proc_type: ProcessType,
     mut rng: &mut R,
 ) -> BTreeMap<u64, f64> {
     let n = features[0].len();
@@ -38,15 +63,16 @@ fn calc_partition_ln_posterior<R: Rng>(
         // NOTE: We don't need seed control here because both alpha and the
         // assignment are set, but I'm setting the seed anyway in case the
         // assignment builder internals change
-        let asgn = AssignmentBuilder::from_vec(z)
-            .with_alpha(alpha)
+        let prior_process = PriorProcessBuilder::from_vec(z)
+            .with_process(proc_type.into())
             .seed_from_rng(&mut rng)
             .build()
             .unwrap();
 
-        let ln_pz = lcrp(n, &asgn.counts, alpha);
+        // let ln_pz = lcrp(n, &prior_process.asgn.counts, alpha);
+        let ln_pz = prior_process.ln_f_partition(&prior_process.asgn);
 
-        let view: View = Builder::from_assignment(asgn)
+        let view: View = Builder::from_prior_process(prior_process)
             .features(features.clone())
             .seed_from_rng(&mut rng)
             .build();
@@ -77,10 +103,12 @@ pub fn view_enum_test(
     n_iters: usize,
     ftype: FType,
     row_alg: RowAssignAlg,
+    proc_type: ProcessType,
 ) -> f64 {
     let mut rng = rand::thread_rng();
     let features = build_features(n_rows, n_cols, ftype, &mut rng);
-    let ln_posterior = calc_partition_ln_posterior(&features, 1.0, &mut rng);
+    let ln_posterior =
+        calc_partition_ln_posterior(&features, proc_type, &mut rng);
     let posterior = norm_posterior(&ln_posterior);
 
     let transitions: Vec<ViewTransition> = vec![
@@ -92,13 +120,13 @@ pub fn view_enum_test(
     let inc: f64 = ((n_runs * n_iters) as f64).recip();
 
     for _ in 0..n_runs {
-        let asgn = AssignmentBuilder::new(n_rows)
-            .with_alpha(1.0)
+        let prior_process = PriorProcessBuilder::new(n_rows)
+            .with_process(proc_type.into())
             .seed_from_rng(&mut rng)
             .build()
             .unwrap();
 
-        let mut view = Builder::from_assignment(asgn)
+        let mut view = Builder::from_prior_process(prior_process)
             .features(features.clone())
             .seed_from_rng(&mut rng)
             .build();
@@ -106,11 +134,11 @@ pub fn view_enum_test(
         for _ in 0..n_iters {
             view.update(10, &transitions, &mut rng);
 
-            let normed = normalize_assignment(view.asgn.asgn.clone());
+            let normed = normalize_assignment(view.asgn().asgn.clone());
             let ix = partition_to_ix(&normed);
 
             if !posterior.contains_key(&ix) {
-                panic!("invalid index!\n{:?}\n{:?}", view.asgn.asgn, normed);
+                panic!("invalid index!\n{:?}\n{:?}", view.asgn().asgn, normed);
             }
 
             *est_posterior.entry(ix).or_insert(0.0) += inc;
@@ -144,7 +172,7 @@ where
 
 // TODO: could remove $test name by using mods
 macro_rules! view_enum_test {
-    ($ftype: ident, $row_alg: ident) => {
+    ($ftype: ident, $proctype: ident, $row_alg: ident) => {
         #[test]
         fn $row_alg() {
             fn test_fn() -> bool {
@@ -154,32 +182,57 @@ macro_rules! view_enum_test {
                     1,
                     5_000,
                     FType::$ftype,
-                    RowAssignAlg::$row_alg
+                    RowAssignAlg::$row_alg,
+                    ProcessType::$proctype,
                 );
+                eprintln!("err: {}", err);
                 err < 0.01
             }
             assert!(flaky_test_passes(N_TRIES, test_fn));
         }
     };
-    ($ftype: ident, [$($row_alg: ident),+]) => {
+    ($modname: ident, $ftype: ident, $proctype: ident, [$($row_alg: ident),+]) => {
         #[allow(non_snake_case)]
-        mod $ftype {
+        mod $modname {
             use super::*;
             $(
-                view_enum_test!($ftype, $row_alg);
+                view_enum_test!($ftype, $proctype, $row_alg);
             )+
         }
     };
-    ($(($ftype: ident, $row_algs: tt)),+) => {
+    ($(($modname: ident, $ftype: ident, $proctype: ident, $row_algs: tt)),+) => {
         $(
-            view_enum_test!($ftype, $row_algs);
+            view_enum_test!($modname, $ftype, $proctype, $row_algs);
         )+
 
     };
 }
 
 view_enum_test!(
-    (Continuous, [Gibbs, Slice, Sams]),
-    (Categorical, [Gibbs, Slice, Sams]),
-    (Count, [Gibbs, Slice, Sams])
+    (
+        ve_continuous_dp,
+        Continuous,
+        Dirichlet,
+        [Gibbs, Slice, Sams]
+    ),
+    (
+        ve_continuous_pyp,
+        Continuous,
+        PitmanYor,
+        [Gibbs, Slice, Sams]
+    ),
+    (
+        ve_categorical_dp,
+        Categorical,
+        Dirichlet,
+        [Gibbs, Slice, Sams]
+    ),
+    (
+        ve_categorical_pyp,
+        Categorical,
+        PitmanYor,
+        [Gibbs, Slice, Sams]
+    ),
+    (ve_count_dp, Count, Dirichlet, [Gibbs, Slice, Sams]),
+    (ve_count_pyp, Count, PitmanYor, [Gibbs, Slice, Sams])
 );

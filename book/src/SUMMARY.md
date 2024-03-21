@@ -16,6 +16,7 @@
     - [Data Simulation](./pcc/simulate.md)
     - [In- and out-of-table operations](./pcc/inouttable.md)
     - [Adding data to a model](./pcc/add-data.md)
+    - [Prior processes](./pcc/prior-processes.md)
 - [Preparing your data](./data/basics.md)
 - [Codebook reference](./codebook-ref.md)
 - [Appendix](./appendix/appendix.md)

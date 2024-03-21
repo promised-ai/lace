@@ -1,27 +1,25 @@
+use std::path::PathBuf;
+
 use clap::Parser;
-use lace::prelude::*;
-use lace_cc::state::StateGewekeSettings;
-use lace_geweke::GewekeTester;
 use plotly::common::Mode;
 use plotly::layout::Layout;
 use plotly::{Plot, Scatter};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::feature::FType;
+use lace_cc::state::{State, StateGewekeSettings};
+use lace_cc::transition::StateTransition;
+use lace_geweke::GewekeTester;
+use lace_stats::prior_process::PriorProcessType;
+
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]
 struct Opt {
-    #[clap(
-        long,
-        default_value = "gibbs",
-        value_parser = ["finite_cpu", "gibbs", "slice", "sams"],
-    )]
+    #[clap(long, default_value = "gibbs")]
     pub row_alg: RowAssignAlg,
-    #[clap(
-        long,
-        default_value = "gibbs",
-        value_parser = ["finite_cpu", "gibbs", "slice"],
-    )]
+    #[clap(long, default_value = "gibbs")]
     pub col_alg: ColAssignAlg,
     #[clap(long, default_value = "50")]
     pub nrows: usize,
@@ -39,6 +37,10 @@ struct Opt {
     pub no_priors: bool,
     #[clap(long)]
     pub plot_var: Option<String>,
+    #[clap(long, short, default_value = "10000")]
+    pub niters: usize,
+    #[clap(long)]
+    dst: Option<PathBuf>,
 }
 
 fn main() {
@@ -59,7 +61,12 @@ fn main() {
     // The state's Geweke test settings require the number of rows in the
     // state (50), and the types of each column. Everything else is filled out
     // automatically.
-    let mut settings = StateGewekeSettings::new(opt.nrows, ftypes);
+    let mut settings = StateGewekeSettings::new(
+        opt.nrows,
+        ftypes,
+        PriorProcessType::Dirichlet,
+        PriorProcessType::Dirichlet,
+    );
     let mut transitions: Vec<StateTransition> = Vec::new();
 
     if !opt.no_col_reassign {
@@ -67,7 +74,7 @@ fn main() {
     }
 
     if !opt.no_state_alpha {
-        transitions.push(StateTransition::StateAlpha);
+        transitions.push(StateTransition::StatePriorProcessParams);
     }
 
     if !opt.no_row_reassign {
@@ -75,7 +82,7 @@ fn main() {
     }
 
     if !opt.no_view_alpha {
-        transitions.push(StateTransition::ViewAlphas);
+        transitions.push(StateTransition::ViewPriorProcessParams);
     }
 
     if !opt.no_priors {
@@ -88,7 +95,7 @@ fn main() {
 
     // Initialize a tester given the settings and run.
     let mut geweke: GewekeTester<State> = GewekeTester::new(settings);
-    geweke.run(10_000, Some(1), &mut rng);
+    geweke.run(opt.niters, Some(5), &mut rng);
 
     // Reports the deviation from a perfect correspondence between the
     // forward and posterior CDFs. The best score is zero, the worst possible
@@ -97,7 +104,7 @@ fn main() {
     res.report();
 
     if let Some(ref key) = opt.plot_var {
-        use lace::stats::EmpiricalCdf;
+        use lace_stats::EmpiricalCdf;
         use lace_utils::minmax;
         let (min_f, max_f) = minmax(res.forward.get(key).unwrap());
         let (min_p, max_p) = minmax(res.posterior.get(key).unwrap());
@@ -124,5 +131,15 @@ fn main() {
         plot.add_trace(trace);
         plot.set_layout(Layout::new());
         plot.show();
+    }
+
+    if let Some(dst) = opt.dst {
+        let f = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(dst)
+            .unwrap();
+        serde_json::to_writer(f, &res).unwrap();
     }
 }

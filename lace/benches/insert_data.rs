@@ -42,8 +42,8 @@ fn build_engine(nrows: usize, ncols: usize) -> Engine {
 
     let codebook = Codebook {
         table_name: "table".into(),
-        state_alpha_prior: None,
-        view_alpha_prior: None,
+        state_prior_process: None,
+        view_prior_process: None,
         col_metadata,
         comments: None,
         row_names: (0..nrows)

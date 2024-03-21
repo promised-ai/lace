@@ -104,12 +104,12 @@ mod run {
             "
             ---
             table_name: my_data
-            state_alpha_prior:
-              !Gamma
+            state_prior_process: !dirichlet
+              alpha_prior:
                 shape: 1.0
                 rate: 1.0
-            view_alpha_prior:
-              !Gamma
+            view_prior_process: !dirichlet
+              alpha_prior:
                 shape: 1.0
                 rate: 1.0
             col_metadata:
@@ -161,14 +161,17 @@ mod run {
             "
             ---
             table_name: my_data
-            state_alpha_prior:
-              !Gamma
+            state_prior_process: !dirichlet
+              alpha_prior:
                 shape: 1.0
                 rate: 1.0
-            view_alpha_prior:
-              !Gamma
+            view_prior_process: !pitman_yor
+              alpha_prior:
                 shape: 1.0
                 rate: 1.0
+              d_prior:
+                alpha: 0.5
+                beta: 0.5
             col_metadata:
               - name: z
                 coltype:
@@ -403,9 +406,9 @@ mod run {
             save_config: ~
             transitions:
               - !row_assignment slice
-              - !view_alphas
+              - !view_prior_process_params
               - !column_assignment finite_cpu
-              - !state_alpha
+              - !state_prior_process_params
               - !feature_priors
             "
         );
@@ -551,7 +554,7 @@ mod run {
             .arg("--run-config")
             .arg(config.path())
             .arg("--transitions")
-            .arg("state_alpha,row_assignment")
+            .arg("state_prior_process_params,row_assignment")
             .arg(dirname)
             .output()
             .expect("failed to execute process");
@@ -734,7 +737,7 @@ mod run {
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "10", "--flat-columns"])
             .arg("--transitions")
-            .arg("state_alpha,view_alphas,component_params,row_assignment,feature_priors")
+            .arg("state_prior_process_params,view_prior_process_params,component_params,row_assignment,feature_priors")
             .arg("--csv")
             .arg(csv::animals())
             .arg(dir.path().to_str().unwrap())
@@ -832,40 +835,6 @@ macro_rules! test_codebook_under_fmt {
                     _ => false,
                 });
                 assert!(no_hypers);
-            }
-
-            #[test]
-            fn with_good_alpha_params() {
-                let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-                let output = Command::new(LACE_CMD)
-                    .arg("codebook")
-                    .arg($flag)
-                    .arg($crate::$mod::animals())
-                    .arg(fileout.path().to_str().unwrap())
-                    .arg("--alpha-prior")
-                    .arg("2.3, 2.1")
-                    .output()
-                    .expect("failed to execute process");
-
-                assert!(output.status.success());
-            }
-
-            #[test]
-            fn with_bad_alpha_params() {
-                let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-                let output = Command::new(LACE_CMD)
-                    .arg("codebook")
-                    .arg($flag)
-                    .arg($crate::$mod::animals())
-                    .arg(fileout.path().to_str().unwrap())
-                    .arg("--alpha-prior")
-                    .arg("2.3, -0.1")
-                    .output()
-                    .expect("failed to execute process");
-
-                assert!(!output.status.success());
-                let err = String::from_utf8_lossy(output.stderr.as_slice());
-                assert!(err.contains("must be greater than zero"));
             }
         }
     };

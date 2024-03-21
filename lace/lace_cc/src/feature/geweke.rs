@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 use lace_data::{Container, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -14,7 +15,6 @@ use lace_stats::rv::traits::Rv;
 use lace_utils::{mean, std};
 use rand::Rng;
 
-use crate::assignment::Assignment;
 use crate::feature::{ColModel, Column, FType, Feature};
 use crate::transition::ViewTransition;
 

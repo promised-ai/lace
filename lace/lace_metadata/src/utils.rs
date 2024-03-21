@@ -9,11 +9,12 @@ use log::info;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 
+use crate::latest::Codebook;
 use crate::latest::DatalessStateAndDiagnostics;
-use crate::latest::{Codebook, DataStore};
+use crate::versions::v1::DataStore;
 use crate::{Error, FileConfig, SerializedType};
 
-fn extenson_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {
+fn extension_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {
     path.as_ref()
         .extension()
         .and_then(|s| s.to_str())
@@ -28,7 +29,7 @@ fn extenson_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {
 fn serialized_type_from_path<P: AsRef<Path>>(
     path: &P,
 ) -> Result<SerializedType, Error> {
-    let ext = extenson_from_path(path)?;
+    let ext = extension_from_path(path)?;
     SerializedType::from_str(ext)
 }
 

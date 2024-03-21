@@ -1,16 +1,14 @@
 ---
-loglike: 0.0
+score: 
+  ln_likelihood: 0.0
+  ln_prior: 0.0
+  ln_state_prior_process: 0.0
+  ln_view_prior_process: 0.0
 diagnostics:
-    loglike:
-        - 0.0
-    nviews:
-        - 2
-    state_alpha:
-        - 1.0
-view_alpha_prior:
-  !Gamma
-    shape: 1.0
-    rate: 1.0
+  loglike:
+    - 0.0
+  logprior:
+    - 0.0
 views:
   - ftrs:
       0:
@@ -58,27 +56,27 @@ views:
                   scale: 1.0
           data:
             n: 0
-    asgn:
-      alpha: 1
+    prior_process:
       asgn:
-        - 0
-        - 1
-        - 1
-        - 2
-      counts:
-        - 1
-        - 2
-        - 1
-      n_cats: 3
-      prior:
-        !Gamma
+        asgn:
+          - 0
+          - 1
+          - 1
+          - 2
+        counts:
+          - 1
+          - 2
+          - 1
+        n_cats: 3
+      process: !dirichlet
+        alpha: 1
+        alpha_prior:
           shape: 1.0
           rate: 1.0
     weights:
       - 0.25
       - 0.5
       - 0.25
-    alpha: 1
   - ftrs:
       1:
         !Continuous
@@ -156,37 +154,38 @@ views:
                   scale: 1.0
           data:
             n: 0
-    asgn:
-      alpha: 1
+    prior_process:
       asgn:
-        - 0
-        - 0
-        - 1
-        - 1
-      counts:
-        - 2
-        - 2
-      n_cats: 2
-      prior:
-        !Gamma
+        asgn:
+          - 0
+          - 0
+          - 1
+          - 1
+        counts:
+          - 2
+          - 2
+        n_cats: 2
+      process: !dirichlet
+        alpha: 1
+        alpha_prior:
           shape: 1.0
           rate: 1.0
     weights:
       - 0.5
       - 0.5
-    alpha: 1
-asgn:
-  alpha: 1
+prior_process:
   asgn:
-    - 0
-    - 1
-    - 1
-  counts:
-    - 1
-    - 2
-  n_cats: 2
-  prior:
-    !Gamma
+    asgn:
+      - 0
+      - 1
+      - 1
+    counts:
+      - 1
+      - 2
+    n_cats: 2
+  process: !dirichlet
+    alpha: 1
+    alpha_prior:
       shape: 1.0
       rate: 1.0
 weights:

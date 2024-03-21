@@ -193,7 +193,7 @@ impl<'s, R: rand::Rng> Iterator for Simulator<'s, R> {
             .col_ixs
             .iter()
             .map(|col_ix| {
-                let view_ix = state.asgn.asgn[*col_ix];
+                let view_ix = state.asgn().asgn[*col_ix];
                 let k = cpnt_ixs[&view_ix];
                 state.views[view_ix].ftrs[col_ix].draw(k, &mut rng)
             })
@@ -423,7 +423,7 @@ pub fn single_state_weights(
     let mut view_weights: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
     col_ixs
         .iter()
-        .map(|&ix| state.asgn.asgn[ix])
+        .map(|&ix| state.asgn().asgn[ix])
         .for_each(|view_ix| {
             view_weights
                 .entry(view_ix)
@@ -442,7 +442,7 @@ pub fn single_state_exp_weights(
     let mut view_weights: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
     col_ixs
         .iter()
-        .map(|&ix| state.asgn.asgn[ix])
+        .map(|&ix| state.asgn().asgn[ix])
         .for_each(|view_ix| {
             view_weights.entry(view_ix).or_insert_with(|| {
                 single_view_exp_weights(state, view_ix, given)
@@ -464,7 +464,8 @@ fn single_view_weights(
     match given {
         Given::Conditions(ref conditions) => {
             for &(col_ix, ref datum) in conditions {
-                let in_target_view = state.asgn.asgn[col_ix] == target_view_ix;
+                let in_target_view =
+                    state.asgn().asgn[col_ix] == target_view_ix;
                 if in_target_view {
                     view.ftrs[&col_ix].accum_weights(
                         datum,
@@ -493,7 +494,7 @@ fn single_view_exp_weights(
     match given {
         Given::Conditions(ref conditions) => {
             conditions.iter().for_each(|(ix, datum)| {
-                let in_target_view = state.asgn.asgn[*ix] == target_view_ix;
+                let in_target_view = state.asgn().asgn[*ix] == target_view_ix;
                 if in_target_view {
                     view.ftrs[ix].accum_exp_weights(datum, &mut weights);
                 }
@@ -588,7 +589,7 @@ fn single_val_logp(
     col_ixs
         .iter()
         .zip(val)
-        .map(|(col_ix, datum)| (col_ix, state.asgn.asgn[*col_ix], datum))
+        .map(|(col_ix, datum)| (col_ix, state.asgn().asgn[*col_ix], datum))
         .for_each(|(col_ix, view_ix, datum)| {
             state.views[view_ix].ftrs[col_ix].accum_weights(
                 datum,
@@ -852,7 +853,7 @@ macro_rules! dep_ind_col_mixtures {
                 _ => panic!("Unexpected MixtureType"),
             };
 
-            if state.asgn.asgn[$col_a] == state.asgn.asgn[$col_b] {
+            if state.asgn().asgn[$col_a] == state.asgn().asgn[$col_b] {
                 weight += 1.0;
                 mms_dep.push(mm);
             } else {
@@ -1339,7 +1340,7 @@ pub fn continuous_predict(
         let mixtures = states
             .iter()
             .map(|state| {
-                let view_ix = state.asgn.asgn[col_ix];
+                let view_ix = state.asgn().asgn[col_ix];
                 // NOTE: There is a slight speedup from using given_exp_weights,
                 // but at the cost of panics when there is a large number of
                 // conditions in the given: underflow causes all the weights to
@@ -1506,7 +1507,7 @@ macro_rules! predunc_arm {
         let mix_models: Vec<Mixture<$cpnt_type>> = $states
             .iter()
             .map(|state| {
-                let view_ix = state.asgn.asgn[$col_ix];
+                let view_ix = state.asgn().asgn[$col_ix];
                 let weights = single_view_weights(&state, view_ix, $given_opt);
 
                 let mut mixture: Mixture<$cpnt_type> =
@@ -1534,7 +1535,7 @@ pub fn predict_uncertainty(
     states_ixs_opt: Option<&[usize]>,
 ) -> f64 {
     let ftype = {
-        let view_ix = states[0].asgn.asgn[col_ix];
+        let view_ix = states[0].asgn().asgn[col_ix];
         states[0].views[view_ix].ftrs[&col_ix].ftype()
     };
     let states = select_states(states, states_ixs_opt);
@@ -1562,7 +1563,7 @@ pub(crate) fn mnar_uncertainty(
                 ..
             }) => {
                 // get the index of the view to which this column is assigned
-                let view_ix = state.asgn.asgn[col_ix];
+                let view_ix = state.asgn().asgn[col_ix];
                 // Get the weights from the view using the given
                 let weights = {
                     let mut weights =
@@ -1623,9 +1624,9 @@ macro_rules! impunc_arm {
         let n_states = $states.len();
         let mixtures = (0..n_states)
             .map(|state_ix| {
-                let view_ix = $states[state_ix].asgn.asgn[$col_ix];
+                let view_ix = $states[state_ix].asgn().asgn[$col_ix];
                 let view = &$states[state_ix].views[view_ix];
-                let k = view.asgn.asgn[$row_ix];
+                let k = view.asgn().asgn[$row_ix];
                 match &view.ftrs[&$col_ix] {
                     ColModel::$variant(ref ftr) => ftr.components[k].fx.clone(),
                     ColModel::MissingNotAtRandom(
