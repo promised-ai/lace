@@ -504,7 +504,7 @@ impl Assignment {
 
     /// Append a new, unassigned entry to th end of the assignment
     ///
-    /// # Eample
+    /// # Example
     ///
     /// ```
     /// # use lace_cc::assignment::AssignmentBuilder;
