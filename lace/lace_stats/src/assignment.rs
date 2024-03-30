@@ -668,17 +668,20 @@ mod tests {
 
     #[test]
     fn manual_seed_control_works() {
-        let asgn_1 = AssignmentBuilder::new(50)
+        let n = 100;
+        let asgn_1 = AssignmentBuilder::new(n)
             .with_seed(17_834_795)
             .build()
             .unwrap()
             .asgn;
-        let asgn_2 = AssignmentBuilder::new(50)
+
+        let asgn_2 = AssignmentBuilder::new(n)
             .with_seed(17_834_795)
             .build()
             .unwrap()
             .asgn;
-        let asgn_3 = AssignmentBuilder::new(50).build().unwrap().asgn;
+
+        let asgn_3 = AssignmentBuilder::new(n).build().unwrap().asgn;
         assert_eq!(asgn_1, asgn_2);
         assert_ne!(asgn_1, asgn_3);
     }

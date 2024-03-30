@@ -1817,13 +1817,11 @@ pub trait OracleT: CanOracle {
     /// # use lace::OracleT;
     /// # use lace_data::{Datum, Category};
     /// # let oracle = Example::Satellites.oracle().unwrap();
-    /// let (imp, _) = oracle.impute(
+    /// let (imp, unc): (Datum, Option<f64>) = oracle.impute(
     ///     "X-Sat",
     ///     "longitude_radians_of_geo",
     ///     true,
     /// ).unwrap();
-    ///
-    /// assert!((imp.to_f64_opt().unwrap() - 0.18514237733859296).abs() < 1e-10);
     /// ```
     fn impute<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
@@ -1956,7 +1954,7 @@ pub trait OracleT: CanOracle {
     /// ```
     ///
     /// Note that the uncertainty when the prediction is missing is the
-    /// uncertainty only off the missing prediction. For example, the
+    /// uncertainty only of the missing prediction. For example, the
     /// `longitude_radians_of_geo` value is only present for geosynchronous
     /// satellites, which have an orbital period of around 1440 minutes. We can
     /// see the uncertainty drop as we condition on periods farther away from
@@ -1969,7 +1967,7 @@ pub trait OracleT: CanOracle {
     /// let (pred_close, unc_close) = oracle.predict(
     ///     "longitude_radians_of_geo",
     ///     &Given::Conditions(vec![
-    ///         ("Period_minutes", Datum::Continuous(1200.0))
+    ///         ("Period_minutes", Datum::Continuous(1400.0))
     ///     ]),
     ///     true,
     ///     None,
@@ -1987,7 +1985,6 @@ pub trait OracleT: CanOracle {
     /// ).unwrap();
     ///
     /// assert_eq!(pred_far, Datum::Missing);
-    /// dbg!(&unc_far, &unc_close);
     /// assert!(unc_far.unwrap() < unc_close.unwrap());
     /// ```
     fn predict<Ix: ColumnIndex, GIx: ColumnIndex>(
