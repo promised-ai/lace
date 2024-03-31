@@ -52,7 +52,7 @@ view_prior_process: !dirichlet
 
 or a Pitman-Yor process with a Gamma prior on alpha and a Beta prior on d.
 
-```yaml,deserializeTo=StatePriorProcess
+```yaml,deserializeTo=ViewPriorProcess
 view_prior_process: !pitman_yor
   alpha_prior:
     shape: 1.0
