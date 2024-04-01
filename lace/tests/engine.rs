@@ -229,7 +229,7 @@ fn engine_build_without_flat_col_is_not_flat() {
     let path = animals_data_path();
     let df = lace_codebook::data::read_csv(path).unwrap();
     let engine = EngineBuilder::new(DataSource::Polars(df))
-        .with_nstates(8)
+        .with_nstates(32)
         .build()
         .unwrap();
     assert!(engine.states.iter().any(|state| state.n_views() > 1));
