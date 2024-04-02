@@ -125,7 +125,7 @@ let df = CsvReader::from_path(paths.data)
     .unwrap();
 
 // Create the default codebook
-let codebook = Codebook::from_df(&df, None, None, false).unwrap();
+let codebook = Codebook::from_df(&df, None, None, None, false).unwrap();
 
 // Build an rng
 let rng = Xoshiro256Plus::from_entropy();
@@ -156,12 +156,12 @@ let run_config = EngineUpdateConfig::new()
     .n_iters(100)
     .transitions(vec![
         StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
-        StateTransition::StateAlpha,
+        StateTransition::StatePriorProcessParams,
         StateTransition::RowAssignment(RowAssignAlg::Sams),
         StateTransition::ComponentParams,
         StateTransition::RowAssignment(RowAssignAlg::Slice),
         StateTransition::ComponentParams,
-        StateTransition::ViewAlphas,
+        StateTransition::ViewPriorProcessParams,
         StateTransition::FeaturePriors,
     ]);
 

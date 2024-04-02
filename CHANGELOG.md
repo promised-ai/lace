@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Added ability Pitman-Yor prior process
+- Users now specify the prior process in the codebook
+- `StateAlpha` and `ViewAlpha` transitions are now `StatePriorProcessParams` and `ViewPriorProcessParams`
 
 ## [python-0.7.1] - 2024-02-27
 
