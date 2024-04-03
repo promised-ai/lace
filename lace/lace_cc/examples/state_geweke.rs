@@ -9,7 +9,8 @@ use rand_xoshiro::Xoshiro256Plus;
 
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
 use lace_cc::feature::FType;
-use lace_cc::state::{State, StateGewekeSettings};
+use lace_cc::state::geweke::StateGewekeSettings;
+use lace_cc::state::State;
 use lace_cc::transition::StateTransition;
 use lace_geweke::GewekeTester;
 use lace_stats::prior_process::PriorProcessType;

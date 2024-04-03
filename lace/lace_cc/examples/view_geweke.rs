@@ -5,7 +5,8 @@ use rand_xoshiro::Xoshiro256Plus;
 use lace_cc::alg::RowAssignAlg;
 use lace_cc::feature::FType;
 use lace_cc::transition::ViewTransition;
-use lace_cc::view::{View, ViewGewekeSettings};
+use lace_cc::view::geweke::ViewGewekeSettings;
+use lace_cc::view::View;
 use lace_geweke::GewekeTester;
 
 #[derive(Parser, Debug)]
