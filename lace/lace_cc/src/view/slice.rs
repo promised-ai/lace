@@ -1,6 +1,7 @@
 use super::View;
 
 use crate::alg::RowAssignAlg;
+use crate::constrain::RowConstrainer;
 use crate::feature::Feature;
 
 use lace_stats::prior_process::PriorProcessT;
@@ -12,7 +13,11 @@ use rand::Rng;
 
 impl View {
     /// Use the improved slice algorithm to reassign the rows
-    pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
+    pub fn reassign_rows_slice(
+        &mut self,
+        constrainer: &impl RowConstrainer,
+        mut rng: &mut impl Rng,
+    ) {
         self.resample_weights(false, &mut rng);
 
         let weights: Vec<f64> = {
@@ -69,6 +74,7 @@ impl View {
             logps,
             n_cats,
             RowAssignAlg::Slice,
+            constrainer,
             &mut rng,
         );
     }
@@ -78,6 +84,7 @@ impl View {
         mut logps: Matrix<f64>,
         n_cats: usize,
         row_alg: RowAssignAlg,
+        constrainer: &impl RowConstrainer,
         rng: &mut impl Rng,
     ) {
         use rayon::prelude::*;
@@ -85,6 +92,9 @@ impl View {
         logps.par_rows_mut().enumerate().for_each(|(k, logp)| {
             self.ftrs.values().for_each(|ftr| {
                 ftr.accum_score(logp, k);
+                logp.iter_mut().enumerate().for_each(|(row_ix, p)| {
+                    *p += constrainer.ln_constraint(row_ix, k);
+                })
             })
         });
 

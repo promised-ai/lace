@@ -1,3 +1,5 @@
+use crate::constrain::RowConstrainer;
+
 use super::View;
 
 use lace_stats::assignment::Assignment;
@@ -8,7 +10,11 @@ use rand::Rng;
 
 impl View {
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
-    pub fn reassign_rows_sams<R: Rng>(&mut self, rng: &mut R) {
+    pub fn reassign_rows_sams<R: Rng>(
+        &mut self,
+        constrainer: &impl RowConstrainer,
+        rng: &mut R,
+    ) {
         use rand::seq::IteratorRandom;
 
         let (i, j, zi, zj) = {
@@ -27,22 +33,28 @@ impl View {
         };
 
         if zi == zj {
-            self.sams_split(i, j, rng);
+            self.sams_split(i, j, constrainer, rng);
         } else {
             assert!(zi < zj);
-            self.sams_merge(i, j, rng);
+            self.sams_merge(i, j, constrainer, rng);
         }
         debug_assert!(self.asgn().validate().is_valid());
     }
 
-    fn sams_split<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
+    fn sams_split<R: Rng>(
+        &mut self,
+        i: usize,
+        j: usize,
+        constrainer: &impl RowConstrainer,
+        rng: &mut R,
+    ) {
         let zi = self.asgn().asgn[i];
 
         // FIXME: only works for CRP
         let logp_mrg =
             self.logm(zi) + self.prior_process.ln_f_partition(self.asgn());
         let (logp_spt, logq_spt, asgn_opt) =
-            self.propose_split(i, j, false, rng);
+            self.propose_split(i, j, false, constrainer, rng);
 
         let asgn = asgn_opt.unwrap();
 
@@ -51,13 +63,20 @@ impl View {
         }
     }
 
-    fn sams_merge<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
+    fn sams_merge<R: Rng>(
+        &mut self,
+        i: usize,
+        j: usize,
+        constrainer: &impl RowConstrainer,
+        rng: &mut R,
+    ) {
         use std::cmp::Ordering;
 
         let zi = self.asgn().asgn[i];
         let zj = self.asgn().asgn[j];
 
-        let (logp_spt, logq_spt, ..) = self.propose_split(i, j, true, rng);
+        let (logp_spt, logq_spt, ..) =
+            self.propose_split(i, j, true, constrainer, rng);
 
         let asgn = {
             let zs = self
@@ -86,8 +105,22 @@ impl View {
             }
         });
 
-        let logp_mrg =
-            self.logm(self.n_cats()) + self.prior_process.ln_f_partition(&asgn);
+        let merge_constraint = asgn
+            .asgn
+            .iter()
+            .enumerate()
+            .map(|(row_ix, &z)| {
+                if z == zi || z == zj {
+                    constrainer.ln_constraint(row_ix, z)
+                } else {
+                    0.0
+                }
+            })
+            .sum::<f64>();
+
+        let logp_mrg = self.logm(self.n_cats())
+            + self.prior_process.ln_f_partition(&asgn)
+            + merge_constraint;
 
         self.drop_component(self.n_cats());
 
@@ -141,6 +174,7 @@ impl View {
         i: usize,
         j: usize,
         calc_reverse: bool,
+        constrainer: &impl RowConstrainer,
         rng: &mut R,
     ) -> (f64, f64, Option<Assignment>) {
         let zi = self.asgn().asgn[i];
@@ -177,8 +211,12 @@ impl View {
             .iter()
             .filter(|&&ix| !(ix == i || ix == j))
             .for_each(|&ix| {
-                let logp_zi = nk_i.ln() + self.predictive_score_at(ix, zi_tmp);
-                let logp_zj = nk_j.ln() + self.predictive_score_at(ix, zj_tmp);
+                let logp_zi = nk_i.ln()
+                    + self.predictive_score_at(ix, zi_tmp)
+                    + constrainer.ln_constraint(ix, zi); // goes to original zi
+                let logp_zj = nk_j.ln()
+                    + self.predictive_score_at(ix, zj_tmp)
+                    + constrainer.ln_constraint(ix, zi_tmp); // goes to n_cats
                 let lognorm = logaddexp(logp_zi, logp_zj);
 
                 let assign_to_zi = if calc_reverse {

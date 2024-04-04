@@ -1,5 +1,6 @@
 use super::View;
 
+use crate::constrain::RowConstrainer;
 use crate::feature::Feature;
 use lace_stats::prior_process::PriorProcessT;
 use lace_stats::rv::misc::ln_pflip;
@@ -22,6 +23,7 @@ impl View {
     pub(crate) fn reinsert_row(
         &mut self,
         row_ix: usize,
+        constrainer: &impl RowConstrainer,
         mut rng: &mut impl Rng,
     ) {
         let k_new = if self.asgn().n_cats == 0 {
@@ -36,14 +38,17 @@ impl View {
 
             self.asgn().counts.iter().enumerate().for_each(|(k, &ct)| {
                 let w = self.prior_process.process.ln_gibbs_weight(ct);
-                logps.push(w + self.predictive_score_at(row_ix, k));
+                let ln_p_x = self.predictive_score_at(row_ix, k);
+                let ln_constraint = constrainer.ln_constraint(row_ix, k);
+                logps.push(w + ln_p_x + ln_constraint);
             });
 
             logps.push(
                 self.prior_process
                     .process
                     .ln_singleton_weight(self.n_cats())
-                    + self.singleton_score(row_ix),
+                    + self.singleton_score(row_ix)
+                    + constrainer.ln_constraint(row_ix, self.n_cats()),
             );
 
             let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
@@ -62,10 +67,11 @@ impl View {
     pub fn reassign_row_gibbs(
         &mut self,
         row_ix: usize,
+        constrainer: &impl RowConstrainer,
         mut rng: &mut impl Rng,
     ) {
         self.remove_row(row_ix);
-        self.reinsert_row(row_ix, &mut rng);
+        self.reinsert_row(row_ix, constrainer, &mut rng);
     }
 
     /// Use the standard Gibbs kernel to reassign the rows
@@ -78,7 +84,7 @@ impl View {
         row_ixs.shuffle(&mut rng);
 
         for row_ix in row_ixs {
-            self.reassign_row_gibbs(row_ix, &mut rng);
+            self.reassign_row_gibbs(row_ix, &(), &mut rng);
         }
 
         // NOTE: The oracle functions use the weights to compute probabilities.

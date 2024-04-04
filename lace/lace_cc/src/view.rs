@@ -226,9 +226,9 @@ impl View {
         }
         match alg {
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
-            RowAssignAlg::Slice => self.reassign_rows_slice(&mut rng),
+            RowAssignAlg::Slice => self.reassign_rows_slice(&(), &mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
-            RowAssignAlg::Sams => self.reassign_rows_sams(&mut rng),
+            RowAssignAlg::Sams => self.reassign_rows_sams(&(), &mut rng),
         }
     }
 
@@ -249,6 +249,7 @@ impl View {
             logps,
             n_cats + 1,
             RowAssignAlg::FiniteCpu,
+            &(),
             &mut rng,
         );
     }
@@ -411,7 +412,7 @@ impl View {
             .collect();
 
         unassigned_rows.drain(..).for_each(|row_ix| {
-            self.reinsert_row(row_ix, &mut rng);
+            self.reinsert_row(row_ix, &(), &mut rng);
         });
 
         // The row might have been inserted into a new component, so we need to

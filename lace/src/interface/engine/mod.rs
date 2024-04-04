@@ -891,7 +891,7 @@ impl Engine {
                     &mut state.views[view_ix]
                 };
 
-                view.reassign_row_gibbs(row_ix, &mut trng);
+                view.reassign_row_gibbs(row_ix, &(), &mut trng);
 
                 // Make sure the view weights are correct so oracle functions
                 // reflect the update correctly.
