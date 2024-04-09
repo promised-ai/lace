@@ -1,7 +1,9 @@
 use super::View;
 
-use crate::constrain::RowConstrainer;
+use crate::constrain::RowGibbsConstrainer;
+use crate::constrain::RowGibbsInfo;
 use crate::feature::Feature;
+
 use lace_stats::prior_process::PriorProcessT;
 use lace_stats::rv::misc::ln_pflip;
 use rand::seq::SliceRandom;
@@ -23,7 +25,8 @@ impl View {
     pub(crate) fn reinsert_row(
         &mut self,
         row_ix: usize,
-        constrainer: &impl RowConstrainer,
+        info: RowGibbsInfo,
+        constrainer: &impl RowGibbsConstrainer,
         mut rng: &mut impl Rng,
     ) {
         let k_new = if self.asgn().n_cats == 0 {
@@ -39,7 +42,7 @@ impl View {
             self.asgn().counts.iter().enumerate().for_each(|(k, &ct)| {
                 let w = self.prior_process.process.ln_gibbs_weight(ct);
                 let ln_p_x = self.predictive_score_at(row_ix, k);
-                let ln_constraint = constrainer.ln_constraint(row_ix, k);
+                let ln_constraint = constrainer.ln_constraint(info, row_ix, k);
                 logps.push(w + ln_p_x + ln_constraint);
             });
 
@@ -48,7 +51,7 @@ impl View {
                     .process
                     .ln_singleton_weight(self.n_cats())
                     + self.singleton_score(row_ix)
-                    + constrainer.ln_constraint(row_ix, self.n_cats()),
+                    + constrainer.ln_constraint(info, row_ix, self.n_cats()),
             );
 
             let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
@@ -67,11 +70,18 @@ impl View {
     pub fn reassign_row_gibbs(
         &mut self,
         row_ix: usize,
-        constrainer: &impl RowConstrainer,
+        constrainer: &impl RowGibbsConstrainer,
         mut rng: &mut impl Rng,
     ) {
+        let info = {
+            let k_original = self.asgn().asgn[row_ix];
+            RowGibbsInfo {
+                is_singleton: { self.asgn().counts[k_original] == 1 },
+                k_original,
+            }
+        };
         self.remove_row(row_ix);
-        self.reinsert_row(row_ix, constrainer, &mut rng);
+        self.reinsert_row(row_ix, info, constrainer, &mut rng);
     }
 
     /// Use the standard Gibbs kernel to reassign the rows

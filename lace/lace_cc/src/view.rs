@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 // use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::alg::RowAssignAlg;
+use crate::constrain::RowGibbsInfo;
 use crate::feature::{ColModel, Feature};
 use crate::transition::ViewTransition;
 
@@ -412,7 +413,7 @@ impl View {
             .collect();
 
         unassigned_rows.drain(..).for_each(|row_ix| {
-            self.reinsert_row(row_ix, &(), &mut rng);
+            self.reinsert_row(row_ix, RowGibbsInfo::default(), &(), &mut rng);
         });
 
         // The row might have been inserted into a new component, so we need to
