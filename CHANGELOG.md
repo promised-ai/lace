@@ -5,9 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [rust-0.8.0] - 2024-04-10
+
+### Added
+
 - Added ability Pitman-Yor prior process
-- Users now specify the prior process in the codebook
+    - Users now specify the prior process (and its prior) in the codebook
+- `lace_stats::prior_process::Builder`
+
+### Changed
+
+- Offloaded a lot of `Assignment` functionality to `PriorProcess`
+- `StateAlpha` and `ViewAlpha` transitions are now `StatePriorProcessParams` and `ViewPriorProcessParams`
+- Changed `SerializedType` default to `Bincode`
+- moved `Assignment` from `lace_cc` to `lace_stats`
+
+## [python-0.8.0] 2024-04-10
+
+### Added
+
+- Added ability Pitman-Yor prior process
+
+### Changed
+
 - `StateAlpha` and `ViewAlpha` transitions are now `StatePriorProcessParams` and `ViewPriorProcessParams`
 
 ## [python-0.7.1] - 2024-02-27
@@ -281,7 +301,9 @@ Initial release on [PyPi](https://pypi.org/)
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.7.1...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.8.0...HEAD
+[rust-0.8.0]: https://github.com/promised-ai/lace/compare/rust-0.7.0...rust-0.8.0
+[python-0.8.0]: https://github.com/promised-ai/lace/compare/python-0.7.1...python-0.8.0
 [python-0.7.1]: https://github.com/promised-ai/lace/compare/python-0.7.0...python-0.7.1
 [python-0.7.0]: https://github.com/promised-ai/lace/compare/python-0.6.0...python-0.7.0
 [rust-0.7.0]: https://github.com/promised-ai/lace/compare/rust-0.6.0...rust-0.7.0

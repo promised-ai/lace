@@ -1176,7 +1176,7 @@ dependencies = [
 
 [[package]]
 name = "lace_cc"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "approx",
  "clap",
@@ -1201,7 +1201,7 @@ dependencies = [
 
 [[package]]
 name = "lace_codebook"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "indoc",
  "lace_consts",
@@ -1235,7 +1235,7 @@ dependencies = [
 
 [[package]]
 name = "lace_geweke"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "indicatif",
  "lace_stats",
@@ -1247,7 +1247,7 @@ dependencies = [
 
 [[package]]
 name = "lace_metadata"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bincode",
  "hex",
@@ -1267,7 +1267,7 @@ dependencies = [
 
 [[package]]
 name = "lace_stats"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "approx",
  "criterion",
