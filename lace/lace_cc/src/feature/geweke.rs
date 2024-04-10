@@ -1,12 +1,16 @@
 //! Geweke implementations
 use std::collections::BTreeMap;
 
+use lace_consts::rv::experimental::stick_breaking::{
+    StickBreaking, StickBreakingDiscrete,
+};
 use lace_data::{Container, SparseContainer};
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
@@ -183,6 +187,7 @@ macro_rules! impl_gewek_resample {
 impl_gewek_resample!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 impl_gewek_resample!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 impl_gewek_resample!(u32, Poisson, Gamma, PgHyper);
+impl_gewek_resample!(usize, StickBreakingDiscrete, StickBreaking, SbdHyper);
 
 // Continuous
 // ----------
@@ -249,6 +254,97 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
                     v: self.prior.v(),
                     s2: self.prior.s2(),
                 })
+            } else {
+                None
+            },
+        }
+    }
+}
+
+// StickBreakingDiscrete
+// ---------------------
+impl GewekeModel
+    for Column<usize, StickBreakingDiscrete, StickBreaking, SbdHyper>
+{
+    #[must_use]
+    fn geweke_from_prior(
+        settings: &Self::Settings,
+        mut rng: &mut impl Rng,
+    ) -> Self {
+        let k = 5;
+        let f = Categorical::uniform(k);
+        let xs: Vec<usize> = f.sample(settings.asgn.len(), &mut rng);
+        let data = SparseContainer::from(xs); // initial data is resampled anyway
+        let hyper = SbdHyper::geweke();
+        let prior = if settings.fixed_prior {
+            StickBreaking::from_alpha(1.0).unwrap()
+        } else {
+            hyper.draw(&mut rng)
+        };
+        let mut col = Column::new(0, data, prior, hyper);
+        col.init_components(settings.asgn.n_cats, &mut rng);
+        col
+    }
+
+    /// Update the state of the object by performing 1 MCMC transition
+    fn geweke_step(
+        &mut self,
+        settings: &Self::Settings,
+        mut rng: &mut impl Rng,
+    ) {
+        self.update_components(&mut rng);
+        if !settings.fixed_prior {
+            self.update_prior_params(&mut rng);
+        }
+    }
+}
+
+impl GewekeSummarize
+    for Column<usize, StickBreakingDiscrete, StickBreaking, SbdHyper>
+{
+    type Summary = GewekeColumnSummary;
+    fn geweke_summarize(
+        &self,
+        settings: &ColumnGewekeSettings,
+    ) -> Self::Summary {
+        let x_sum = self.data.present_cloned().iter().sum::<usize>() as u32;
+
+        fn sum_sq(logws: &[f64]) -> f64 {
+            logws.iter().fold(0.0, |acc, lw| {
+                let lw_exp = lw.exp();
+                lw_exp.mul_add(lw_exp, acc)
+            })
+        }
+
+        let k = self.components.len() as f64;
+        let sq_weight_mean: f64 = self
+            .components
+            .iter()
+            .map(|cpnt| {
+                sum_sq(&{
+                    let k = cpnt.fx.stick_sequence().num_weights_unstable();
+                    cpnt.fx.stick_sequence().weights(k).0
+                })
+            })
+            .sum::<f64>()
+            / k;
+
+        let weight_mean: f64 = self
+            .components
+            .iter()
+            .map(|cpnt| {
+                let k = cpnt.fx.stick_sequence().num_weights_unstable();
+                cpnt.fx.stick_sequence().weights(k).0.iter().sum::<f64>()
+            })
+            .sum::<f64>()
+            / k;
+
+        GewekeColumnSummary::Categorical {
+            x_sum,
+            sq_weight_mean,
+            weight_mean,
+            prior_alpha: if !settings.fixed_prior {
+                Some(self.prior.alpha())
             } else {
                 None
             },
@@ -386,6 +482,9 @@ impl GewekeSummarize for ColModel {
             }
             ColModel::Continuous(ref f) => f.geweke_summarize(settings),
             ColModel::Categorical(ref f) => f.geweke_summarize(settings),
+            ColModel::StickBreakingDiscrete(ref f) => {
+                f.geweke_summarize(settings)
+            }
             ColModel::Count(ref f) => f.geweke_summarize(settings),
         }
     }

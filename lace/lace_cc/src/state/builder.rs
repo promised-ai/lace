@@ -1,8 +1,10 @@
 use lace_codebook::ColType;
+use lace_consts::rv::experimental::stick_breaking::StickBreakingDiscrete;
 use lace_data::SparseContainer;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::prior_process::Process;
 use lace_stats::rv::dist::{
@@ -249,6 +251,18 @@ fn gen_feature<R: rand::Rng>(
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);
             ColModel::Categorical(col)
+        }
+        ColType::StickBreakingDiscrete { .. } => {
+            let hyper = SbdHyper::vague();
+            let prior = hyper.draw(rng);
+            let components: Vec<StickBreakingDiscrete> =
+                (0..n_cats).map(|_| prior.draw(rng)).collect();
+            let xs: Vec<usize> = (0..n_rows)
+                .map::<usize, _>(|i| components[i % n_cats].draw::<R>(rng))
+                .collect();
+            let data = SparseContainer::from(xs);
+            let col = Column::new(id, data, prior, hyper);
+            ColModel::StickBreakingDiscrete(col)
         }
     }
 }

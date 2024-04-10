@@ -106,6 +106,8 @@ pub enum InsertDataError {
     NoPoissonHyperForNewColumn(String),
     #[error("No Categorical hyper prior for new column '{0}'")]
     NoCategoricalHyperForNewColumn(String),
+    #[error("No StickBreakingDiscrete hyper prior for new column '{0}'")]
+    NoStickBreakingDiscreteHyperForNewColumn(String),
     #[error(
         "Provided a {ftype_req:?} data for '{col}' but '{col}' is {ftype:?}"
     )]
@@ -117,7 +119,7 @@ pub enum InsertDataError {
     /// Tried to add a row with no values in it
     #[error("The row '{0}' is entirely empty")]
     EmptyRow(String),
-    /// No metdata was supplied for a categorical column whose support we
+    /// No metadata was supplied for a categorical column whose support we
     /// wished to extend
     #[error(
         "No insert col_metadata supplied for '{col_name}'. Categorical column \
@@ -175,7 +177,7 @@ pub enum InsertDataError {
         must be given string names"
     )]
     IntegerIndexNewRow(usize),
-    #[error("Tried to extend to support of boolen column '{0}'")]
+    #[error("Tried to extend to support of boolean column '{0}'")]
     ExtendBooleanColumn(String),
     #[error("Could not find value in categorical value map")]
     CategoryNotInValueMap(Category),

@@ -1545,6 +1545,7 @@ pub fn predict_uncertainty(
         FType::Continuous => predunc_arm!(states, col_ix, given, Gaussian),
         FType::Categorical => predunc_arm!(states, col_ix, given, Categorical),
         FType::Count => predunc_arm!(states, col_ix, given, Poisson),
+        FType::Index => todo!(),
         FType::Binary => unimplemented!(),
     }
 }

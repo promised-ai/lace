@@ -1835,7 +1835,6 @@ pub trait OracleT: CanOracle {
 
         let states: Vec<&State> = self.states().iter().collect();
         let val: Datum = match self.ftype(col_ix).unwrap() {
-            FType::Binary => unimplemented!(),
             FType::Continuous => {
                 let x = utils::continuous_impute(&states, row_ix, col_ix);
                 Datum::Continuous(x)
@@ -1850,6 +1849,12 @@ pub trait OracleT: CanOracle {
                 let x = utils::count_impute(&states, row_ix, col_ix);
                 Datum::Count(x)
             }
+            FType::Index => {
+                todo!("Index impute");
+                // let x = utils::index_impute(&states, row_ix, col_ix);
+                // Datum::Index(x)
+            }
+            FType::Binary => unimplemented!(),
         };
 
         let val = utils::post_process_datum(val, col_ix, self.codebook());
@@ -2034,7 +2039,6 @@ pub trait OracleT: CanOracle {
             Ok((Datum::Missing, unc_opt))
         } else {
             let value = match self.ftype(col_ix).unwrap() {
-                FType::Binary => unimplemented!(),
                 FType::Continuous => {
                     let x = utils::continuous_predict(&states, col_ix, &given);
                     Datum::Continuous(x)
@@ -2049,6 +2053,12 @@ pub trait OracleT: CanOracle {
                     let x = utils::count_predict(&states, col_ix, &given);
                     Datum::Count(x)
                 }
+                FType::Index => {
+                    todo!("Index predict");
+                    // let x = utils::count_predict(&states, col_ix, &given);
+                    // Datum::Count(x)
+                }
+                FType::Binary => unimplemented!(),
             };
 
             let value =
@@ -2126,6 +2136,7 @@ pub trait OracleT: CanOracle {
             Gaussian,
             Categorical,
             Count,
+            StickBreakingDiscrete,
             Unsupported,
         }
 
@@ -2133,9 +2144,13 @@ pub trait OracleT: CanOracle {
             MixtureType::Gaussian(_) => MType::Gaussian,
             MixtureType::Poisson(_) => MType::Count,
             MixtureType::Categorical(_) => MType::Categorical,
+            MixtureType::StickBreakingDiscrete(_) => {
+                MType::StickBreakingDiscrete
+            }
             _ => MType::Unsupported,
         };
 
+        // TODO: the code in these arms should be part of a trait
         match mtype {
             MType::Gaussian => {
                 let mms: Vec<_> = mixture_types
@@ -2178,6 +2193,21 @@ pub trait OracleT: CanOracle {
                     .collect();
                 let mm = Mixture::combine(mms);
                 Ok(Variability::Entropy(mm.entropy()))
+            }
+            MType::StickBreakingDiscrete => {
+                let mms: Vec<_> = mixture_types
+                    .drain(..)
+                    .map(|mt| {
+                        if let MixtureType::StickBreakingDiscrete(mm) = mt {
+                            mm
+                        } else {
+                            panic!("Expected Categorical Mixture Type")
+                        }
+                    })
+                    .collect();
+                let mm = Mixture::combine(mms);
+                // Ok(Variability::Entropy(mm.entropy()))
+                todo!("Index variability")
             }
             _ => panic!("Unsupported MType"),
         }

@@ -5,12 +5,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum SummaryStatistics {
-    #[serde(rename = "binary")]
     Binary {
         n: usize,
         pos: usize,
     },
-    #[serde(rename = "continuous")]
     Continuous {
         min: f64,
         max: f64,
@@ -18,13 +16,11 @@ pub enum SummaryStatistics {
         median: f64,
         variance: f64,
     },
-    #[serde(rename = "categorical")]
     Categorical {
         min: u8,
         max: u8,
         mode: Vec<u8>,
     },
-    #[serde(rename = "count")]
     Count {
         min: u32,
         max: u32,
@@ -33,6 +29,11 @@ pub enum SummaryStatistics {
         mode: Vec<u32>,
     },
     None,
+    Index {
+        min: usize,
+        max: usize,
+        mode: Vec<usize>,
+    },
 }
 
 // NOTE: If you change the order of the variants, serialization into binary
@@ -48,6 +49,8 @@ pub enum FeatureData {
     Count(SparseContainer<u32>),
     /// Binary data
     Binary(SparseContainer<bool>),
+    /// Index data
+    Index(SparseContainer<usize>),
 }
 
 impl FeatureData {
@@ -57,6 +60,7 @@ impl FeatureData {
             Self::Continuous(xs) => xs.len(),
             Self::Categorical(xs) => xs.len(),
             Self::Count(xs) => xs.len(),
+            Self::Index(xs) => xs.len(),
         }
     }
 
@@ -71,6 +75,7 @@ impl FeatureData {
             Self::Continuous(xs) => xs.is_present(ix),
             Self::Categorical(xs) => xs.is_present(ix),
             Self::Count(xs) => xs.is_present(ix),
+            Self::Index(xs) => xs.is_present(ix),
         }
     }
 
@@ -90,6 +95,9 @@ impl FeatureData {
                 .unwrap_or(Datum::Missing),
             FeatureData::Count(xs) => {
                 xs.get(ix).map(Datum::Count).unwrap_or(Datum::Missing)
+            }
+            FeatureData::Index(xs) => {
+                xs.get(ix).map(Datum::Index).unwrap_or(Datum::Missing)
             }
         }
     }
@@ -111,6 +119,7 @@ impl FeatureData {
             FeatureData::Categorical(ref container) => {
                 summarize_categorical(container)
             }
+            FeatureData::Index(ref container) => summarize_index(container),
             FeatureData::Count(ref container) => summarize_count(container),
         }
     }
@@ -157,6 +166,27 @@ pub fn summarize_categorical(
         .collect();
 
     SummaryStatistics::Categorical { min, max, mode }
+}
+
+pub fn summarize_index(
+    container: &SparseContainer<usize>,
+) -> SummaryStatistics {
+    use lace_utils::{bincount, minmax};
+    let xs: Vec<usize> = container.present_cloned();
+
+    let (min, max) = minmax(&xs);
+    let counts = bincount(&xs, max + 1);
+    let max_ct = counts
+        .iter()
+        .fold(0_usize, |acc, &ct| if ct > acc { ct } else { acc });
+    let mode = counts
+        .iter()
+        .enumerate()
+        .filter(|(_, &ct)| ct == max_ct)
+        .map(|(ix, _)| ix)
+        .collect();
+
+    SummaryStatistics::Index { min, max, mode }
 }
 
 pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {

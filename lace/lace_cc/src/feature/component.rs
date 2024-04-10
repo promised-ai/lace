@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 
+use lace_consts::rv::experimental::stick_breaking::StickBreakingDiscrete;
 use lace_stats::rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
 
 #[derive(Clone, Debug)]
@@ -13,6 +14,7 @@ pub enum Component {
     Categorical(Categorical),
     /// Count/Poisson component
     Count(Poisson),
+    Index(StickBreakingDiscrete),
 }
 
 macro_rules! impl_from_traits {
@@ -42,3 +44,4 @@ impl_from_traits!(Gaussian, Continuous);
 impl_from_traits!(Poisson, Count);
 impl_from_traits!(Bernoulli, Binary);
 impl_from_traits!(Categorical);
+impl_from_traits!(StickBreakingDiscrete, Index);

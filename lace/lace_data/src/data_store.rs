@@ -47,6 +47,9 @@ impl DataStore {
             FeatureData::Count(ref xs) => {
                 xs.get(row_ix).map(Datum::Count).unwrap_or(Datum::Missing)
             }
+            FeatureData::Index(ref xs) => {
+                xs.get(row_ix).map(Datum::Index).unwrap_or(Datum::Missing)
+            }
         }
     }
 }

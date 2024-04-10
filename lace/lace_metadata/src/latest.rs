@@ -86,6 +86,11 @@ impl From<DatalessStateAndDiagnostics> for EmptyState {
                                     cm.into();
                                 ColModel::Categorical(ecm.0)
                             }
+                            v1::DatalessColModel::StickBreakingDiscrete(cm) => {
+                                let ecm: v1::EmptyColumn<_, _, _, _> =
+                                    cm.into();
+                                ColModel::StickBreakingDiscrete(ecm.0)
+                            }
                             v1::DatalessColModel::Count(cm) => {
                                 let ecm: v1::EmptyColumn<_, _, _, _> =
                                     cm.into();

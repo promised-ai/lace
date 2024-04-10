@@ -6,9 +6,13 @@ use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
+};
+use lace_stats::rv::experimental::stick_breaking::{
+    StickBreaking, StickBreakingDiscrete,
 };
 use lace_stats::MixtureType;
 use rand::Rng;

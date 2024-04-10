@@ -10,6 +10,7 @@ use lace_codebook::{Codebook, ValueMap};
 use lace_codebook::{ColMetadataList, ValueMapExtensionError};
 use lace_data::SparseContainer;
 use lace_data::{Category, Datum};
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::rv::data::CategoricalSuffStat;
 use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
@@ -911,9 +912,7 @@ macro_rules! new_col_arm {
                 column.ignore_hyper = true;
                 Ok(ColModel::$coltype(column))
             }
-            (None, None) => Err(InsertDataError::NoGaussianHyperForNewColumn(
-                $colmd.name.clone(),
-            )),
+            (None, None) => Err(InsertDataError::$errvar($colmd.name.clone())),
         }
     }};
 }
@@ -942,6 +941,40 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     f64,
                     rng
                 ),
+                ColType::StickBreakingDiscrete { hyper, prior } => {
+                    use lace_stats::rv::experimental::stick_breaking::StickBreaking;
+                    let data: SparseContainer<usize> =
+                        SparseContainer::all_missing(n_rows);
+
+                    let id = i + n_cols;
+                    match (hyper, prior) {
+                        (Some(h), _) => {
+                            let pr = if let Some(pr) = prior {
+                                StickBreaking::from_alpha(pr.alpha()).unwrap()
+                            } else {
+                                h.draw(&mut rng)
+                            };
+                            let column = Column::new(id, data, pr, h.clone());
+                            Ok(ColModel::StickBreakingDiscrete(column))
+                        }
+                        (None, Some(pr)) => {
+                            let prior = StickBreaking::from_alpha(pr.alpha()).unwrap();
+                            let mut column = Column::new(
+                                id,
+                                data,
+                                prior,
+                                SbdHyper::default(),
+                            );
+                            column.ignore_hyper = true;
+                            Ok(ColModel::StickBreakingDiscrete(column))
+                        }
+                        (None, None) => Err(
+                            InsertDataError::NoStickBreakingDiscreteHyperForNewColumn(
+                                colmd.name.clone(),
+                            ),
+                        ),
+                    }
+                }
                 ColType::Count { hyper, prior } => new_col_arm!(
                     Count,
                     lace_stats::prior::pg::PgHyper,

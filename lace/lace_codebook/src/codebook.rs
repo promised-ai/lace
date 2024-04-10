@@ -4,9 +4,11 @@ use crate::error::{
     RowNameListError,
 };
 use crate::ValueMap;
+use lace_consts::rv::prelude::UnitPowerLaw;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::rv::dist::{
     Beta, Gamma, NormalInvChiSquared, SymmetricDirichlet,
 };
@@ -553,6 +555,11 @@ pub enum ColType {
         /// updated during inference.
         prior: Option<Gamma>,
     },
+    /// Categorical integer data in [0, ...]
+    StickBreakingDiscrete {
+        hyper: Option<SbdHyper>,
+        prior: Option<UnitPowerLaw>,
+    },
 }
 
 impl ColType {
@@ -566,6 +573,10 @@ impl ColType {
 
     pub fn is_count(&self) -> bool {
         matches!(self, ColType::Count { .. })
+    }
+
+    pub fn is_stick_breaking_discrete(&self) -> bool {
+        matches!(self, ColType::StickBreakingDiscrete { .. })
     }
 
     /// Return the value map if the type is categorical and a value map exists.
@@ -583,6 +594,7 @@ impl ColType {
             ColType::Continuous { prior, .. } => prior.is_some(),
             ColType::Categorical { prior, .. } => prior.is_some(),
             ColType::Count { prior, .. } => prior.is_some(),
+            ColType::StickBreakingDiscrete { prior, .. } => prior.is_some(),
         }
     }
 }

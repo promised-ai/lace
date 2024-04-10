@@ -12,6 +12,7 @@ pub enum FType {
     Continuous,
     Categorical,
     Count,
+    Index,
 }
 
 impl std::fmt::Display for FType {
@@ -21,6 +22,7 @@ impl std::fmt::Display for FType {
             Self::Continuous => write!(f, "Continuous"),
             Self::Categorical => write!(f, "Categorical"),
             Self::Count => write!(f, "Count"),
+            Self::Index => write!(f, "StickBreakingDiscrete"),
         }
     }
 }
@@ -34,6 +36,7 @@ impl std::str::FromStr for FType {
             "Continuous" => Ok(FType::Continuous),
             "Categorical" => Ok(FType::Categorical),
             "Count" => Ok(FType::Count),
+            "StickBreakingDiscrete" => Ok(FType::Index),
             invalid => Err(format!("Invalid ftype: '{invalid}'")),
         }
     }
@@ -63,6 +66,7 @@ impl TryFrom<&Datum> for FType {
             Datum::Categorical(_) => Ok(FType::Categorical),
             Datum::Continuous(_) => Ok(FType::Continuous),
             Datum::Count(_) => Ok(FType::Count),
+            Datum::Index(_) => Ok(FType::Index),
             Datum::Missing => Err(()),
         }
     }
@@ -74,6 +78,7 @@ impl FType {
             ColType::Continuous { .. } => FType::Continuous,
             ColType::Categorical { .. } => FType::Categorical,
             ColType::Count { .. } => FType::Count,
+            ColType::StickBreakingDiscrete { .. } => FType::Index,
         }
     }
 

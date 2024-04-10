@@ -8,12 +8,16 @@ use lace_data::{FeatureData, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
     NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
 use lace_stats::MixtureType;
 
+use lace_stats::rv::experimental::stick_breaking::{
+    StickBreaking, StickBreakingDiscrete,
+};
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::sync::OnceLock;
@@ -213,6 +217,9 @@ pub enum DatalessColModel {
     Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(DatalessMissingNotAtRandom),
+    StickBreakingDiscrete(
+        DatalessColumn<usize, StickBreakingDiscrete, StickBreaking, SbdHyper>,
+    ),
 }
 
 impl From<ColModel> for DatalessColModel {
@@ -220,6 +227,9 @@ impl From<ColModel> for DatalessColModel {
         match col_model {
             ColModel::Categorical(col) => {
                 DatalessColModel::Categorical(col.into())
+            }
+            ColModel::StickBreakingDiscrete(col) => {
+                DatalessColModel::StickBreakingDiscrete(col.into())
             }
             ColModel::Continuous(col) => {
                 DatalessColModel::Continuous(col.into())
@@ -310,6 +320,7 @@ col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 col2dataless!(u32, Poisson, Gamma, PgHyper);
 col2dataless!(bool, Bernoulli, Beta, ());
+col2dataless!(usize, StickBreakingDiscrete, StickBreaking, SbdHyper);
 
 pub struct EmptyColumn<X, Fx, Pr, H>(pub Column<X, Fx, Pr, H>)
 where
@@ -348,6 +359,7 @@ dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 dataless2col!(u32, Poisson, Gamma, PgHyper);
 dataless2col!(bool, Bernoulli, Beta, ());
+dataless2col!(usize, StickBreakingDiscrete, StickBreaking, SbdHyper);
 
 impl_metadata_version!(Metadata, METADATA_VERSION);
 impl_metadata_version!(Codebook, METADATA_VERSION);

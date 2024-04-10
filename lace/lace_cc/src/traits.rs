@@ -2,11 +2,17 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 
 use crate::feature::Component;
+use lace_consts::rv::experimental::stick_breaking::StickBreaking;
+use lace_consts::rv::experimental::stick_breaking::StickBreakingDiscrete;
+use lace_consts::rv::experimental::stick_breaking::StickBreakingDiscreteSuffStat;
+use lace_consts::rv::experimental::stick_breaking::StickSequence;
+use lace_consts::rv::traits::DataOrSuffStat;
 use lace_data::Datum;
 use lace_data::SparseContainer;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::rv::data::{
     BernoulliSuffStat, CategoricalDatum, CategoricalSuffStat, GaussianSuffStat,
     PoissonSuffStat,
@@ -37,6 +43,7 @@ impl<X: CategoricalDatum + Default> AccumScore<X> for Categorical {}
 impl AccumScore<u32> for Poisson {}
 impl AccumScore<f64> for Gaussian {}
 impl AccumScore<bool> for Bernoulli {}
+impl AccumScore<usize> for StickBreakingDiscrete {}
 
 /// A Lace-ready datum.
 pub trait LaceDatum:
@@ -126,6 +133,36 @@ pub trait LacePrior<X: LaceDatum, Fx: LaceLikelihood<X>, H>:
     fn score_column<I: Iterator<Item = Fx::Stat>>(&self, stats: I) -> f64;
 }
 
+impl LacePrior<usize, StickBreakingDiscrete, SbdHyper> for StickBreaking {
+    fn empty_suffstat(&self) -> StickBreakingDiscreteSuffStat {
+        StickBreakingDiscreteSuffStat::new()
+    }
+
+    fn invalid_temp_component(&self) -> StickBreakingDiscrete {
+        use lace_stats::rv::dist::UnitPowerLaw;
+        // XXX: This is not a valid distribution. The weights do not sum to 1. I
+        // want to leave this invalid, because I want it to show up if we use
+        // this someplace we're not supposed to. Anywhere this is supposed to be
+        // use used, the bad weights would be immediately overwritten.
+        StickBreakingDiscrete::new(StickSequence::new(
+            UnitPowerLaw::uniform(),
+            None,
+        ))
+    }
+
+    fn score_column<I: Iterator<Item = StickBreakingDiscreteSuffStat>>(
+        &self,
+        stats: I,
+    ) -> f64 {
+        let cache = self.ln_m_cache();
+        stats
+            .map(|stat| {
+                self.ln_m_with_cache(&cache, &DataOrSuffStat::SuffStat(&stat))
+            })
+            .sum::<f64>()
+    }
+}
+
 impl LacePrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
     fn empty_suffstat(&self) -> CategoricalSuffStat {
         CategoricalSuffStat::new(self.k())
@@ -210,7 +247,6 @@ impl LacePrior<bool, Bernoulli, ()> for Beta {
         &self,
         stats: I,
     ) -> f64 {
-        use lace_stats::rv::data::DataOrSuffStat;
         let cache = <Beta as ConjugatePrior<bool, Bernoulli>>::ln_m_cache(self);
         stats
             .map(|stat| {
@@ -234,7 +270,6 @@ impl LacePrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
         &self,
         stats: I,
     ) -> f64 {
-        use lace_stats::rv::data::DataOrSuffStat;
         let cache = self.ln_m_cache();
         stats
             .map(|stat| {

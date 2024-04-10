@@ -47,10 +47,13 @@ use crate::codebook::{Codebook, ColType};
 use crate::error::DataParseError;
 use lace_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
 use lace_codebook::{CodebookError, ValueMap};
+use lace_consts::rv::experimental::stick_breaking::StickBreaking;
+use lace_consts::rv::prelude::UnitPowerLaw;
 use lace_data::{Container, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;
@@ -111,6 +114,34 @@ fn count_col_model<R: rand::Rng>(
     let mut col = Column::new(id, data, prior, hyper);
     col.ignore_hyper = ignore_hyper;
     Ok(ColModel::Count(col))
+}
+
+fn sbd_col_model<R: rand::Rng>(
+    id: usize,
+    srs: &Series,
+    hyper_opt: Option<SbdHyper>,
+    prior_opt: Option<UnitPowerLaw>,
+    mut rng: &mut R,
+) -> Result<ColModel, CodebookError> {
+    let xs: Vec<Option<usize>> =
+        crate::codebook::data::series_to_opt_vec!(srs, usize);
+    let data = SparseContainer::from(xs);
+    let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
+        (Some(hy), Some(pr)) => (hy, StickBreaking::new(pr), true),
+        (Some(hy), None) => {
+            let pr = hy.draw(rng);
+            (hy, pr, false)
+        }
+        (None, Some(pr)) => (SbdHyper::default(), StickBreaking::new(pr), true),
+        (None, None) => {
+            let hy = SbdHyper::default();
+            let pr = hy.draw(&mut rng);
+            (hy, pr, false)
+        }
+    };
+    let mut col = Column::new(id, data, prior, hyper);
+    col.ignore_hyper = ignore_hyper;
+    Ok(ColModel::StickBreakingDiscrete(col))
 }
 
 fn is_categorical_int_dtype(dtype: &polars::datatypes::DataType) -> bool {
@@ -247,6 +278,10 @@ pub fn df_to_col_models<R: rand::Rng>(
                 .map_err(DataParseError::Codebook),
                 ColType::Count { hyper, prior } => {
                     count_col_model(id, srs, hyper.clone(), prior.clone(), rng)
+                        .map_err(DataParseError::Codebook)
+                }
+                ColType::StickBreakingDiscrete { hyper, prior } => {
+                    sbd_col_model(id, srs, hyper.clone(), prior.clone(), rng)
                         .map_err(DataParseError::Codebook)
                 }
                 ColType::Categorical {

@@ -8,10 +8,14 @@ use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use lace_stats::rv::data::DataOrSuffStat;
 use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
     NormalInvChiSquared, Poisson, SymmetricDirichlet,
+};
+use lace_stats::rv::experimental::stick_breaking::{
+    StickBreaking, StickBreakingDiscrete,
 };
 use lace_stats::rv::traits::{
     ConjugatePrior, HasDensity, Mean, QuadBounds, Sampleable, SuffStat,
@@ -63,6 +67,9 @@ pub enum ColModel {
     Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Count(Column<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(super::mnar::MissingNotAtRandom),
+    StickBreakingDiscrete(
+        Column<usize, StickBreakingDiscrete, StickBreaking, SbdHyper>,
+    ),
 }
 
 impl ColModel {
@@ -96,6 +103,7 @@ impl ColModel {
             Self::Continuous(_) => FType::Continuous,
             Self::Categorical(_) => FType::Categorical,
             Self::Count(_) => FType::Count,
+            Self::StickBreakingDiscrete(_) => FType::Count,
             Self::MissingNotAtRandom(super::mnar::MissingNotAtRandom {
                 fx,
                 ..
@@ -231,6 +239,13 @@ impl TranslateDatum<u8>
 impl_translate_datum!(bool, Bernoulli, Beta, (), Binary);
 impl_translate_datum!(f64, Gaussian, NormalInvChiSquared, NixHyper, Continuous);
 impl_translate_datum!(u32, Poisson, Gamma, PgHyper, Count);
+impl_translate_datum!(
+    usize,
+    StickBreakingDiscrete,
+    StickBreaking,
+    SbdHyper,
+    Index
+);
 
 pub(crate) fn draw_cpnts<X, Fx, Pr, H>(
     prior: &Pr,
@@ -666,6 +681,7 @@ impl QmcEntropy for ColModel {
             ColModel::Categorical(_) => 1,
             ColModel::Count(_) => 1,
             ColModel::MissingNotAtRandom(cm) => cm.fx.us_needed(),
+            ColModel::StickBreakingDiscrete(_) => 1,
         }
     }
 
@@ -673,6 +689,11 @@ impl QmcEntropy for ColModel {
         match self {
             ColModel::MissingNotAtRandom(cm) => cm.fx.q_recip(),
             ColModel::Categorical(cm) => cm.components()[0].fx.k() as f64,
+            ColModel::StickBreakingDiscrete(cm) => cm.components()[0]
+                .fx
+                .stick_sequence()
+                .num_weights_unstable()
+                as f64,
             ColModel::Continuous(cm) => {
                 let (a, b) = cm.quad_bounds();
                 b - a
@@ -707,6 +728,11 @@ impl QmcEntropy for ColModel {
                 let k: f64 = cm.components()[0].fx.k() as f64;
                 let x = (us.next().unwrap() * k) as u8;
                 Datum::Categorical(Category::U8(x))
+            }
+            ColModel::StickBreakingDiscrete(cm) => {
+                let k = self.q_recip();
+                let x = (us.next().unwrap() * k) as usize;
+                Datum::Index(x)
             }
         }
     }

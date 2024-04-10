@@ -10,4 +10,4 @@ description = "Default constants for Lace"
 
 [dependencies]
 # rv = { version = "0.16.3", features = ["serde1", "arraydist"] }
-rv = { git = "https://github.com/promised-ai/rv.git", branch = "cs-experimental", features = ["serde1", "arraydist"] }
+rv = { git = "https://github.com/promised-ai/rv.git", branch = "cs-experimental", features = ["serde1", "arraydist", "experimental"] }

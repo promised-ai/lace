@@ -4,9 +4,11 @@ use crate::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, ValueMap,
 };
 
+use lace_consts::rv::prelude::UnitPowerLaw;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior::sbd::SbdHyper;
 use polars::prelude::{CsvReader, DataFrame, DataType, SerReader, Series};
 use std::convert::TryFrom;
 use std::path::Path;
@@ -386,7 +388,15 @@ pub fn series_to_colmd(
         DataType::UInt8 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt16 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt32 => uint_coltype(srs, cat_cutoff, no_hypers),
-        DataType::UInt64 => uint_coltype(srs, cat_cutoff, no_hypers),
+        DataType::UInt64 => {
+            // TODO: Should Uint64 always ne inferred to be Index type?
+            let (hyper, prior) = if no_hypers {
+                (None, Some(UnitPowerLaw::new(0.5).unwrap()))
+            } else {
+                (Some(SbdHyper::vague()), None)
+            };
+            Ok(ColType::StickBreakingDiscrete { hyper, prior })
+        }
         DataType::Int8 => int_coltype(srs, cat_cutoff, no_hypers),
         DataType::Int16 => int_coltype(srs, cat_cutoff, no_hypers),
         DataType::Int32 => int_coltype(srs, cat_cutoff, no_hypers),

@@ -13,6 +13,7 @@ pub enum Datum {
     Categorical(Category),
     Count(u32),
     Missing,
+    Index(usize),
 }
 
 /// Describes an error converting from a Datum to another type
@@ -33,6 +34,9 @@ pub enum DatumConversionError {
     /// Cannot convert Missing into a value of any type
     #[error("cannot convert Missing into a value of any type")]
     CannotConvertMissing,
+    /// Tried to convert Index into a type other than usize
+    #[error("tried to convert Index into a type other than usize")]
+    InvalidTypeRequestedFromIndex,
 }
 
 fn hash_float<H: std::hash::Hasher>(float: f64, state: &mut H) {
@@ -50,6 +54,7 @@ impl Hash for Datum {
             Self::Categorical(x) => x.hash(state),
             Self::Count(x) => x.hash(state),
             Self::Missing => hash_float(std::f64::NAN, state),
+            Self::Index(x) => x.hash(state),
         }
     }
 }
@@ -83,6 +88,7 @@ impl PartialEq for Datum {
             Self::Categorical(x) => datum_peq!(x, other, Categorical),
             Self::Count(x) => datum_peq!(x, other, Count),
             Self::Missing => matches!(other, Self::Missing),
+            Self::Index(x) => datum_peq!(x, other, Index),
         }
     }
 }
@@ -136,6 +142,12 @@ impl_try_from_datum!(
     DatumConversionError::InvalidTypeRequestedFromCount
 );
 
+impl_try_from_datum!(
+    usize,
+    Datum::Index,
+    DatumConversionError::InvalidTypeRequestedFromIndex
+);
+
 // XXX: What happens when we add vector types? Error?
 impl Datum {
     /// Unwraps the datum as an `f64` if possible. The conversion will coerce
@@ -161,6 +173,7 @@ impl Datum {
             Datum::Categorical(Category::U8(x)) => Some(f64::from(*x)),
             Datum::Categorical(Category::String(_)) => None,
             Datum::Count(x) => Some(f64::from(*x)),
+            Datum::Index(x) => Some(*x as f64),
             Datum::Missing => None,
         }
     }
@@ -186,6 +199,7 @@ impl Datum {
             Datum::Categorical(Category::Bool(x)) => Some(*x as u8),
             Datum::Categorical(Category::String(_)) => None,
             Datum::Count(..) => None,
+            Datum::Index(..) => None,
             Datum::Missing => None,
         }
     }
@@ -208,6 +222,11 @@ impl Datum {
     /// Returns `true` if the `Datum` is Count
     pub fn is_count(&self) -> bool {
         matches!(self, Datum::Count(_))
+    }
+
+    /// Returns `true` if the `Datum` is Index
+    pub fn is_index(&self) -> bool {
+        matches!(self, Datum::Index(_))
     }
 
     /// Returns `true` if the `Datum` is missing

@@ -1,6 +1,7 @@
 use std::convert::From;
 
 use crate::rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
+use crate::rv::experimental::stick_breaking::StickBreakingDiscrete;
 use crate::rv::traits::Entropy;
 use crate::MixtureJsd;
 
@@ -12,6 +13,7 @@ pub enum MixtureType {
     Gaussian(Mixture<Gaussian>),
     Categorical(Mixture<Categorical>),
     Poisson(Mixture<Poisson>),
+    StickBreakingDiscrete(Mixture<StickBreakingDiscrete>),
 }
 
 macro_rules! mt_combine_arm {
@@ -56,6 +58,7 @@ impl MixtureType {
             MixtureType::Categorical(mm) => mm.k(),
             MixtureType::Gaussian(mm) => mm.k(),
             MixtureType::Poisson(mm) => mm.k(),
+            MixtureType::StickBreakingDiscrete(mm) => mm.k(),
         }
     }
 
@@ -73,6 +76,9 @@ impl MixtureType {
             }
             MixtureType::Gaussian(..) => mt_combine_arm!(Gaussian, mixtures),
             MixtureType::Poisson(..) => mt_combine_arm!(Poisson, mixtures),
+            MixtureType::StickBreakingDiscrete(..) => {
+                mt_combine_arm!(StickBreakingDiscrete, mixtures)
+            }
         }
     }
 }
@@ -104,6 +110,11 @@ impl Entropy for MixtureType {
             MixtureType::Gaussian(mm) => mm.entropy(),
             MixtureType::Categorical(mm) => mm.entropy(),
             MixtureType::Poisson(mm) => mm.entropy(),
+            MixtureType::StickBreakingDiscrete(mm) => {
+                // FIXME: impl in rv!
+                // mm.entropy(),
+                0.0
+            }
         }
     }
 }
@@ -112,6 +123,7 @@ impl_from!(Gaussian);
 impl_from!(Categorical);
 impl_from!(Poisson);
 impl_from!(Bernoulli);
+impl_from!(StickBreakingDiscrete);
 
 impl<Fx> MixtureJsd for Mixture<Fx>
 where
@@ -136,6 +148,11 @@ impl MixtureJsd for MixtureType {
             MixtureType::Gaussian(mm) => mm.mixture_jsd(),
             MixtureType::Categorical(mm) => mm.mixture_jsd(),
             MixtureType::Poisson(mm) => mm.mixture_jsd(),
+            MixtureType::StickBreakingDiscrete(mm) => {
+                // FIXME: impl in rv!
+                // mm.mixture_jsd(),
+                0.0
+            }
         }
     }
 }
