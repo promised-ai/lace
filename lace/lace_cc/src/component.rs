@@ -1,7 +1,9 @@
 //! Conjugate component data structure
 use lace_data::SparseContainer;
 use lace_stats::rv::data::DataOrSuffStat;
-use lace_stats::rv::traits::*;
+use lace_stats::rv::traits::{
+    ConjugatePrior, Entropy, HasDensity, Mode, Sampleable, SuffStat,
+};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
@@ -19,14 +21,14 @@ where
     Fx: LaceLikelihood<X>,
     Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     #[serde(bound(deserialize = "Fx: serde::de::DeserializeOwned"))]
     pub fx: Fx,
     #[serde(bound(deserialize = "Fx: serde::de::DeserializeOwned"))]
     pub stat: Fx::Stat,
     #[serde(skip)]
-    pub ln_pp_cache: OnceLock<Pr::LnPpCache>,
+    pub ln_pp_cache: OnceLock<Pr::PpCache>,
 }
 
 impl<X, Fx, Pr> AccumScore<X> for ConjugateComponent<X, Fx, Pr>
@@ -35,7 +37,7 @@ where
     Fx: LaceLikelihood<X>,
     Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     fn accum_score(&self, scores: &mut [f64], container: &SparseContainer<X>) {
         self.fx.accum_score(scores, container)
@@ -57,7 +59,7 @@ where
     Fx: LaceLikelihood<X>,
     Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     /// Create a new ConjugateComponent with no observations
     #[inline]
@@ -82,24 +84,33 @@ where
     }
 
     #[inline]
-    pub fn ln_pp_cache(&self, prior: &Pr) -> &Pr::LnPpCache {
+    pub fn ln_pp_cache(&self, prior: &Pr) -> &Pr::PpCache {
         self.ln_pp_cache
             .get_or_init(|| prior.ln_pp_cache(&self.obs()))
     }
 }
 
-impl<X, Fx, Pr> Rv<X> for ConjugateComponent<X, Fx, Pr>
+impl<X, Fx, Pr> HasDensity<X> for ConjugateComponent<X, Fx, Pr>
 where
     X: LaceDatum,
     Fx: LaceLikelihood<X>,
     Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     fn ln_f(&self, x: &X) -> f64 {
         self.fx.ln_f(x)
     }
+}
 
+impl<X, Fx, Pr> Sampleable<X> for ConjugateComponent<X, Fx, Pr>
+where
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
+    Pr: ConjugatePrior<X, Fx>,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
+{
     fn draw<R: Rng>(&self, mut rng: &mut R) -> X {
         self.fx.draw(&mut rng)
     }
@@ -115,7 +126,7 @@ where
     Fx: LaceLikelihood<X> + Mode<X>,
     Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     fn mode(&self) -> Option<X> {
         self.fx.mode()
@@ -128,7 +139,7 @@ where
     Fx: LaceLikelihood<X> + Entropy,
     Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     fn entropy(&self) -> f64 {
         self.fx.entropy()
@@ -141,7 +152,7 @@ where
     Fx: LaceLikelihood<X>,
     Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     fn n(&self) -> usize {
         self.stat.n()
@@ -164,7 +175,7 @@ where
     Fx: LaceLikelihood<X>,
     Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     fn from(cpnt: ConjugateComponent<X, Fx, Pr>) -> Component {
         cpnt.fx.into()

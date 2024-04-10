@@ -1,7 +1,7 @@
 //! Enumeration tests
 use lace_cc::feature::{ColModel, Column, FType};
 use lace_data::SparseContainer;
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 
 /// Convert a partition with to an integer index by converting a k-length
 /// partition into a k-length base-k integer from left to right.

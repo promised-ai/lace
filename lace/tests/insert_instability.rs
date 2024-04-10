@@ -25,7 +25,7 @@ fn empty_engine() -> lace::Engine {
 fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
     use lace_data::Datum;
     use lace_stats::rv::dist::Gaussian;
-    use lace_stats::rv::traits::Rv;
+    use lace_stats::rv::traits::Sampleable;
 
     let g = Gaussian::default();
     let mut values = g

@@ -13,7 +13,9 @@ use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
     NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
-use lace_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
+use lace_stats::rv::traits::{
+    ConjugatePrior, HasDensity, Mean, QuadBounds, Sampleable, SuffStat,
+};
 use lace_stats::{MixtureType, QmcEntropy};
 use lace_utils::MinMax;
 use rand::Rng;
@@ -40,8 +42,8 @@ where
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub id: usize,
     pub data: SparseContainer<X>,
@@ -51,7 +53,7 @@ where
     #[serde(default)]
     pub ignore_hyper: bool,
     #[serde(skip)]
-    pub ln_m_cache: OnceLock<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
+    pub ln_m_cache: OnceLock<<Pr as ConjugatePrior<X, Fx>>::MCache>,
 }
 
 #[enum_dispatch]
@@ -115,8 +117,8 @@ where
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub fn new(
         id: usize,
@@ -136,7 +138,7 @@ where
     }
 
     #[inline]
-    pub fn ln_m_cache(&self) -> &Pr::LnMCache {
+    pub fn ln_m_cache(&self) -> &Pr::MCache {
         self.ln_m_cache.get_or_init(|| self.prior.ln_m_cache())
     }
 
@@ -240,7 +242,7 @@ where
     Fx: LaceLikelihood<X>,
     Pr: LacePrior<X, Fx, H>,
     Fx::Stat: LaceStat,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     (0..k)
         .map(|_| ConjugateComponent::new(prior.draw(&mut rng)))
@@ -255,8 +257,8 @@ where
     Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
@@ -363,11 +365,13 @@ where
     #[inline]
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
         if self.ignore_hyper {
-            return self
-                .components
-                .iter()
-                .map(|cpnt| self.prior.ln_f(&cpnt.fx))
-                .sum::<f64>();
+            // FIXME: bring this back once we figure it out for SBD in rv
+            // return self
+            //     .components
+            //     .iter()
+            //     .map(|cpnt| self.prior.ln_f(&cpnt.fx))
+            //     .sum::<f64>();
+            return 0.0;
         }
 
         self.unset_ln_m_cache();
@@ -623,8 +627,8 @@ where
     Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {

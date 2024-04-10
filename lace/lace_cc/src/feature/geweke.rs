@@ -11,7 +11,7 @@ use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 use lace_utils::{mean, std};
 use rand::Rng;
 

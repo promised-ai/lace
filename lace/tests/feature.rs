@@ -13,7 +13,7 @@ use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 use rand::Rng;
 use std::sync::OnceLock;
 

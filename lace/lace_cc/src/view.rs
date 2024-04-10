@@ -4,7 +4,7 @@ use lace_data::{Datum, FeatureData};
 use lace_stats::assignment::Assignment;
 use lace_stats::prior_process::PriorProcess;
 use lace_stats::rv::dist::Dirichlet;
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 use lace_utils::{unused_components, Matrix};
 use rand::Rng;
 use serde::{Deserialize, Serialize};

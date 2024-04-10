@@ -12,7 +12,7 @@ use lace::stats::prior::nix::NixHyper;
 use lace::{Given, Oracle, OracleT};
 use lace_data::{DataStore, SparseContainer};
 use lace_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
-use lace_stats::rv::traits::{Cdf, Rv};
+use lace_stats::rv::traits::{Cdf, Sampleable};
 use rand::Rng;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {

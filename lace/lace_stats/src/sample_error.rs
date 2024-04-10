@@ -174,7 +174,10 @@ impl SampleError<u8> for Mixture<Categorical> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::rv::dist::{Categorical, Gaussian};
+    use crate::rv::traits::Sampleable;
+
     use approx::*;
 
     const N_TRIES: usize = 5;

@@ -211,7 +211,7 @@ mod tests {
     use lace_cc::feature::{FType, Feature};
     use lace_codebook::{ColMetadata, ColType};
     use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
-    use lace_stats::rv::traits::Rv;
+    use lace_stats::rv::traits::{HasDensity, Sampleable};
     use lace_stats::MixtureType;
     use rand::Rng;
     use std::collections::BTreeMap;

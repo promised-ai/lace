@@ -13,7 +13,9 @@ use crate::codebook::Codebook;
 use crate::stats::rv::dist::{
     Bernoulli, Categorical, Gaussian, Mixture, Poisson,
 };
-use crate::stats::rv::traits::{Entropy, Mode, QuadBounds, Rv, Variance};
+use crate::stats::rv::traits::{
+    Entropy, HasDensity, Mode, QuadBounds, Sampleable, Variance,
+};
 use crate::stats::MixtureType;
 use lace_consts::rv::misc::logsumexp;
 use lace_data::{Category, Datum};

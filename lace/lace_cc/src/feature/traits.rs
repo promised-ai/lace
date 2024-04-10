@@ -165,7 +165,7 @@ mod tests {
     use approx::*;
     use lace_stats::prior_process::Builder as PriorProcessBuilder;
     use lace_stats::rv::dist::Gaussian;
-    use lace_stats::rv::traits::Rv;
+    use lace_stats::rv::traits::Sampleable;
 
     #[test]
     fn score_and_asgn_score_equivalency() {

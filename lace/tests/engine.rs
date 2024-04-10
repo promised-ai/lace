@@ -2631,7 +2631,7 @@ mod prior_in_codebook {
     use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
     use lace_stats::prior::nix::NixHyper;
     use lace_stats::rv::dist::NormalInvChiSquared;
-    use lace_stats::rv::traits::Rv;
+    use lace_stats::rv::traits::Sampleable;
     use std::convert::TryInto;
     use std::io::Write;
 

@@ -1,7 +1,7 @@
 use lace_data::SparseContainer;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 use rand::Rng;
 
 use lace_cc::alg::RowAssignAlg;

@@ -6,7 +6,7 @@ use crate::feature::Feature;
 
 use lace_stats::prior_process::PriorProcessT;
 use lace_stats::rv::dist::Dirichlet;
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 use lace_utils::Matrix;
 use lace_utils::Shape;
 use rand::Rng;

@@ -1,5 +1,5 @@
 use lace_stats::rv::dist::{Gamma, InvGamma};
-use lace_stats::rv::traits::{Mean, Rv, Variance};
+use lace_stats::rv::traits::{HasDensity, Mean, Sampleable, Variance};
 
 use lace_stats::mat::{Matrix2x2, Vector2};
 use lace_stats::mh::mh_symrw_adaptive_mv;

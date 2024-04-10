@@ -274,8 +274,8 @@ where
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub id: usize,
     #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
@@ -318,8 +318,8 @@ where
     Fx::Stat: LaceStat,
     Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>;
 
 macro_rules! dataless2col {

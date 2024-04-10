@@ -1,4 +1,5 @@
-use lace_consts::rv::{misc::pflip, traits::Rv};
+use lace_consts::rv::misc::pflip;
+use lace_consts::rv::traits::Sampleable;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

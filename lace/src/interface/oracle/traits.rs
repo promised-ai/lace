@@ -7,12 +7,13 @@ use crate::index::{
 use crate::interface::oracle::error::SurprisalError;
 use crate::interface::oracle::{ConditionalEntropyType, MiComponents, MiType};
 use crate::interface::{CanOracle, Given};
+
 use lace_cc::feature::{FType, Feature};
 use lace_cc::state::{State, StateDiagnostics};
 use lace_consts::rv::misc::logsumexp;
 use lace_data::{Datum, SummaryStatistics};
 use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 use lace_stats::SampleError;
 use rand::Rng;
 use rayon::prelude::*;

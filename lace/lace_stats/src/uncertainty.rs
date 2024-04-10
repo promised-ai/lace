@@ -1,5 +1,5 @@
 use crate::rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
-use crate::rv::traits::{Mean, QuadBounds, Rv};
+use crate::rv::traits::{HasDensity, Mean, QuadBounds};
 
 /// Compute the normed mean Total Variation Distance of a set of mixture
 /// distributions with the mean of distributions.

@@ -67,7 +67,7 @@ mod tests {
     use super::*;
     use crate::rv::data::DataOrSuffStat;
     use crate::rv::dist::{Bernoulli, Beta};
-    use crate::rv::traits::{ConjugatePrior, Rv};
+    use crate::rv::traits::{ConjugatePrior, HasDensity, Sampleable};
 
     fn relerr(x: f64, x_est: f64) -> f64 {
         (x_est / x - 1.0).abs()
