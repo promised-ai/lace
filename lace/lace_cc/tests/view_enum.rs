@@ -234,5 +234,7 @@ view_enum_test!(
         [Gibbs, Slice, Sams]
     ),
     (ve_count_dp, Count, Dirichlet, [Gibbs, Slice, Sams]),
-    (ve_count_pyp, Count, PitmanYor, [Gibbs, Slice, Sams])
+    (ve_count_pyp, Count, PitmanYor, [Gibbs, Slice, Sams]),
+    (ve_index_dp, Index, Dirichlet, [Gibbs, Slice, Sams]),
+    (ve_index_pyp, Index, PitmanYor, [Gibbs, Slice, Sams])
 );

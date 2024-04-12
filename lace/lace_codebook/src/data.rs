@@ -389,7 +389,7 @@ pub fn series_to_colmd(
         DataType::UInt16 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt32 => uint_coltype(srs, cat_cutoff, no_hypers),
         DataType::UInt64 => {
-            // TODO: Should Uint64 always ne inferred to be Index type?
+            // TODO: Should Uint64 always ne inferred to be Index type data?
             let (hyper, prior) = if no_hypers {
                 (None, Some(UnitPowerLaw::new(0.5).unwrap()))
             } else {

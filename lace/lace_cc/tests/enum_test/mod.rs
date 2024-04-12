@@ -1,7 +1,10 @@
 //! Enumeration tests
 use lace_cc::feature::{ColModel, Column, FType};
+use lace_consts::rv::experimental::stick_breaking::{
+    StickBreaking, StickBreakingDiscrete,
+};
 use lace_data::SparseContainer;
-use lace_stats::rv::traits::Sampleable;
+use lace_stats::{prior::sbd::SbdHyper, rv::traits::Sampleable};
 
 /// Convert a partition with to an integer index by converting a k-length
 /// partition into a k-length base-k integer from left to right.
@@ -99,6 +102,23 @@ pub fn gen_feature_ctor<R: rand::Rng>(
                 let xs: Vec<u32> = pois.sample(n_rows, &mut rng);
                 let data = SparseContainer::from(xs);
                 ColModel::Count(Column::new(id, data, prior, hyper))
+            }
+            ctor
+        }
+        FType::Index => {
+            fn ctor<R: rand::Rng>(
+                id: usize,
+                n_rows: usize,
+                mut rng: &mut R,
+            ) -> ColModel {
+                let prior = StickBreaking::from_alpha(0.5).unwrap();
+                let hyper = SbdHyper::vague();
+                let fx: StickBreakingDiscrete = prior.draw(rng);
+                let xs: Vec<usize> = fx.sample(n_rows, &mut rng);
+                let data = SparseContainer::from(xs);
+                ColModel::StickBreakingDiscrete(Column::new(
+                    id, data, prior, hyper,
+                ))
             }
             ctor
         }
