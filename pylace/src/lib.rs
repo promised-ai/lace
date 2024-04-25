@@ -1179,7 +1179,19 @@ impl CoreEngine {
         Ok(())
     }
 
-    /// Remove Rows at the given indices
+    /// Remove Rows at the given indices.
+    ///
+    /// Example
+    /// -------
+    ///
+    /// >>> import lace
+    /// >>> engine = lace.Engine('animals.rp')
+    /// >>> n_rows = engine.shape[0]
+    /// >>> removed = engine.remove_rows(["wolf", "ox"])
+    /// >>> removed["index"].to_list()
+    /// ["wolf", "ox"]
+    /// >>> n_rows - 1 == engine.shape[0]
+    /// True
     fn remove_rows(&mut self, rows: &PyList) -> PyResult<PyDataFrame> {
         let remove: Vec<String> = rows
             .into_iter()
@@ -1198,10 +1210,7 @@ impl CoreEngine {
             .collect::<PyResult<Vec<_>>>()?;
 
         let mut df = polars::frame::DataFrame::empty();
-        let index = polars::series::Series::new(
-            "index",
-            remove.iter().map(|x| x.clone()).collect::<Vec<String>>(),
-        );
+        let index = polars::series::Series::new("index", remove);
         df.with_column(index).map_err(to_pyerr)?;
 
         for col_ix in 0..self.engine.n_cols() {

@@ -668,6 +668,15 @@ impl Codebook {
             Ok(())
         }
     }
+
+    /// Create a new codebook with the same columns but row indices from another dataframe.
+    fn with_index(&self, new_index: Vec<String>) -> PyResult<Self> {
+        let row_names = RowNameList::try_from(new_index).map_err(to_pyerr)?;
+        Ok(Self(lace::codebook::Codebook {
+            row_names,
+            ..self.0.clone()
+        }))
+    }
 }
 
 #[pyfunction]
