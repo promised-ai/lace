@@ -13,7 +13,7 @@ use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
 use lace::prelude::ColMetadataList;
-use lace::{EngineUpdateConfig, FType, HasStates, OracleT};
+use lace::{Datum, EngineUpdateConfig, FType, HasStates, OracleT, TableIndex};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::create_exception;
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
@@ -1177,6 +1177,61 @@ impl CoreEngine {
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())
+    }
+
+    /// Remove Rows at the given indices
+    fn remove_rows(&mut self, rows: &PyList) -> PyResult<PyDataFrame> {
+        let remove: Vec<String> = rows
+            .into_iter()
+            .map(|x| x.str().map(|s| s.to_string()))
+            .collect::<PyResult<Vec<String>>>()?;
+
+        let row_idxs: Vec<usize> = remove
+            .iter()
+            .map(|row_name| {
+                self.engine.codebook.row_index(row_name).ok_or_else(|| {
+                    PyIndexError::new_err(format!(
+                        "{row_name} is not a valid row index"
+                    ))
+                })
+            })
+            .collect::<PyResult<Vec<_>>>()?;
+
+        let mut df = polars::frame::DataFrame::empty();
+        let index = polars::series::Series::new(
+            "index",
+            remove.iter().map(|x| x.clone()).collect::<Vec<String>>(),
+        );
+        df.with_column(index).map_err(to_pyerr)?;
+
+        for col_ix in 0..self.engine.n_cols() {
+            let values = row_idxs
+                .iter()
+                .map(|&row_ix| {
+                    self.engine.datum(row_ix, col_ix).map_err(to_pyerr)
+                })
+                .collect::<PyResult<Vec<Datum>>>()?;
+
+            let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+            let srs = utils::vec_to_srs(
+                values,
+                col_ix,
+                ftype,
+                &self.engine.codebook,
+            )?;
+            df.with_column(srs.0).map_err(to_pyerr)?;
+        }
+
+        self.engine
+            .remove_data(
+                row_idxs
+                    .into_iter()
+                    .map(|idx| TableIndex::Row(idx))
+                    .collect::<Vec<TableIndex<usize, usize>>>(),
+            )
+            .map_err(to_pyerr)?;
+
+        Ok(PyDataFrame(df))
     }
 
     /// Append new columns to the Engine
