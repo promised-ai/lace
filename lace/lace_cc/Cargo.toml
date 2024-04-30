@@ -23,7 +23,7 @@ enum_dispatch = "0.3.10"
 thiserror = "1.0.19"
 rand_xoshiro = { version="0.6", features = ["serde1"] }
 special = "0.10"
-itertools = "0.12"
+# itertools = "0.12"
 
 [dev-dependencies]
 approx = "0.5.1"

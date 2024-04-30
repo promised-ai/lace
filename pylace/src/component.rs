@@ -1,4 +1,5 @@
 use lace::stats::rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
+use lace::stats::rv::experimental::stick_breaking_process::StickBreakingDiscrete;
 use lace::stats::MixtureType;
 use pyo3::prelude::*;
 
@@ -9,6 +10,9 @@ impl From<MixtureType> for ComponentParams {
             MixtureType::Categorical(mm) => mm.components().as_slice().into(),
             MixtureType::Gaussian(mm) => mm.components().as_slice().into(),
             MixtureType::Poisson(mm) => mm.components().as_slice().into(),
+            MixtureType::StickBreakingDiscrete(mm) => {
+                mm.components().as_slice().into()
+            }
         }
     }
 }
@@ -18,6 +22,7 @@ pub enum ComponentParams {
     Categorical(Vec<CategoricalParams>),
     Gaussian(Vec<GaussianParams>),
     Poisson(Vec<PoissonParams>),
+    StickBreakingDiscrete(Vec<StickBreakingDiscreteParams>),
 }
 
 #[pyclass(get_all)]
@@ -60,6 +65,11 @@ impl PoissonParams {
 #[pyclass(get_all)]
 pub struct CategoricalParams {
     pub weights: Vec<f64>,
+}
+
+#[pyclass(get_all)]
+pub struct StickBreakingDiscreteParams {
+    pub partial_weights: Vec<f64>,
 }
 
 #[pymethods]
@@ -117,6 +127,17 @@ impl From<&Poisson> for PoissonParams {
     }
 }
 
+impl From<&StickBreakingDiscrete> for StickBreakingDiscreteParams {
+    fn from(value: &StickBreakingDiscrete) -> Self {
+        let n = value.stick_sequence().num_weights_unstable();
+        let seq = value.stick_sequence();
+        let partial_weights: Vec<f64> = (0..n).map(|ix| {
+            seq.weight(ix)
+        }).collect();
+        StickBreakingDiscreteParams { partial_weights }
+    }
+}
+
 macro_rules! impl_from_slice_dist {
     ($variant: ident) => {
         impl From<&[$variant]> for ComponentParams {
@@ -132,3 +153,4 @@ impl_from_slice_dist!(Bernoulli);
 impl_from_slice_dist!(Gaussian);
 impl_from_slice_dist!(Categorical);
 impl_from_slice_dist!(Poisson);
+impl_from_slice_dist!(StickBreakingDiscrete);

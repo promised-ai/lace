@@ -15,7 +15,7 @@ use lace_stats::rv::dist::{
 };
 use lace_stats::MixtureType;
 
-use lace_stats::rv::experimental::stick_breaking::{
+use lace_stats::rv::experimental::stick_breaking_process::{
     StickBreaking, StickBreakingDiscrete,
 };
 use rand_xoshiro::Xoshiro256Plus;

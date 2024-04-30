@@ -14,7 +14,7 @@ use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
     NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
-use lace_stats::rv::experimental::stick_breaking::{
+use lace_stats::rv::experimental::stick_breaking_process::{
     StickBreaking, StickBreakingDiscrete,
 };
 use lace_stats::rv::traits::{
@@ -103,7 +103,7 @@ impl ColModel {
             Self::Continuous(_) => FType::Continuous,
             Self::Categorical(_) => FType::Categorical,
             Self::Count(_) => FType::Count,
-            Self::StickBreakingDiscrete(_) => FType::Count,
+            Self::StickBreakingDiscrete(_) => FType::Index,
             Self::MissingNotAtRandom(super::mnar::MissingNotAtRandom {
                 fx,
                 ..

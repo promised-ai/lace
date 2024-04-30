@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use lace_consts::rv::experimental::stick_breaking::StickBreakingDiscrete;
+use lace_consts::rv::experimental::stick_breaking_process::StickBreakingDiscrete;
 use lace_stats::rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
 
 #[derive(Clone, Debug)]

@@ -313,6 +313,9 @@ impl CoreEngine {
             ComponentParams::Poisson(params) => {
                 Ok(params.into_py(py).into_ref(py))
             }
+            ComponentParams::StickBreakingDiscrete(params) => {
+                Ok(params.into_py(py).into_ref(py))
+            }
         }
     }
 

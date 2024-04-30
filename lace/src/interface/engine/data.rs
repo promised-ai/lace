@@ -942,7 +942,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     rng
                 ),
                 ColType::StickBreakingDiscrete { hyper, prior } => {
-                    use lace_stats::rv::experimental::stick_breaking::StickBreaking;
+                    use lace_stats::rv::experimental::stick_breaking_process::StickBreaking;
                     let data: SparseContainer<usize> =
                         SparseContainer::all_missing(n_rows);
 

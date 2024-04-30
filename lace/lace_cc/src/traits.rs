@@ -2,10 +2,10 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 
 use crate::feature::Component;
-use lace_consts::rv::experimental::stick_breaking::StickBreaking;
-use lace_consts::rv::experimental::stick_breaking::StickBreakingDiscrete;
-use lace_consts::rv::experimental::stick_breaking::StickBreakingDiscreteSuffStat;
-use lace_consts::rv::experimental::stick_breaking::StickSequence;
+use lace_consts::rv::experimental::stick_breaking_process::StickBreaking;
+use lace_consts::rv::experimental::stick_breaking_process::StickBreakingDiscrete;
+use lace_consts::rv::experimental::stick_breaking_process::StickBreakingDiscreteSuffStat;
+use lace_consts::rv::experimental::stick_breaking_process::StickSequence;
 use lace_consts::rv::traits::DataOrSuffStat;
 use lace_data::Datum;
 use lace_data::SparseContainer;

@@ -1,0 +1,54 @@
+# Notes on adding features
+
+- went to stats/prior/sbd.rs and added hyper
+  - impl UpdatePrior
+- Went to feature/column.rs and added to ColModel enum
+- Went to lace_cc/src/traits.src and implemented
+  - LacePrior
+  - AccumScore
+- Went to lace_cc/src/feature/component.rs and implemented
+  - from_traits! to convert to Component enum
+- Went to lace_data/src/datum.rs
+  - Add Index Datum variant
+  - impl all function in variant branch
+- went to lace_stats/src/mixture_type.rs and implemented
+  - StickBreakingDiscrete variant
+  - need impl Entropy for Mixture<&StickBreakingDiscrete>
+  - need impl Jsd for Mixture<&StickBreakingDiscrete>
+  - impl_from!(StickBreakingDiscrete)
+- went to lace_cc/src/feature/ftype.rs
+  - added FType enum and all impls
+- went to lace_codebook/src/codebook.rs
+  - added StickBreakingDiscrete ColType
+- back to column.rs
+  - Qmc Entropy (Get rid of this)
+- back to lace_cc/src/feature/traits.rs
+  - add StickBreaking to use for enum dispatch
+- went to feature/column.rs
+  - impl_translate_datum!
+- went to lace_data/src/feature.rs
+  - Index variant in FeatureData & all impls
+  - Summary statistic Enum Variant
+- went to data_store.rs
+  - DataStore.get match arm
+- back to feature/ftype.rs
+  - because FType, FeatureData, and Datum variant must all have the same name to work under the impl macro
+- feature/geweke.rs
+  - imple geweke traits, model, summary, sample
+- state/builder.rs
+  add match arm to gen_feature
+- metadata/v1.rs
+  - add variant to DatalessColModel
+  - add match arm to From<ColModel> for DatalessColModel
+  - col2dataless!
+  - dataless2col!
+- metadata/latest.rs
+  - match arm on From<DatalessStateAndDiagnostics> for EmptyState
+- went to src/data/init.rs
+  - match arm in df_to_col_models NOTE: lots of repeateed code
+- went to oracle/traits.rs
+  - impute match arm (should be able to move to trait)
+  - predict match arm
+  - variability match arm (should be an method on MixtureType)
+- went to lace_cc/tests/enum_test/mod.rs
+  - Added feature ctor match arm

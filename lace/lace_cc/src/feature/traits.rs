@@ -11,7 +11,7 @@ use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
-use lace_stats::rv::experimental::stick_breaking::{
+use lace_stats::rv::experimental::stick_breaking_process::{
     StickBreaking, StickBreakingDiscrete,
 };
 use lace_stats::MixtureType;

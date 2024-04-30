@@ -1,5 +1,5 @@
 use crate::rv::dist::Gamma;
-use crate::rv::experimental::stick_breaking::{
+use crate::rv::experimental::stick_breaking_process::{
     StickBreaking, StickBreakingDiscrete,
 };
 use crate::rv::traits::*;
@@ -42,7 +42,19 @@ impl UpdatePrior<usize, StickBreakingDiscrete, SbdHyper> for StickBreaking {
         let mh_result = {
             let loglike = |alpha: &f64| {
                 let sb = StickBreaking::from_alpha(*alpha).unwrap();
-                stick_seqs.iter().map(|seq| sb.ln_f(seq)).sum::<f64>()
+                stick_seqs
+                    .iter()
+                    .map(|seq| {
+                        let ln_f = sb.ln_f(seq);
+                        if !ln_f.is_finite() {
+                            panic!(
+                                "loglike: {}, alpha: {}, weights: {:?}",
+                                ln_f, alpha, seq.0
+                            );
+                        };
+                        ln_f
+                    })
+                    .sum::<f64>()
             };
 
             mh_prior(

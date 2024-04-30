@@ -1,7 +1,7 @@
 use std::convert::From;
 
 use crate::rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
-use crate::rv::experimental::stick_breaking::StickBreakingDiscrete;
+use crate::rv::experimental::stick_breaking_process::StickBreakingDiscrete;
 use crate::rv::traits::Entropy;
 use crate::MixtureJsd;
 

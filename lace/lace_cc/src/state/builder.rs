@@ -1,5 +1,5 @@
 use lace_codebook::ColType;
-use lace_consts::rv::experimental::stick_breaking::StickBreakingDiscrete;
+use lace_consts::rv::experimental::stick_breaking_process::StickBreakingDiscrete;
 use lace_data::SparseContainer;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;

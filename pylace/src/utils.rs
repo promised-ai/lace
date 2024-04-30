@@ -202,6 +202,7 @@ pub(crate) fn coltype_to_ftype(col_type: &ColType) -> FType {
         ColType::Continuous { .. } => FType::Continuous,
         ColType::Count { .. } => FType::Count,
         ColType::Categorical { .. } => FType::Categorical,
+        ColType::StickBreakingDiscrete { .. } => FType::Index,
     }
 }
 
@@ -290,6 +291,13 @@ pub(crate) fn vec_to_srs(
             }
         }
         FType::Count => Ok(srs_from_vec!(values, name, u32, Count)),
+        FType::Index => Ok({
+            let xs: Vec<Option<u64>> = values.drain(..).map(|x| match x {
+                Datum::Index(x) => Some(x as u64),
+                _ => None
+            }).collect();
+            Series::new(name, xs)
+        })
     }
     .map(PySeries)
 }
@@ -356,6 +364,18 @@ pub(crate) fn simulate_to_df(
                 }
             }
             FType::Count => Ok(srs_from_simulate!(values, i, name, u32, Count)),
+            FType::Index => Ok({
+                let xs: Vec<Option<u64>> = values
+                    .iter()
+                    .map(|row| match row[i] {
+                        Datum::Index(x) => {
+                            Some(x as u64)
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                Series::new(name, xs)
+            }),
         }?;
         df.with_column(srs).map_err(|err| {
             PyErr::new::<PyRuntimeError, _>(format!(
@@ -490,6 +510,7 @@ pub(crate) fn datum_to_value(datum: Datum) -> PyResult<Py<PyAny>> {
     Python::with_gil(|py| match datum {
         Datum::Continuous(x) => Ok(x.to_object(py)),
         Datum::Count(x) => Ok(x.to_object(py)),
+        Datum::Index(x) => Ok(x.to_object(py)),
         Datum::Categorical(Category::U8(x)) => Ok(x.to_object(py)),
         Datum::Categorical(Category::Bool(x)) => Ok(x.to_object(py)),
         Datum::Categorical(Category::String(x)) => Ok(x.to_object(py)),
@@ -549,6 +570,14 @@ pub(crate) fn value_to_datum(val: &PyAny, ftype: FType) -> PyResult<Datum> {
         FType::Categorical => {
             let x = pyany_to_category(val)?;
             Ok(Datum::Categorical(x))
+        }
+        FType::Index => {
+            let x: u64 = val.extract().map_err(|err| {
+                PyTypeError::new_err(format!(
+                    "Expected int, got `{val}` ({err})"
+                ))
+            })?;
+            Ok(Datum::Index(x as usize))
         }
         FType::Count => Ok(Datum::Count(val.extract()?)),
         ftype => Err(PyTypeError::new_err(format!(

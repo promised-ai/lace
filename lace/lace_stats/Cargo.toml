@@ -15,7 +15,7 @@ lace_consts = { path = "../lace_consts", version = "0.2.1" }
 lace_data = { path = "../lace_data", version = "0.3.0" }
 special = "0.10"
 rand = {version="0.8", features=["serde1"]}
-itertools = "0.12"
+itertools = "0.12.1"
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0.11"
 

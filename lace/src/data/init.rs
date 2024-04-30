@@ -47,7 +47,7 @@ use crate::codebook::{Codebook, ColType};
 use crate::error::DataParseError;
 use lace_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
 use lace_codebook::{CodebookError, ValueMap};
-use lace_consts::rv::experimental::stick_breaking::StickBreaking;
+use lace_consts::rv::experimental::stick_breaking_process::StickBreaking;
 use lace_consts::rv::prelude::UnitPowerLaw;
 use lace_data::{Container, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;

@@ -1,7 +1,7 @@
 //! Geweke implementations
 use std::collections::BTreeMap;
 
-use lace_consts::rv::experimental::stick_breaking::{
+use lace_consts::rv::experimental::stick_breaking_process::{
     StickBreaking, StickBreakingDiscrete,
 };
 use lace_data::{Container, SparseContainer};
