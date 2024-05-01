@@ -4,10 +4,10 @@ use polars::series::Series;
 use polars_arrow::ffi;
 use pyo3::exceptions::{PyException, PyIOError, PyValueError};
 use pyo3::ffi::Py_uintptr_t;
-use pyo3::types::PyModule;
+use pyo3::types::{PyAnyMethods, PyModule};
 use pyo3::{
-    create_exception, FromPyObject, IntoPy, PyAny, PyErr, PyObject, PyResult,
-    Python, ToPyObject,
+    create_exception, Bound, FromPyObject, IntoPy, PyAny, PyErr, PyObject,
+    PyResult, Python, ToPyObject,
 };
 
 #[derive(Debug)]
@@ -146,7 +146,7 @@ impl<'a> FromPyObject<'a> for PyDataFrame {
 pub(crate) fn to_py_array(
     array: ArrayRef,
     py: Python,
-    pyarrow: &PyModule,
+    pyarrow: &Bound<PyModule>,
 ) -> PyResult<PyObject> {
     let schema = Box::new(ffi::export_field_to_c(&ArrowField::new(
         "",
@@ -173,10 +173,11 @@ impl IntoPy<PyObject> for PySeries {
         let s = self.0.rechunk();
         let name = s.name();
         let arr = s.to_arrow(0);
-        let pyarrow = py.import("pyarrow").expect("pyarrow not installed");
-        let polars = py.import("polars").expect("polars not installed");
+        let pyarrow =
+            py.import_bound("pyarrow").expect("pyarrow not installed");
+        let polars = py.import_bound("polars").expect("polars not installed");
 
-        let arg = to_py_array(arr, py, pyarrow).unwrap();
+        let arg = to_py_array(arr, py, &pyarrow).unwrap();
         let s = polars.call_method1("from_arrow", (arg,)).unwrap();
         let s = s.call_method1("rename", (name,)).unwrap();
         s.to_object(py)
@@ -194,7 +195,7 @@ impl IntoPy<PyObject> for PyDataFrame {
             .map(|s| PySeries(s.clone()).into_py(py))
             .collect::<Vec<_>>();
 
-        let polars = py.import("polars").expect("polars not installed");
+        let polars = py.import_bound("polars").expect("polars not installed");
         let df_object = polars.call_method1("DataFrame", (pyseries,)).unwrap();
         df_object.into_py(py)
     }

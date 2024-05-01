@@ -114,7 +114,7 @@ impl CoreEngine {
 
     /// Load a Engine from metadata
     #[classmethod]
-    fn load(_cls: &PyType, path: PathBuf) -> PyResult<CoreEngine> {
+    fn load(_cls: &Bound<PyType>, path: PathBuf) -> PyResult<CoreEngine> {
         let (engine, rng) = {
             let mut engine = lace::Engine::load(path)
                 .map_err(|e| EngineLoadError::new_err(e.to_string()))?;
@@ -143,7 +143,7 @@ impl CoreEngine {
     }
 
     /// Return a copy of the engine
-    fn __deepcopy__(&self, _memo: &PyDict) -> Self {
+    fn __deepcopy__(&self, _memo: &Bound<PyDict>) -> Self {
         self.clone()
     }
 
@@ -238,7 +238,7 @@ impl CoreEngine {
             .collect()
     }
 
-    fn ftype(&self, col: &PyAny) -> PyResult<String> {
+    fn ftype(&self, col: &Bound<PyAny>) -> PyResult<String> {
         let col_ix = utils::value_to_name(col, &self.col_indexer)?;
         self.engine
             .ftype(col_ix)
@@ -284,9 +284,9 @@ impl CoreEngine {
     fn feature_params<'p>(
         &self,
         py: Python<'p>,
-        col: &PyAny,
+        col: &Bound<PyAny>,
         state_ix: usize,
-    ) -> PyResult<&'p PyAny> {
+    ) -> PyResult<Bound<'p, PyAny>> {
         use component::ComponentParams;
 
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
@@ -302,16 +302,16 @@ impl CoreEngine {
         let mixture = self.engine.states[state_ix].feature_as_mixture(col_ix);
         match ComponentParams::from(mixture) {
             ComponentParams::Bernoulli(params) => {
-                Ok(params.into_py(py).into_ref(py))
+                Ok(params.into_py(py).into_bound(py))
             }
             ComponentParams::Categorical(params) => {
-                Ok(params.into_py(py).into_ref(py))
+                Ok(params.into_py(py).into_bound(py))
             }
             ComponentParams::Gaussian(params) => {
-                Ok(params.into_py(py).into_ref(py))
+                Ok(params.into_py(py).into_bound(py))
             }
             ComponentParams::Poisson(params) => {
-                Ok(params.into_py(py).into_ref(py))
+                Ok(params.into_py(py).into_bound(py))
             }
         }
     }
@@ -361,7 +361,7 @@ impl CoreEngine {
     /// array([0.125, 0.   ])
     /// >>> engine.depprob([('swims', 'flippers'), ('swims', 'fast')])
     /// array([0.875, 0.25 ])
-    fn depprob(&self, col_pairs: &PyList) -> PyResult<PySeries> {
+    fn depprob(&self, col_pairs: &Bound<PyList>) -> PyResult<PySeries> {
         let pairs = list_to_pairs(col_pairs, &self.col_indexer)?;
         self.engine
             .depprob_pw(&pairs)
@@ -373,11 +373,11 @@ impl CoreEngine {
     #[pyo3(signature=(col_pairs, n_mc_samples=1000, mi_type="iqr"))]
     fn mi(
         &self,
-        col_pairs: &PyList,
+        col_pairs: &Bound<PyList>,
         n_mc_samples: usize,
         mi_type: &str,
     ) -> PyResult<PySeries> {
-        let pairs = list_to_pairs(col_pairs, &self.col_indexer)?;
+        let pairs = list_to_pairs(&col_pairs, &self.col_indexer)?;
         let mi_type = utils::str_to_mitype(mi_type)?;
         self.engine
             .mi_pw(&pairs, n_mc_samples, mi_type)
@@ -440,8 +440,8 @@ impl CoreEngine {
     #[pyo3(signature=(row_pairs, wrt=None, col_weighted=false))]
     fn rowsim(
         &self,
-        row_pairs: &PyList,
-        wrt: Option<&PyAny>,
+        row_pairs: &Bound<PyList>,
+        wrt: Option<&Bound<PyAny>>,
         col_weighted: bool,
     ) -> PyResult<PySeries> {
         let variant = if col_weighted {
@@ -465,8 +465,8 @@ impl CoreEngine {
     fn pairwise_fn(
         &self,
         fn_name: &str,
-        pairs: &PyList,
-        fn_kwargs: Option<&PyDict>,
+        pairs: &Bound<PyList>,
+        fn_kwargs: Option<&Bound<PyDict>>,
     ) -> PyResult<PyDataFrame> {
         match fn_name {
             "depprob" => self.depprob(pairs).map(|xs| (xs, &self.col_indexer)),
@@ -481,9 +481,9 @@ impl CoreEngine {
             "rowsim" => {
                 let args = fn_kwargs.map_or_else(
                     || Ok(utils::RowsimArgs::default()),
-                    utils::rowsim_args_from_dict,
+                    |dict| utils::rowsim_args_from_dict(dict),
                 )?;
-                self.rowsim(pairs, args.wrt, args.col_weighted)
+                self.rowsim(pairs, args.wrt.as_ref(), args.col_weighted)
                     .map(|xs| (xs, &self.row_indexer))
             }
             _ => Err(PyErr::new::<PyValueError, _>(format!(
@@ -544,8 +544,8 @@ impl CoreEngine {
     #[pyo3(signature = (cols, given=None, n=1))]
     fn simulate(
         &mut self,
-        cols: &PyAny,
-        given: Option<&PyDict>,
+        cols: &Bound<PyAny>,
+        given: Option<&Bound<PyDict>>,
         n: usize,
     ) -> PyResult<PyDataFrame> {
         let col_ixs = pyany_to_indices(cols, &self.col_indexer)?;
@@ -583,8 +583,8 @@ impl CoreEngine {
     #[pyo3(signature = (row, col, n=1))]
     fn draw(
         &mut self,
-        row: &PyAny,
-        col: &PyAny,
+        row: &Bound<PyAny>,
+        col: &Bound<PyAny>,
         n: usize,
     ) -> PyResult<PySeries> {
         let row_ix = utils::value_to_index(row, &self.row_indexer)?;
@@ -636,8 +636,8 @@ impl CoreEngine {
     /// ```
     fn logp(
         &self,
-        values: &PyAny,
-        given: Option<&PyDict>,
+        values: &Bound<PyAny>,
+        given: Option<&Bound<PyDict>>,
         state_ixs: Option<Vec<usize>>,
     ) -> PyResult<DataFrameLike> {
         let df_vals =
@@ -664,8 +664,8 @@ impl CoreEngine {
 
     fn logp_scaled(
         &self,
-        values: &PyAny,
-        given: Option<&PyDict>,
+        values: &Bound<PyAny>,
+        given: Option<&Bound<PyDict>>,
         state_ixs: Option<Vec<usize>>,
     ) -> PyResult<DataFrameLike> {
         let df_vals =
@@ -693,9 +693,9 @@ impl CoreEngine {
     #[pyo3(signature=(col, rows=None, values=None, state_ixs=None))]
     fn surprisal(
         &self,
-        col: &PyAny,
-        rows: Option<&PyAny>,
-        values: Option<&PyAny>,
+        col: &Bound<PyAny>,
+        rows: Option<&Bound<PyAny>>,
+        values: Option<&Bound<PyAny>>,
         state_ixs: Option<Vec<usize>>,
     ) -> PyResult<PyDataFrame> {
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
@@ -817,7 +817,11 @@ impl CoreEngine {
     }
 
     #[pyo3(signature=(row, wrt=None))]
-    fn novelty(&self, row: &PyAny, wrt: Option<&PyAny>) -> PyResult<f64> {
+    fn novelty(
+        &self,
+        row: &Bound<PyAny>,
+        wrt: Option<&Bound<PyAny>>,
+    ) -> PyResult<f64> {
         let row_ix = utils::value_to_index(row, &self.row_indexer)?;
         let wrt = wrt
             .map(|cols| utils::pyany_to_indices(cols, &self.col_indexer))
@@ -828,7 +832,11 @@ impl CoreEngine {
     }
 
     #[pyo3(signature=(cols, n_mc_samples=1000))]
-    fn entropy(&self, cols: &PyAny, n_mc_samples: usize) -> PyResult<f64> {
+    fn entropy(
+        &self,
+        cols: &Bound<PyAny>,
+        n_mc_samples: usize,
+    ) -> PyResult<f64> {
         let col_ixs = utils::pyany_to_indices(cols, &self.col_indexer)?;
         self.engine
             .entropy(&col_ixs, n_mc_samples)
@@ -855,8 +863,8 @@ impl CoreEngine {
     #[pyo3(signature=(col, rows=None, with_uncertainty=true))]
     fn impute(
         &mut self,
-        col: &PyAny,
-        rows: Option<&PyAny>,
+        col: &Bound<PyAny>,
+        rows: Option<&Bound<PyAny>>,
         with_uncertainty: bool,
     ) -> PyResult<PyDataFrame> {
         use lace::cc::feature::Feature;
@@ -938,8 +946,8 @@ impl CoreEngine {
     #[pyo3(signature=(target, given=None, state_ixs=None, with_uncertainty=true))]
     fn predict(
         &self,
-        target: &PyAny,
-        given: Option<&PyDict>,
+        target: &Bound<PyAny>,
+        given: Option<&Bound<PyDict>>,
         state_ixs: Option<Vec<usize>>,
         with_uncertainty: bool,
     ) -> PyResult<Py<PyAny>> {
@@ -972,8 +980,8 @@ impl CoreEngine {
     #[pyo3(signature=(target, given=None, state_ixs=None))]
     fn variability(
         &self,
-        target: &PyAny,
-        given: Option<&PyDict>,
+        target: &Bound<PyAny>,
+        given: Option<&Bound<PyDict>>,
         state_ixs: Option<Vec<usize>>,
     ) -> PyResult<f64> {
         let col_ix = value_to_index(target, &self.col_indexer)?;
@@ -1123,7 +1131,7 @@ impl CoreEngine {
     /// ... )
     /// >>>
     /// >>> engine.append_rows(row)
-    fn append_rows(&mut self, rows: &PyAny) -> PyResult<()> {
+    fn append_rows(&mut self, rows: &Bound<PyAny>) -> PyResult<()> {
         let df_vals = pandas_to_insert_values(
             rows,
             &self.col_indexer,
@@ -1243,7 +1251,7 @@ impl CoreEngine {
     /// Append new columns to the Engine
     fn append_columns(
         &mut self,
-        cols: &PyAny,
+        cols: &Bound<PyAny>,
         mut metadata: Vec<metadata::ColumnMetadata>,
     ) -> PyResult<()> {
         let suppl_types = Some(
@@ -1316,7 +1324,7 @@ impl CoreEngine {
     }
 
     /// Delete a given column from the ``Engine``
-    fn del_column(&mut self, col: &PyAny) -> PyResult<()> {
+    fn del_column(&mut self, col: &Bound<PyAny>) -> PyResult<()> {
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
         self.col_indexer.drop_by_ix(col_ix)?;
         self.engine.del_column(col_ix).map_err(to_pyerr)
@@ -1334,9 +1342,9 @@ impl CoreEngine {
     ///     The new value at the cell
     fn edit_cell(
         &mut self,
-        row: &PyAny,
-        col: &PyAny,
-        value: &PyAny,
+        row: &Bound<PyAny>,
+        col: &Bound<PyAny>,
+        value: &Bound<PyAny>,
     ) -> PyResult<()> {
         let row_ix = utils::value_to_index(row, &self.row_indexer)?;
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
@@ -1360,7 +1368,7 @@ impl CoreEngine {
 
     fn categorical_support(
         &self,
-        col: &PyAny,
+        col: &Bound<PyAny>,
     ) -> PyResult<Vec<pyo3::Py<PyAny>>> {
         use lace::codebook::ValueMap as Vm;
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
@@ -1397,7 +1405,7 @@ impl CoreEngine {
     }
 
     pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
-        Ok(PyBytes::new(
+        Ok(PyBytes::new_bound(
             py,
             &bincode::serialize(&self).map_err(|e| {
                 PyValueError::new_err(format!(
@@ -1434,7 +1442,8 @@ create_exception!(lace, EngineUpdateError, pyo3::exceptions::PyException);
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn core(py: Python, m: &PyModule) -> PyResult<()> {
+#[pyo3(name = "core")]
+fn core(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Codebook>()?;
     m.add_class::<CoreEngine>()?;
     m.add_class::<CodebookBuilder>()?;
@@ -1453,7 +1462,10 @@ fn core(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<update_handler::PyEngineUpdateConfig>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
-    m.add("EngineLoadError", py.get_type::<EngineLoadError>())?;
-    m.add("EngineUpdateError", py.get_type::<EngineUpdateError>())?;
+    m.add("EngineLoadError", py.get_type_bound::<EngineLoadError>())?;
+    m.add(
+        "EngineUpdateError",
+        py.get_type_bound::<EngineUpdateError>(),
+    )?;
     Ok(())
 }
