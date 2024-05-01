@@ -278,7 +278,7 @@ impl ValueMap {
     /// Create a map of ``k`` unsigned integers
     #[classmethod]
     #[pyo3(signature = (k))]
-    pub fn int(_cls: &PyType, k: usize) -> Self {
+    pub fn int(_cls: &Bound<PyType>, k: usize) -> Self {
         Self(lace::codebook::ValueMap::U8(k))
     }
 
@@ -295,7 +295,7 @@ impl ValueMap {
     ///     The strings are not unique
     #[classmethod]
     #[pyo3(signature = (values))]
-    pub fn string(_cls: &PyType, values: Vec<String>) -> PyResult<Self> {
+    pub fn string(_cls: &Bound<PyType>, values: Vec<String>) -> PyResult<Self> {
         lace::codebook::ValueMap::try_from(values)
             .map_err(PyValueError::new_err)
             .map(Self)
@@ -303,7 +303,7 @@ impl ValueMap {
 
     /// Create a map from boolean
     #[classmethod]
-    pub fn bool(_cls: &PyType) -> Self {
+    pub fn bool(_cls: &Bound<PyType>) -> Self {
         Self(lace::codebook::ValueMap::Bool)
     }
 
@@ -349,7 +349,7 @@ impl ColumnMetadata {
     #[classmethod]
     #[pyo3(signature = (name, prior=None, hyper=None))]
     pub fn continuous(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         name: String,
         prior: Option<ContinuousPrior>,
         hyper: Option<ContinuousHyper>,
@@ -386,7 +386,7 @@ impl ColumnMetadata {
     #[classmethod]
     #[pyo3(signature = (name, k, value_map=None, prior=None, hyper=None))]
     pub fn categorical(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         name: String,
         k: usize,
         value_map: Option<ValueMap>,
@@ -423,7 +423,7 @@ impl ColumnMetadata {
     #[classmethod]
     #[pyo3(signature = (name, prior=None, hyper=None))]
     pub fn count(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         name: String,
         prior: Option<CountPrior>,
         hyper: Option<CountHyper>,
@@ -512,7 +512,7 @@ impl PriorProcess {
     #[classmethod]
     #[pyo3(signature=(alpha_shape=1.0, alpha_rate=1.0, d_a=0.5, d_b=0.5))]
     pub fn pitman_yor(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         alpha_shape: f64,
         alpha_rate: f64,
         d_a: f64,
@@ -526,7 +526,11 @@ impl PriorProcess {
 
     #[classmethod]
     #[pyo3(signature=(alpha_shape=1.0, alpha_rate=1.0))]
-    pub fn dirichlet(_cls: &PyType, alpha_shape: f64, alpha_rate: f64) -> Self {
+    pub fn dirichlet(
+        _cls: &Bound<PyType>,
+        alpha_shape: f64,
+        alpha_rate: f64,
+    ) -> Self {
         PriorProcess(lace::codebook::PriorProcess::Dirichlet {
             alpha_prior: Gamma::new(alpha_shape, alpha_rate).unwrap(),
         })
@@ -708,7 +712,7 @@ pub struct CodebookBuilder {
 impl CodebookBuilder {
     #[classmethod]
     /// Load a Codebook from a path.
-    fn load(_cls: &PyType, path: PathBuf) -> Self {
+    fn load(_cls: &Bound<PyType>, path: PathBuf) -> Self {
         Self {
             method: CodebookMethod::Path(path),
         }
@@ -717,7 +721,7 @@ impl CodebookBuilder {
     #[classmethod]
     #[pyo3(signature = (cat_cutoff=None, state_prior_process=None, view_prior_process=None, use_hypers=true))]
     fn infer(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         cat_cutoff: Option<u8>,
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
@@ -734,7 +738,7 @@ impl CodebookBuilder {
     }
 
     #[classmethod]
-    fn codebook(_cls: &PyType, codebook: Codebook) -> Self {
+    fn codebook(_cls: &Bound<PyType>, codebook: Codebook) -> Self {
         Self {
             method: CodebookMethod::Codebook(codebook),
         }

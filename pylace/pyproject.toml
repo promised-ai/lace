@@ -131,3 +131,7 @@ strict = true
 
 [tool.black]
 line-length = 80
+
+
+[tool.maturin]
+module-name = "lace.core"

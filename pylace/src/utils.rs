@@ -184,7 +184,7 @@ pub(crate) struct MiArgs {
 
 #[derive(Default)]
 pub(crate) struct RowsimArgs<'a> {
-    pub(crate) wrt: Option<&'a PyAny>,
+    pub(crate) wrt: Option<Bound<'a, PyAny>>,
     pub(crate) col_weighted: bool,
 }
 
@@ -205,7 +205,7 @@ pub(crate) fn coltype_to_ftype(col_type: &ColType) -> FType {
     }
 }
 
-pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
+pub(crate) fn mi_args_from_dict(dict: &Bound<PyDict>) -> PyResult<MiArgs> {
     let n_mc_samples: Option<usize> = dict
         .get_item("n_mc_samples")?
         .map(|any| any.extract::<usize>())
@@ -222,13 +222,15 @@ pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
     })
 }
 
-pub(crate) fn rowsim_args_from_dict(dict: &PyDict) -> PyResult<RowsimArgs> {
+pub(crate) fn rowsim_args_from_dict<'a>(
+    dict: &'a Bound<'a, PyDict>,
+) -> PyResult<RowsimArgs<'a>> {
     let col_weighted: Option<bool> = dict
         .get_item("col_weighted")?
         .map(|any| any.extract::<bool>())
         .transpose()?;
 
-    let wrt: Option<&PyAny> = dict.get_item("wrt")?;
+    let wrt: Option<Bound<PyAny>> = dict.get_item("wrt")?;
 
     Ok(RowsimArgs {
         wrt,
@@ -427,7 +429,7 @@ impl Indexer {
 }
 
 pub(crate) fn pairs_list_iter<'a>(
-    pairs: &'a PyList,
+    pairs: &'a Bound<'a, PyList>,
     indexer: &'a Indexer,
 ) -> impl Iterator<Item = PyResult<(usize, usize)>> + 'a {
     pairs.iter().map(|item| {
@@ -438,28 +440,36 @@ pub(crate) fn pairs_list_iter<'a>(
                         "A pair consists of two items",
                     ))
                 } else {
-                    value_to_index(&ixs[0], indexer).and_then(|a| {
-                        value_to_index(&ixs[1], indexer).map(|b| (a, b))
-                    })
+                    ixs.get_item(0)
+                        .and_then(|a| value_to_index(&a, indexer))
+                        .and_then(|a| {
+                            ixs.get_item(1)
+                                .and_then(|b| value_to_index(&b, indexer))
+                                .map(|b| (a, b))
+                        })
                 }
             })
             .unwrap_or_else(|_| {
-                let ixs: &PyTuple = item.downcast()?;
+                let ixs: &Bound<PyTuple> = item.downcast()?;
                 if ixs.len() != 2 {
                     Err(PyErr::new::<PyValueError, _>(
                         "A pair consists of two items",
                     ))
                 } else {
-                    value_to_index(&ixs[0], indexer).and_then(|a| {
-                        value_to_index(&ixs[1], indexer).map(|b| (a, b))
-                    })
+                    ixs.get_item(0)
+                        .and_then(|a| value_to_index(&a, indexer))
+                        .and_then(|a| {
+                            ixs.get_item(1)
+                                .and_then(|b| value_to_index(&b, indexer))
+                                .map(|b| (a, b))
+                        })
                 }
             })
     })
 }
 
 pub(crate) fn list_to_pairs<'a>(
-    pairs: &'a PyList,
+    pairs: &'a Bound<PyList>,
     indexer: &'a Indexer,
 ) -> PyResult<Vec<(usize, usize)>> {
     pairs_list_iter(pairs, indexer).collect()
@@ -501,11 +511,12 @@ pub(crate) fn datum_to_value(datum: Datum) -> PyResult<Py<PyAny>> {
     })
 }
 
-fn pyany_to_category(val: &PyAny) -> PyResult<lace::Category> {
+fn pyany_to_category(val: &Bound<PyAny>) -> PyResult<lace::Category> {
     use lace::Category;
-    let name = val.get_type().name()?;
+    let ty = val.get_type();
+    let name = ty.name()?;
 
-    match name {
+    match name.as_ref() {
         "int" => {
             let x = val.downcast::<PyInt>()?.extract::<u8>()?;
             Ok(Category::U8(x))
@@ -518,7 +529,7 @@ fn pyany_to_category(val: &PyAny) -> PyResult<lace::Category> {
             let x = val.downcast::<PyString>()?.extract::<String>()?;
             Ok(Category::String(x))
         }
-        "int64" | "int32" | "int16" | "int8" => {
+        "numpy.int64" | "numpy.int32" | "numpy.int16" | "numpy.int8" => {
             let x = val.call_method("__int__", (), None)?.extract::<u8>()?;
             Ok(Category::U8(x))
         }
@@ -528,7 +539,10 @@ fn pyany_to_category(val: &PyAny) -> PyResult<lace::Category> {
     }
 }
 
-pub(crate) fn value_to_datum(val: &PyAny, ftype: FType) -> PyResult<Datum> {
+pub(crate) fn value_to_datum(
+    val: &Bound<PyAny>,
+    ftype: FType,
+) -> PyResult<Datum> {
     if val.is_none() {
         return Ok(Datum::Missing);
     }
@@ -558,7 +572,7 @@ pub(crate) fn value_to_datum(val: &PyAny, ftype: FType) -> PyResult<Datum> {
 }
 
 pub(crate) fn value_to_name(
-    val: &PyAny,
+    val: &Bound<PyAny>,
     indexer: &Indexer,
 ) -> PyResult<String> {
     val.extract::<String>().or_else(|_| {
@@ -572,7 +586,7 @@ pub(crate) fn value_to_name(
 }
 
 pub(crate) fn value_to_index(
-    val: &PyAny,
+    val: &Bound<PyAny>,
     indexer: &Indexer,
 ) -> PyResult<usize> {
     val.extract::<usize>().or_else(|_| {
@@ -588,16 +602,16 @@ pub(crate) fn value_to_index(
 }
 
 pub(crate) fn pyany_to_indices(
-    cols: &PyAny,
+    cols: &Bound<PyAny>,
     indexer: &Indexer,
 ) -> PyResult<Vec<usize>> {
     cols.iter()?
-        .map(|res| res.and_then(|val| value_to_index(val, indexer)))
+        .map(|res| res.and_then(|val| value_to_index(&val, indexer)))
         .collect()
 }
 
 pub(crate) fn dict_to_given(
-    dict_opt: Option<&PyDict>,
+    dict_opt: Option<&Bound<PyDict>>,
     engine: &lace::Engine,
     indexer: &Indexer,
 ) -> PyResult<Given<usize>> {
@@ -608,9 +622,9 @@ pub(crate) fn dict_to_given(
             let conditions = dict
                 .iter()
                 .map(|(key, value)| {
-                    value_to_index(key, indexer).and_then(|ix| {
+                    value_to_index(&key, indexer).and_then(|ix| {
                         value_to_datum(
-                            value,
+                            &value,
                             engine.ftype(ix).expect(
                                 "Index from indexer ought to be valid.",
                             ),
@@ -625,7 +639,7 @@ pub(crate) fn dict_to_given(
     }
 }
 
-pub(crate) fn srs_to_strings(srs: &PyAny) -> PyResult<Vec<String>> {
+pub(crate) fn srs_to_strings(srs: &Bound<PyAny>) -> PyResult<Vec<String>> {
     let list: &PyList = srs.call_method0("to_list")?.extract()?;
 
     list.iter()
@@ -661,23 +675,23 @@ pub(crate) fn parts_to_insert_values(
 }
 
 pub(crate) fn pyany_to_data(
-    data: &PyAny,
+    data: &Bound<PyAny>,
     ftype: FType,
 ) -> PyResult<Vec<Datum>> {
     data.iter()?
-        .map(|res| res.and_then(|val| value_to_datum(val, ftype)))
+        .map(|res| res.and_then(|val| value_to_datum(&val, ftype)))
         .collect()
 }
 
 fn process_row_dict(
-    row_dict: &PyDict,
+    row_dict: &Bound<PyDict>,
     _col_indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<Vec<Datum>> {
     let mut row_data: Vec<Datum> = Vec::with_capacity(row_dict.len());
     for (name_any, value_any) in row_dict {
-        let col_name: &PyString = name_any.downcast()?;
+        let col_name: &Bound<PyString> = name_any.downcast()?;
         let col_name = col_name.to_str()?;
         let ftype = engine
             .codebook
@@ -692,21 +706,21 @@ fn process_row_dict(
                 )))
             })?;
 
-        row_data.push(value_to_datum(value_any, ftype)?);
+        row_data.push(value_to_datum(&value_any, ftype)?);
     }
     Ok(row_data)
 }
 
 // Works on list of dicts
 fn values_to_data(
-    data: &PyList,
+    data: &Bound<PyList>,
     col_indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<Vec<Vec<Datum>>> {
     data.iter()
         .map(|row_any| {
-            let row_dict: &PyDict = row_any.downcast()?;
+            let row_dict: &Bound<PyDict> = row_any.downcast()?;
             process_row_dict(row_dict, col_indexer, engine, suppl_types)
         })
         .collect()
@@ -723,7 +737,7 @@ pub(crate) struct DataFrameComponents {
 // FIXME: pass the 'py' in so that we can handle errors better. The
 // `Python::with_gil` thing makes using `?` a pain.
 fn df_to_values(
-    df: &PyAny,
+    df: &Bound<PyAny>,
     col_indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
@@ -734,12 +748,12 @@ fn df_to_values(
             if columns.get_type().name()?.contains("Index") {
                 // Is a Pandas dataframe
                 let index = df.getattr("index")?;
-                let row_names = srs_to_strings(index).ok();
+                let row_names = srs_to_strings(&index).ok();
 
                 let cols = columns.call_method0("tolist")?.to_object(py);
-                let kwargs = PyDict::new(py);
+                let kwargs = PyDict::new_bound(py);
                 kwargs.set_item("orient", "records")?;
-                let data = df.call_method("to_dict", (), Some(kwargs))?;
+                let data = df.call_method("to_dict", (), Some(&kwargs))?;
                 (cols, data, row_names)
             } else {
                 // Is a Polars dataframe
@@ -749,11 +763,11 @@ fn df_to_values(
                         // Find all the index columns
                         let mut index_col_names = list
                             .iter()
-                            .map(|s| s.extract::<&str>())
+                            .map(|s| s.extract::<String>())
                             .map(|s| {
                                 s.map(|s| {
-                                    if is_index_col(s) {
-                                        Some(String::from(s))
+                                    if is_index_col(&s) {
+                                        Some(s)
                                     } else {
                                         None
                                     }
@@ -784,7 +798,7 @@ fn df_to_values(
                     // Get the indices from the index if it exists
                     let row_names =
                         df.get_item(index_name)
-                            .and_then(srs_to_strings)
+                            .and_then(|srs: pyo3::Bound<'_, pyo3::PyAny>| srs_to_strings(&srs))
                             .map_err(|err| {
                                 PyValueError::new_err(format!(
                                 "Indices in index '{index_name}' are not strings: {err}"))
@@ -794,7 +808,7 @@ fn df_to_values(
 
                     (df, Some(row_names))
                 } else {
-                    (df, None)
+                    (df.clone(), None)
                 };
 
                 let data = df.call_method0("to_dicts")?;
@@ -802,19 +816,19 @@ fn df_to_values(
             }
         };
 
-        let data: &PyList = data.extract()?;
-        let columns: &PyList = columns.extract(py)?;
+        let data: Bound<PyList> = data.extract()?;
+        let columns: Bound<PyList> = columns.extract(py)?;
         // will return nothing if there are unknown column names
         let col_ixs = columns
             .iter()
-            .map(|col_name| value_to_index(col_name, col_indexer))
+            .map(|col_name| value_to_index(&col_name, col_indexer))
             .collect::<Result<Vec<usize>, _>>()
             .ok();
         let col_names = columns
             .iter()
             .map(|name| name.extract())
             .collect::<Result<Vec<String>, _>>()?;
-        let values = values_to_data(data, col_indexer, engine, suppl_types)?;
+        let values = values_to_data(&data, col_indexer, engine, suppl_types)?;
 
         Ok(DataFrameComponents {
             col_ixs,
@@ -826,35 +840,36 @@ fn df_to_values(
 }
 
 fn srs_to_column_values(
-    srs: &PyAny,
+    srs: &Bound<PyAny>,
     indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let data = srs.call_method0("to_frame")?;
 
-    df_to_values(data, indexer, engine, suppl_types)
+    df_to_values(&data, indexer, engine, suppl_types)
 }
 
 fn srs_to_row_values(
-    srs: &PyAny,
+    srs: &Bound<PyAny>,
     indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let data = srs.call_method0("to_frame")?.call_method0("transpose")?;
 
-    df_to_values(data, indexer, engine, suppl_types)
+    df_to_values(&data, indexer, engine, suppl_types)
 }
 
 pub(crate) fn pandas_to_logp_values(
-    xs: &PyAny,
+    xs: &Bound<PyAny>,
     indexer: &Indexer,
     engine: &lace::Engine,
 ) -> PyResult<DataFrameComponents> {
-    let type_name = xs.get_type().name()?;
+    let ty = xs.get_type();
+    let type_name = ty.name()?;
 
-    match type_name {
+    match type_name.as_ref() {
         "DataFrame" => df_to_values(xs, indexer, engine, None),
         "Series" => srs_to_column_values(xs, indexer, engine, None),
         t => Err(PyErr::new::<PyTypeError, _>(format!(
@@ -864,14 +879,15 @@ pub(crate) fn pandas_to_logp_values(
 }
 
 pub(crate) fn pandas_to_insert_values(
-    xs: &PyAny,
+    xs: &Bound<PyAny>,
     col_indexer: &Indexer,
     engine: &lace::Engine,
     suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
-    let type_name = xs.get_type().name()?;
+    let ty = xs.get_type();
+    let type_name = ty.name()?;
 
-    match type_name {
+    match type_name.as_ref() {
         "DataFrame" => df_to_values(xs, col_indexer, engine, suppl_types),
         "Series" => srs_to_row_values(xs, col_indexer, engine, suppl_types),
         t => Err(PyErr::new::<PyTypeError, _>(format!(

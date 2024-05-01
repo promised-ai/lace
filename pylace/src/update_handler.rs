@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use lace::cc::state::State;
 use lace::update_handler::UpdateHandler;
 use lace::EngineUpdateConfig;
-use pyo3::{pyclass, IntoPy, Py, PyAny};
+use pyo3::{prelude::PyDictMethods, pyclass, IntoPy, Py, PyAny};
 
 /// Python version of `EngineUpdateConfig`.
 #[derive(Clone, Debug)]
@@ -36,7 +36,7 @@ impl PyUpdateHandler {
 macro_rules! pydict {
     ($py: expr, $($key:tt : $val:expr),* $(,)?) => {{
 
-        let map = pyo3::types::PyDict::new($py);
+        let map = pyo3::types::PyDict::new_bound($py);
         $(
             let _ = map.set_item($key, $val.into_py($py))
                 .expect("Should be able to set item in PyDict");
@@ -59,7 +59,7 @@ macro_rules! call_pyhandler_noret {
             );
 
             handler
-                .call_method(py, $func_name, (), kwargs.into())
+                .call_method_bound(py, $func_name, (), Some(&kwargs))
                 .expect("Expected python call_method to return successfully");
         })
     }};
@@ -79,7 +79,7 @@ macro_rules! call_pyhandler_ret {
             );
 
             handler
-                .call_method(py, $func_name, (), kwargs.into())
+                .call_method_bound(py, $func_name, (), Some(&kwargs))
                 .expect("Expected python call_method to return successfully")
                 .extract(py)
                 .expect("Failed to extract expected type")
