@@ -2,7 +2,7 @@
 
 import itertools as it
 from os import PathLike
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, Set
 
 import pandas as pd
 import plotly.express as px
@@ -2386,6 +2386,41 @@ class Engine:
             return ClusterMap(df, linkage, fig)
         else:
             return ClusterMap(df, linkage)
+
+    def remove_rows(
+        self,
+        indices: Union[pd.Series, List[str], pd.Series, Set[str]],
+    ) -> pl.DataFrame:
+        """
+        Remove rows from the table.
+
+        Parameters
+        ----------
+        indices: Union[pd.Series, List[str], pd.Series, Set[str]]
+            Rows to remove from the Engine, specified by index or id name.
+
+        Example
+        -------
+        Remove crab and squid from the animals example engine.
+
+        >>> from lace.examples import Animals
+        >>> engine = Animals()
+        >>> n_rows = engine.n_rows
+        >>> removed = engine.remove_rows(["cow", "wolf"])
+        >>> n_rows == engine.n_rows + 1
+        True
+        >>> removed["index"] # doctest: +NORMALIZE_WHITESPACE
+        ┌────────┐
+        │ index  │
+        │ ---    │
+        │ str    │
+        ╞════════╡
+        │ cow    │
+        │ wolf   │
+        └────────┘
+
+        """
+        return self.engine.remove_rows(indices)
 
 
 class _TqdmUpdateHandler:
