@@ -1190,13 +1190,10 @@ impl CoreEngine {
     /// >>> removed = engine.remove_rows(["wolf", "ox"])
     /// >>> removed["index"].to_list()
     /// ["wolf", "ox"]
-    /// >>> n_rows - 1 == engine.shape[0]
+    /// >>> n_rows - 2 == engine.shape[0]
     /// True
-    fn remove_rows(&mut self, rows: &PyList) -> PyResult<PyDataFrame> {
-        let remove: Vec<String> = rows
-            .into_iter()
-            .map(|x| x.str().map(|s| s.to_string()))
-            .collect::<PyResult<Vec<String>>>()?;
+    fn remove_rows(&mut self, rows: &Bound<PyAny>) -> PyResult<PyDataFrame> {
+        let remove: Vec<String> = rows.extract()?;
 
         let row_idxs: Vec<usize> = remove
             .iter()
