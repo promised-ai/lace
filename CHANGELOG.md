@@ -20,15 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed `SerializedType` default to `Bincode`
 - moved `Assignment` from `lace_cc` to `lace_stats`
 
-## [python-0.8.0] 2024-04-10
+## [python-0.8.0] - 2024-04-10
 
 ### Added
 
-- Added ability Pitman-Yor prior process
+- Added ability Pitman-Yor prior process.
+- Added `remove_rows` to `Engine`.
+- Added `with_index` to `CodeBook`.
 
 ### Changed
 
 - `StateAlpha` and `ViewAlpha` transitions are now `StatePriorProcessParams` and `ViewPriorProcessParams`
+- Updated Pyo3 version to 0.21
 
 ## [python-0.7.1] - 2024-02-27
 
