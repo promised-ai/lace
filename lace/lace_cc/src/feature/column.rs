@@ -356,6 +356,7 @@ where
     fn asgn_score(&self, asgn: &Assignment) -> f64 {
         let empty_stat = self.prior.empty_suffstat();
 
+        // TODO: use vec! macro
         let mut stats: Vec<_> =
             (0..asgn.n_cats).map(|_| empty_stat.clone()).collect();
 

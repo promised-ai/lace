@@ -1,3 +1,5 @@
+use lace_stats::assignment::Assignment;
+
 pub trait RowConstrainer: Sync {
     fn ln_constraint(&self, row_ix: usize, k: usize) -> f64;
 }
@@ -39,34 +41,38 @@ impl RowGibbsConstrainer for () {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct RowSamsInfo {
-    pub propose_merge: bool,
+    pub i: usize,
+    pub j: usize,
     pub z_i: usize,
     pub z_j: usize,
 }
 
-impl Default for RowSamsInfo {
-    fn default() -> Self {
-        Self {
-            propose_merge: false,
-            z_i: 0,
-            z_j: 0,
-        }
-    }
-}
-
 pub trait RowSamsConstrainer: Sync {
-    fn ln_constraint(&self, info: RowSamsInfo, row_ix: usize, k: usize) -> f64;
+    /// Called first. Provides the setup info to the constrainer.
+    fn initialize(&mut self, info: RowSamsInfo);
+
+    /// The ln Sequential Importance Sampling contstraint called when
+    /// proposing, or calculating the reverse transition function of, the
+    /// split.
+    fn ln_sis_contstraints(&mut self, ix: usize) -> (f64, f64);
+
+    /// Should return the log hastings ratio constraint, which is
+    /// ln p(x|z_proposed) - ln p (x|z_current)
+    fn ln_mh_constraint(&self, asgn_proposed: &Assignment) -> f64;
 }
 
 impl RowSamsConstrainer for () {
-    fn ln_constraint(
-        &self,
-        _info: RowSamsInfo,
-        _row_ix: usize,
-        _k: usize,
-    ) -> f64 {
+    fn initialize(&mut self, _info: RowSamsInfo) {
+        ()
+    }
+
+    fn ln_sis_contstraints(&mut self, _ix: usize) -> (f64, f64) {
+        (0.0, 0.0)
+    }
+
+    fn ln_mh_constraint(&self, _asgn_proposed: &Assignment) -> f64 {
         0.0
     }
 }

@@ -229,7 +229,7 @@ impl View {
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
             RowAssignAlg::Slice => self.reassign_rows_slice(&(), &mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
-            RowAssignAlg::Sams => self.reassign_rows_sams(&(), &mut rng),
+            RowAssignAlg::Sams => self.reassign_rows_sams(&mut (), &mut rng),
         }
     }
 

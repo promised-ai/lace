@@ -1213,6 +1213,7 @@ dependencies = [
  "clap",
  "criterion",
  "enum_dispatch",
+ "itertools 0.12.1",
  "lace_codebook",
  "lace_consts",
  "lace_data",

@@ -1,6 +1,6 @@
 //! Enumeration tests
 use lace_cc::feature::{ColModel, Column, FType};
-use lace_consts::rv::experimental::stick_breaking::{
+use lace_consts::rv::experimental::stick_breaking_process::{
     StickBreaking, StickBreakingDiscrete,
 };
 use lace_data::SparseContainer;

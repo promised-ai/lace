@@ -1,4 +1,4 @@
-use crate::constrain::RowConstrainer;
+use crate::constrain::{RowSamsConstrainer, RowSamsInfo};
 
 use super::View;
 
@@ -12,30 +12,32 @@ impl View {
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
     pub fn reassign_rows_sams<R: Rng>(
         &mut self,
-        constrainer: &impl RowConstrainer,
+        constrainer: &mut impl RowSamsConstrainer,
         rng: &mut R,
     ) {
         use rand::seq::IteratorRandom;
 
-        let (i, j, zi, zj) = {
+        let (i, j, z_i, z_j) = {
             let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
             let i = ixs[0];
             let j = ixs[1];
 
-            let zi = self.asgn().asgn[i];
-            let zj = self.asgn().asgn[j];
+            let z_i = self.asgn().asgn[i];
+            let z_j = self.asgn().asgn[j];
 
-            if zi < zj {
-                (i, j, zi, zj)
+            if z_i < z_j {
+                (i, j, z_i, z_j)
             } else {
-                (j, i, zj, zi)
+                (j, i, z_j, z_i)
             }
         };
 
-        if zi == zj {
+        constrainer.initialize(RowSamsInfo { i, j, z_i, z_j });
+
+        if z_i == z_j {
             self.sams_split(i, j, constrainer, rng);
         } else {
-            assert!(zi < zj);
+            assert!(z_i < z_j);
             self.sams_merge(i, j, constrainer, rng);
         }
         debug_assert!(self.asgn().validate().is_valid());
@@ -45,21 +47,24 @@ impl View {
         &mut self,
         i: usize,
         j: usize,
-        constrainer: &impl RowConstrainer,
+        constrainer: &mut impl RowSamsConstrainer,
         rng: &mut R,
     ) {
         let zi = self.asgn().asgn[i];
 
-        // FIXME: only works for CRP
         let logp_mrg =
             self.logm(zi) + self.prior_process.ln_f_partition(self.asgn());
         let (logp_spt, logq_spt, asgn_opt) =
             self.propose_split(i, j, false, constrainer, rng);
 
-        let asgn = asgn_opt.unwrap();
+        let asgn_prop = asgn_opt.unwrap();
 
-        if rng.gen::<f64>().ln() < logp_spt - logp_mrg - logq_spt {
-            self.set_asgn(asgn, rng)
+        let ln_constraint = constrainer.ln_mh_constraint(&asgn_prop);
+
+        if rng.gen::<f64>().ln()
+            < logp_spt - logp_mrg - logq_spt + ln_constraint
+        {
+            self.set_asgn(asgn_prop, rng)
         }
     }
 
@@ -67,7 +72,7 @@ impl View {
         &mut self,
         i: usize,
         j: usize,
-        constrainer: &impl RowConstrainer,
+        constrainer: &mut impl RowSamsConstrainer,
         rng: &mut R,
     ) {
         use std::cmp::Ordering;
@@ -78,7 +83,7 @@ impl View {
         let (logp_spt, logq_spt, ..) =
             self.propose_split(i, j, true, constrainer, rng);
 
-        let asgn = {
+        let asgn_prop = {
             let zs = self
                 .asgn()
                 .asgn
@@ -91,7 +96,6 @@ impl View {
                 .collect();
 
             prior_process::Builder::from_vec(zs)
-                .with_process(self.prior_process.process.clone())
                 .seed_from_rng(rng)
                 .build()
                 .unwrap()
@@ -99,33 +103,23 @@ impl View {
         };
 
         self.append_empty_component(rng);
-        asgn.asgn.iter().enumerate().for_each(|(ix, &z)| {
+        asgn_prop.asgn.iter().enumerate().for_each(|(ix, &z)| {
             if z == zi {
                 self.force_observe_row(ix, self.n_cats());
             }
         });
 
-        let merge_constraint = asgn
-            .asgn
-            .iter()
-            .enumerate()
-            .map(|(row_ix, &z)| {
-                if z == zi || z == zj {
-                    constrainer.ln_constraint(row_ix, z)
-                } else {
-                    0.0
-                }
-            })
-            .sum::<f64>();
+        let ln_constraint = constrainer.ln_mh_constraint(&asgn_prop);
 
         let logp_mrg = self.logm(self.n_cats())
-            + self.prior_process.ln_f_partition(&asgn)
-            + merge_constraint;
+            + self.prior_process.ln_f_partition(&asgn_prop);
 
         self.drop_component(self.n_cats());
 
-        if rng.gen::<f64>().ln() < logp_mrg - logp_spt + logq_spt {
-            self.set_asgn(asgn, rng)
+        if rng.gen::<f64>().ln()
+            < logp_mrg - logp_spt + logq_spt + ln_constraint
+        {
+            self.set_asgn(asgn_prop, rng)
         }
     }
 
@@ -174,7 +168,7 @@ impl View {
         i: usize,
         j: usize,
         calc_reverse: bool,
-        constrainer: &impl RowConstrainer,
+        constrainer: &mut impl RowSamsConstrainer,
         rng: &mut R,
     ) -> (f64, f64, Option<Assignment>) {
         let zi = self.asgn().asgn[i];
@@ -183,11 +177,11 @@ impl View {
         self.append_empty_component(rng);
         self.append_empty_component(rng);
 
-        let zi_tmp = self.n_cats();
-        let zj_tmp = zi_tmp + 1;
+        let z_i_tmp = self.n_cats();
+        let z_j_tmp = z_i_tmp + 1;
 
-        self.force_observe_row(i, zi_tmp);
-        self.force_observe_row(j, zj_tmp);
+        self.force_observe_row(i, z_i_tmp);
+        self.force_observe_row(j, z_j_tmp);
 
         let mut tmp_z: Vec<usize> = {
             // mark everything assigned to the split cluster as unassigned (-1)
@@ -196,8 +190,8 @@ impl View {
                 .iter()
                 .map(|&z| if z == zi { std::usize::MAX } else { z })
                 .collect();
-            zs[i] = zi_tmp;
-            zs[j] = zj_tmp;
+            zs[i] = z_i_tmp;
+            zs[j] = z_j_tmp;
             zs
         };
 
@@ -211,50 +205,47 @@ impl View {
             .iter()
             .filter(|&&ix| !(ix == i || ix == j))
             .for_each(|&ix| {
-                let logp_zi = nk_i.ln()
-                    + self.predictive_score_at(ix, zi_tmp)
-                    + constrainer.ln_constraint(ix, zi); // goes to original zi
-                let logp_zj = nk_j.ln()
-                    + self.predictive_score_at(ix, zj_tmp)
-                    + constrainer.ln_constraint(ix, zi_tmp); // goes to n_cats
-                let lognorm = logaddexp(logp_zi, logp_zj);
+                let (ln_c_zi, ln_c_zj) = constrainer.ln_sis_contstraints(ix);
+                let logp_z_i =
+                    nk_i.ln() + self.predictive_score_at(ix, z_i_tmp) + ln_c_zi;
+                let logp_z_j =
+                    nk_j.ln() + self.predictive_score_at(ix, z_j_tmp) + ln_c_zj;
+                let lognorm = logaddexp(logp_z_i, logp_z_j);
 
                 let assign_to_zi = if calc_reverse {
                     self.asgn().asgn[ix] == zi
                 } else {
-                    rng.gen::<f64>().ln() < logp_zi - lognorm
+                    rng.gen::<f64>().ln() < logp_z_i - lognorm
                 };
 
                 if assign_to_zi {
-                    logq += logp_zi - lognorm;
-                    self.force_observe_row(ix, zi_tmp);
+                    logq += logp_z_i - lognorm;
+                    self.force_observe_row(ix, z_i_tmp);
                     nk_i += 1.0;
-                    tmp_z[ix] = zi_tmp;
+                    tmp_z[ix] = z_i_tmp;
                 } else {
-                    logq += logp_zj - lognorm;
-                    self.force_observe_row(ix, zj_tmp);
+                    logq += logp_z_j - lognorm;
+                    self.force_observe_row(ix, z_j_tmp);
                     nk_j += 1.0;
-                    tmp_z[ix] = zj_tmp;
+                    tmp_z[ix] = z_j_tmp;
                 }
             });
 
-        let mut logp = self.logm(zi_tmp) + self.logm(zj_tmp);
+        let mut logp = self.logm(z_i_tmp) + self.logm(z_j_tmp);
 
         let asgn = if calc_reverse {
             logp += self.prior_process.ln_f_partition(self.asgn());
             None
         } else {
             tmp_z.iter_mut().for_each(|z| {
-                if *z == zi_tmp {
+                if *z == z_i_tmp {
                     *z = zi;
-                } else if *z == zj_tmp {
+                } else if *z == z_j_tmp {
                     *z = self.n_cats();
                 }
             });
 
-            // FIXME: create (draw) new process outside to carry forward alpha
             let asgn = prior_process::Builder::from_vec(tmp_z)
-                .with_process(self.prior_process.process.clone())
                 .seed_from_rng(rng)
                 .build()
                 .unwrap()
