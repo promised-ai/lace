@@ -47,6 +47,7 @@ pub struct RowSamsInfo {
     pub j: usize,
     pub z_i: usize,
     pub z_j: usize,
+    pub z_split: usize,
 }
 
 pub trait RowSamsConstrainer: Sync {
@@ -58,19 +59,22 @@ pub trait RowSamsConstrainer: Sync {
     /// split.
     fn ln_sis_contstraints(&mut self, ix: usize) -> (f64, f64);
 
+    /// Assign ix to z during SIS
+    fn sis_assign(&mut self, ix: usize, to_proposed_cluster: bool);
+
     /// Should return the log hastings ratio constraint, which is
     /// ln p(x|z_proposed) - ln p (x|z_current)
     fn ln_mh_constraint(&self, asgn_proposed: &Assignment) -> f64;
 }
 
 impl RowSamsConstrainer for () {
-    fn initialize(&mut self, _info: RowSamsInfo) {
-        ()
-    }
+    fn initialize(&mut self, _info: RowSamsInfo) {}
 
     fn ln_sis_contstraints(&mut self, _ix: usize) -> (f64, f64) {
         (0.0, 0.0)
     }
+
+    fn sis_assign(&mut self, _ix: usize, _to_proposed_cluster: bool) {}
 
     fn ln_mh_constraint(&self, _asgn_proposed: &Assignment) -> f64 {
         0.0

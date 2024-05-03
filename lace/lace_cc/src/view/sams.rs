@@ -32,11 +32,23 @@ impl View {
             }
         };
 
-        constrainer.initialize(RowSamsInfo { i, j, z_i, z_j });
-
         if z_i == z_j {
+            constrainer.initialize(RowSamsInfo {
+                i,
+                j,
+                z_i,
+                z_j,
+                z_split: self.asgn_mut().n_cats,
+            });
             self.sams_split(i, j, constrainer, rng);
         } else {
+            constrainer.initialize(RowSamsInfo {
+                i,
+                j,
+                z_i,
+                z_j,
+                z_split: z_j,
+            });
             assert!(z_i < z_j);
             self.sams_merge(i, j, constrainer, rng);
         }
@@ -219,11 +231,13 @@ impl View {
                 };
 
                 if assign_to_zi {
+                    constrainer.sis_assign(ix, false);
                     logq += logp_z_i - lognorm;
                     self.force_observe_row(ix, z_i_tmp);
                     nk_i += 1.0;
                     tmp_z[ix] = z_i_tmp;
                 } else {
+                    constrainer.sis_assign(ix, true);
                     logq += logp_z_j - lognorm;
                     self.force_observe_row(ix, z_j_tmp);
                     nk_j += 1.0;
