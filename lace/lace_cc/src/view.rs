@@ -133,6 +133,13 @@ impl View {
             .fold(0.0, |acc, ftr| acc + ftr.predictive_score_at(row_ix, k))
     }
 
+    /// Compute the log probability of observing `datum` belonging to cluster `k`
+    /// given the data already assigned to category `k` with all component parameters
+    /// marginalized away
+    pub fn logp(&self, datum: &Datum, k: usize) -> f64 {
+        self.ftrs.values().map(|ftr| ftr.cpnt_logp(datum, k)).sum()
+    }
+
     #[inline]
     pub fn logm(&self, k: usize) -> f64 {
         self.ftrs.values().map(|ftr| ftr.logm(k)).sum()
