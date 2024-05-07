@@ -31,44 +31,70 @@ impl UpdatePrior<usize, StickBreakingDiscrete, SbdHyper> for StickBreaking {
         hyper: &SbdHyper,
         rng: &mut R,
     ) -> f64 {
-        let stick_seqs: Vec<_> = components
-            .iter()
-            .map(|&cpnt| {
-                let n_sticks = cpnt.stick_sequence().num_weights_unstable();
-                cpnt.stick_sequence().weights(n_sticks)
-            })
-            .collect();
+        // let mut n: f64 = 0.0;
+        // let sum_ln_x = components
+        //     .iter()
+        //     .map(|&cpnt| {
+        //         let n_sticks = cpnt.stick_sequence().num_weights_unstable();
+        //         let seq = cpnt.stick_sequence().weights(n_sticks);
+        //         seq.0
+        //             .iter()
+        //             .fold((0.0, 1.0), |(sum, rm_mass), &w_i| {
+        //                 if rm_mass < 1e-16 {
+        //                     (sum, rm_mass)
+        //                 } else {
+        //                     let x_i = 1.0 - w_i / rm_mass;
+        //                     n += 1.0;
+        //                     (sum + x_i.ln(), rm_mass - w_i)
+        //                 }
+        //             })
+        //             .0
+        //     })
+        //     .sum::<f64>();
+        // let k = components.len() as f64;
+        // // eprintln!("{sum_ln_x}");
 
-        let mh_result = {
-            let loglike = |alpha: &f64| {
-                let sb = StickBreaking::from_alpha(*alpha).unwrap();
-                stick_seqs
-                    .iter()
-                    .map(|seq| {
-                        let ln_f = sb.ln_f(seq);
-                        if !ln_f.is_finite() {
-                            panic!(
-                                "loglike: {}, alpha: {}, weights: {:?}",
-                                ln_f, alpha, seq.0
-                            );
-                        };
-                        ln_f
-                    })
-                    .sum::<f64>()
-            };
+        // let shape = n + k * hyper.pr_alpha.shape() - k + 1.0;
+        // let rate = k * hyper.pr_alpha.rate() - sum_ln_x;
 
-            mh_prior(
-                self.alpha(),
-                loglike,
-                |rng| hyper.pr_alpha.draw(rng),
-                lace_consts::MH_PRIOR_ITERS,
-                rng,
-            )
+        // // eprintln!("{shape}, {rate}");
+
+        // let alpha: f64 = Gamma::new(shape, rate).unwrap().draw(rng);
+        // self.set_alpha(alpha).unwrap();
+        // 0.0
+
+        // -----------
+        use crate::rv::dist::Beta;
+
+        let mut stat = crate::rv::data::BetaSuffStat::new();
+
+        components.iter().for_each(|cpnt| {
+            let n_sticks = cpnt.stick_sequence().num_weights_unstable();
+            let seq = cpnt.stick_sequence().weights(n_sticks);
+            let mut rm_mass = 1.0;
+            seq.0.iter().for_each(|&w_i| {
+                let x_i = w_i / rm_mass;
+                if x_i > 0.0 && x_i < 1.0 {
+                    rm_mass -= w_i;
+                    stat.observe(&x_i);
+                }
+            });
+        });
+
+        let loglike = |alpha: &f64| {
+            let upl = Beta::new(1.0, *alpha).unwrap();
+            <Beta as HasSuffStat<f64>>::ln_f_stat(&upl, &stat)
         };
 
-        // self.set_alpha(mh_result.x).unwrap();
-        *self = StickBreaking::from_alpha(mh_result.x).unwrap();
-        mh_result.score_x + hyper.pr_alpha.ln_f(&mh_result.x)
+        let mh_result = mh_prior(
+            self.alpha(),
+            loglike,
+            |rng| hyper.pr_alpha.draw(rng),
+            100,
+            rng,
+        );
+        self.set_alpha(mh_result.x).unwrap();
+        mh_result.score_x
     }
 }
 

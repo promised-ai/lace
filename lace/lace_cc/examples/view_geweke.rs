@@ -34,7 +34,12 @@ fn main() {
     println!("Running {} rows using {} algorithm", opt.nrows, opt.alg);
 
     let mut rng = Xoshiro256Plus::from_entropy();
-    let ftypes = vec![FType::Continuous, FType::Count, FType::Categorical];
+    let ftypes = vec![
+        FType::Continuous,
+        FType::Count,
+        FType::Categorical,
+        FType::Index,
+    ];
 
     // The views's Geweke test settings require the number of rows in the
     // view (50), and the types of each column. Everything else is filled out

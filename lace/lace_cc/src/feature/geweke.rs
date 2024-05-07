@@ -507,6 +507,9 @@ impl GewekeResampleData for ColModel {
             ColModel::Count(ref mut f) => {
                 f.geweke_resample_data(settings, &mut rng)
             }
+            ColModel::StickBreakingDiscrete(ref mut f) => {
+                f.geweke_resample_data(settings, &mut rng)
+            }
             _ => unimplemented!("Unsupported column type"),
         }
     }
@@ -572,6 +575,17 @@ pub fn gen_geweke_col_models(
                     pg,
                     PgHyper,
                     Count
+                ),
+                FType::Index => geweke_cm_arm!(
+                    prior_trans,
+                    rng,
+                    id,
+                    n_rows,
+                    usize,
+                    StickBreakingDiscrete,
+                    sbd,
+                    SbdHyper,
+                    StickBreakingDiscrete
                 ),
                 FType::Categorical => {
                     let k = 5; // number of categorical values
