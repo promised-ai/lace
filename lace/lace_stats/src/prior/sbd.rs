@@ -64,37 +64,38 @@ impl UpdatePrior<usize, StickBreakingDiscrete, SbdHyper> for StickBreaking {
         // 0.0
 
         // -----------
-        use crate::rv::dist::Beta;
+        // use crate::rv::dist::Beta;
 
-        let mut stat = crate::rv::data::BetaSuffStat::new();
+        // let mut stat = crate::rv::data::BetaSuffStat::new();
 
-        components.iter().for_each(|cpnt| {
-            let n_sticks = cpnt.stick_sequence().num_weights_unstable();
-            let seq = cpnt.stick_sequence().weights(n_sticks);
-            let mut rm_mass = 1.0;
-            seq.0.iter().for_each(|&w_i| {
-                let x_i = w_i / rm_mass;
-                if x_i > 0.0 && x_i < 1.0 {
-                    rm_mass -= w_i;
-                    stat.observe(&x_i);
-                }
-            });
-        });
+        // components.iter().for_each(|cpnt| {
+        //     let n_sticks = cpnt.stick_sequence().num_weights_unstable();
+        //     let seq = cpnt.stick_sequence().weights(n_sticks);
+        //     let mut rm_mass = 1.0;
+        //     seq.0.iter().for_each(|&w_i| {
+        //         let x_i = w_i / rm_mass;
+        //         if x_i > 0.0 && x_i < 1.0 {
+        //             rm_mass -= w_i;
+        //             stat.observe(&x_i);
+        //         }
+        //     });
+        // });
 
-        let loglike = |alpha: &f64| {
-            let upl = Beta::new(1.0, *alpha).unwrap();
-            <Beta as HasSuffStat<f64>>::ln_f_stat(&upl, &stat)
-        };
+        // let loglike = |alpha: &f64| {
+        //     let upl = Beta::new(1.0, *alpha).unwrap();
+        //     <Beta as HasSuffStat<f64>>::ln_f_stat(&upl, &stat)
+        // };
 
-        let mh_result = mh_prior(
-            self.alpha(),
-            loglike,
-            |rng| hyper.pr_alpha.draw(rng),
-            100,
-            rng,
-        );
-        self.set_alpha(mh_result.x).unwrap();
-        mh_result.score_x
+        // let mh_result = mh_prior(
+        //     self.alpha(),
+        //     loglike,
+        //     |rng| hyper.pr_alpha.draw(rng),
+        //     100,
+        //     rng,
+        // );
+        // self.set_alpha(mh_result.x).unwrap();
+        // mh_result.score_x
+        0.0
     }
 }
 
