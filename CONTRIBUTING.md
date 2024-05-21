@@ -1,5 +1,8 @@
 # Contributing to Lace
 
+> :warning: Note that we are in the process of a major refector and are unlikely
+> to accept any contributions apart from simple bugfixes
+
 ## General Guidelines
 
 - Don't use getters and setters if it causes indirection in a performance heavy
