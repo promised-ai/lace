@@ -14,6 +14,7 @@ use lace_stats::rv::dist::{
 };
 use polars::prelude::DataFrame;
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
@@ -463,9 +464,12 @@ impl Codebook {
         output
     }
 
-    pub fn col_metadata(&self, col: String) -> Option<&ColMetadata> {
+    pub fn col_metadata<T>(&self, col: T) -> Option<&ColMetadata>
+    where
+        T: Borrow<str>,
+    {
         // self.col_metadata.get(&col)
-        self.col_metadata.iter().find(|md| md.name == col)
+        self.col_metadata.iter().find(|md| md.name == *col.borrow())
     }
 
     /// Get the number of columns

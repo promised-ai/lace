@@ -1,5 +1,6 @@
 use lace_data::Category;
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 use thiserror::Error;
@@ -30,16 +31,24 @@ where
         self.to_cat.is_empty()
     }
 
-    pub fn ix(&self, cat: &T) -> Option<usize> {
-        self.to_ix.get(cat).cloned()
+    pub fn ix<Q>(&self, cat: &Q) -> Option<usize>
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq + ?Sized,
+    {
+        self.to_ix.get(cat.borrow()).copied()
     }
 
     pub fn category(&self, ix: usize) -> T {
         self.to_cat[ix].clone()
     }
 
-    pub fn contains_cat(&self, cat: &T) -> bool {
-        self.to_ix.contains_key(cat)
+    pub fn contains_cat<Q>(&self, cat: &Q) -> bool
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq + ?Sized,
+    {
+        self.to_ix.contains_key(cat.borrow())
     }
 
     pub(crate) fn add(&mut self, value: T) {
