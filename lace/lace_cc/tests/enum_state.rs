@@ -15,13 +15,16 @@ use lace_stats::rv::misc::logsumexp;
 use rand::Rng;
 
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-use lace_cc::assignment::lcrp;
-use lace_cc::assignment::AssignmentBuilder;
 use lace_cc::config::StateUpdateConfig;
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::state::State;
 use lace_cc::transition::StateTransition;
 use lace_cc::view::{Builder, View};
+use lace_stats::prior_process::Builder as PriorProcessBuilder;
+use lace_stats::prior_process::{
+    Dirichlet, PitmanYor, PriorProcessT, PriorProcessType, Process,
+};
+use lace_stats::rv::dist::{Beta, Gamma};
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
@@ -84,25 +87,24 @@ fn state_from_partition<R: Rng>(
     mut features: Vec<ColModel>,
     mut rng: &mut R,
 ) -> State {
-    let asgn = AssignmentBuilder::from_vec(partition.col_partition.clone())
-        .with_alpha(1.0)
-        .seed_from_rng(&mut rng)
-        .build()
-        .unwrap();
-
     let mut views: Vec<View> = partition
         .row_partitions
         .iter()
         .map(|zr| {
+            let process = Process::Dirichlet(Dirichlet {
+                alpha: 1.0,
+                alpha_prior: Gamma::default(),
+            });
+
             // NOTE: We don't need seed control here because both alpha and the
             // assignment are set, but I'm setting the seed anyway in case the
             // assignment builder internals change
-            let asgn = AssignmentBuilder::from_vec(zr.clone())
-                .with_alpha(1.0)
+            let view_prior_process = PriorProcessBuilder::from_vec(zr.clone())
+                .with_process(process.clone())
                 .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
-            Builder::from_assignment(asgn)
+            Builder::from_prior_process(view_prior_process)
                 .seed_from_rng(&mut rng)
                 .build()
         })
@@ -114,43 +116,76 @@ fn state_from_partition<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, lace_consts::state_alpha_prior())
+    let state_prior_process =
+        PriorProcessBuilder::from_vec(partition.col_partition.clone())
+            .with_process(Process::Dirichlet(Dirichlet {
+                alpha: 1.0,
+                alpha_prior: Gamma::default(),
+            }))
+            .seed_from_rng(&mut rng)
+            .build()
+            .unwrap();
+
+    State::new(views, state_prior_process)
+}
+
+fn emit_process(proc_type: PriorProcessType) -> Process {
+    match proc_type {
+        PriorProcessType::Dirichlet => Process::Dirichlet(Dirichlet {
+            alpha: 1.0,
+            alpha_prior: Gamma::default(),
+        }),
+        PriorProcessType::PitmanYor => Process::PitmanYor(PitmanYor {
+            alpha: 1.2,
+            d: 0.2,
+            alpha_prior: Gamma::default(),
+            d_prior: Beta::jeffreys(),
+        }),
+    }
 }
 
 /// Generates a random start state from the prior, with default values chosen for the
 /// feature priors, and all CRP alphas set to 1.0.
 fn gen_start_state<R: Rng>(
     mut features: Vec<ColModel>,
+    proc_type: PriorProcessType,
     mut rng: &mut R,
 ) -> State {
     let n_cols = features.len();
     let n_rows = features[0].len();
-    let asgn = AssignmentBuilder::new(n_cols)
-        .with_alpha(1.0)
+
+    let process = emit_process(proc_type);
+
+    let state_prior_process = PriorProcessBuilder::new(n_cols)
+        .with_process(process)
         .seed_from_rng(&mut rng)
         .build()
         .unwrap();
 
-    let mut views: Vec<View> = (0..asgn.n_cats)
+    let mut views: Vec<View> = (0..state_prior_process.asgn.n_cats)
         .map(|_| {
-            let asgn = AssignmentBuilder::new(n_rows)
-                .with_alpha(1.0)
+            let view_prior_process = PriorProcessBuilder::new(n_rows)
+                .with_process(state_prior_process.process.clone())
                 .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
-            Builder::from_assignment(asgn).build()
+            Builder::from_prior_process(view_prior_process).build()
         })
         .collect();
 
-    asgn.iter()
+    state_prior_process
+        .asgn
+        .iter()
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, lace_consts::state_alpha_prior())
+    State::new(views, state_prior_process)
 }
 
 fn calc_state_ln_posterior<R: Rng>(
     features: Vec<ColModel>,
+    state_process: &Process,
+    view_process: &Process,
     mut rng: &mut R,
 ) -> HashMap<StateIndex, f64> {
     let n_cols = features.len();
@@ -162,9 +197,9 @@ fn calc_state_ln_posterior<R: Rng>(
         .iter()
         .for_each(|part| {
             let state = state_from_partition(part, features.clone(), &mut rng);
-            let mut score = lcrp(state.n_cols(), &state.asgn.counts, 1.0);
+            let mut score = state_process.ln_f_partition(state.asgn());
             for view in state.views {
-                score += lcrp(view.n_rows(), &view.asgn.counts, 1.0);
+                score += view_process.ln_f_partition(view.asgn());
                 for ftr in view.ftrs.values() {
                     score += ftr.score();
                 }
@@ -184,13 +219,13 @@ fn calc_state_ln_posterior<R: Rng>(
 
 /// Extract the index from a State
 fn extract_state_index(state: &State) -> StateIndex {
-    let normed = normalize_assignment(state.asgn.asgn.clone());
+    let normed = normalize_assignment(state.asgn().asgn.clone());
     let col_ix: u64 = partition_to_ix(&normed);
     let row_ixs: Vec<u64> = state
         .views
         .iter()
         .map(|v| {
-            let zn = normalize_assignment(v.asgn.asgn.clone());
+            let zn = normalize_assignment(v.asgn().asgn.clone());
             partition_to_ix(&zn)
         })
         .collect();
@@ -216,6 +251,7 @@ pub fn state_enum_test<R: Rng>(
     row_alg: RowAssignAlg,
     col_alg: ColAssignAlg,
     ftype: FType,
+    proc_type: PriorProcessType,
     mut rng: &mut R,
 ) -> f64 {
     let features = build_features(n_rows, n_cols, ftype, &mut rng);
@@ -232,31 +268,20 @@ pub fn state_enum_test<R: Rng>(
     let inc: f64 = ((n_runs * n_iters) as f64).recip();
 
     for _ in 0..n_runs {
-        let mut state = gen_start_state(features.clone(), &mut rng);
-
-        // alphas should start out at 1.0
-        assert!((state.asgn.alpha - 1.0).abs() < 1E-16);
-        assert!(state
-            .views
-            .iter()
-            .all(|v| (v.asgn.alpha - 1.0).abs() < 1E-16));
+        let mut state = gen_start_state(features.clone(), proc_type, &mut rng);
 
         for _ in 0..n_iters {
             state.update(update_config.clone(), &mut rng);
-
-            // all alphas should be 1.0
-            assert!((state.asgn.alpha - 1.0).abs() < 1E-16);
-            assert!(state
-                .views
-                .iter()
-                .all(|v| (v.asgn.alpha - 1.0).abs() < 1E-16));
 
             let ix = extract_state_index(&state);
             *est_posterior.entry(ix).or_insert(0.0) += inc;
         }
     }
 
-    let posterior = calc_state_ln_posterior(features, &mut rng);
+    let process = emit_process(proc_type);
+
+    let posterior =
+        calc_state_ln_posterior(features, &process, &process, &mut rng);
 
     assert!(!est_posterior.keys().any(|k| !posterior.contains_key(k)));
 
@@ -293,23 +318,50 @@ mod tests {
     // TODO: could remove $test name by using mods
     macro_rules! state_enum_test {
         ($test_name: ident, $ftype: ident, $row_alg: ident, $col_alg: ident) => {
-            #[test]
-            fn $test_name() {
-                fn test_fn() -> bool {
-                    let mut rng = rand::thread_rng();
-                    let err = state_enum_test(
-                        3,
-                        3,
-                        1,
-                        10_000,
-                        RowAssignAlg::$row_alg,
-                        ColAssignAlg::$col_alg,
-                        FType::$ftype,
-                        &mut rng,
-                    );
-                    err < 0.01
+            mod $test_name {
+                use super::*;
+
+                #[test]
+                fn dirichlet() {
+                    fn test_fn() -> bool {
+                        let mut rng = rand::thread_rng();
+                        let err = state_enum_test(
+                            3,
+                            3,
+                            1,
+                            10_000,
+                            RowAssignAlg::$row_alg,
+                            ColAssignAlg::$col_alg,
+                            FType::$ftype,
+                            PriorProcessType::Dirichlet,
+                            &mut rng,
+                        );
+                        eprintln!("err: {err}");
+                        err < 0.01
+                    }
+                    assert!(flaky_test_passes(N_TRIES, test_fn));
                 }
-                assert!(flaky_test_passes(N_TRIES, test_fn));
+
+                #[test]
+                fn pitman_yor() {
+                    fn test_fn() -> bool {
+                        let mut rng = rand::thread_rng();
+                        let err = state_enum_test(
+                            3,
+                            3,
+                            1,
+                            10_000,
+                            RowAssignAlg::$row_alg,
+                            ColAssignAlg::$col_alg,
+                            FType::$ftype,
+                            PriorProcessType::PitmanYor,
+                            &mut rng,
+                        );
+                        eprintln!("err: {err}");
+                        err < 0.01
+                    }
+                    assert!(flaky_test_passes(N_TRIES, test_fn));
+                }
             }
         };
         ($(($fn_name: ident, $ftype: ident, $row_alg: ident, $col_alg: ident)),+) => {
@@ -331,9 +383,11 @@ mod tests {
 
     #[test]
     fn ln_posterior_length() {
+        let process = emit_process(PriorProcessType::Dirichlet);
         let mut rng = rand::thread_rng();
         let ftrs = build_features(3, 3, FType::Continuous, &mut rng);
-        let posterior = calc_state_ln_posterior(ftrs, &mut rng);
+        let posterior =
+            calc_state_ln_posterior(ftrs, &process, &process, &mut rng);
         assert_eq!(posterior.len(), 205)
     }
 

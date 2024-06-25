@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           brew install nbbrd/tap/heylogs

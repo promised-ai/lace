@@ -14,6 +14,7 @@ from lace.core import (
     ContinuousPrior,
     CountHyper,
     CountPrior,
+    PriorProcess,
     RowKernel,
     StateTransition,
     ValueMap,
@@ -36,6 +37,7 @@ __all__ = [
     "CountHyper",
     "CountPrior",
     "ValueMap",
+    "PriorProcess",
 ]
 
 __version__ = metadata.version("pylace")

@@ -16,30 +16,50 @@ information about
 
 String name of the table. For your reference.
 
-### `state_alpha_prior`
+### `state_prior_process`
 
-A gamma prior on the Chinese Restaurant Process (CRP) alpha parameter assigning
-columns to views.
+The prior process used for assigning columns to views. Can either be a Dirichlet process with a Gamma prior on alpha:
 
-Example with a gamma prior
-
-```yaml,deserializeTo=GammaMap
-state_alpha_prior:
-  shape: 1.0
-  rate: 1.0
+```yaml,deserializeTo=StatePriorProcess
+state_prior_process: !dirichlet
+  alpha_prior:
+    shape: 1.0
+    rate: 1.0
 ```
 
-### `view_alpha_prior`
+or a Pitman-Yor process with a Gamma prior on alpha and a Beta prior on d.
 
-A gamma prior on the Chinese Restaurant Process (CRP) alpha parameter assigning
-rows within views to categories.
+```yaml,deserializeTo=StatePriorProcess
+state_prior_process: !pitman_yor
+  alpha_prior:
+    shape: 1.0
+    rate: 1.0
+  d_prior:
+    alpha: 0.5
+    beta: 0.5
+```
 
-Example with a gamma prior
+### `view_prior_process`
 
-```yaml,deserializeTo=GammaMap
-view_alpha_prior:
-  shape: 1.0
-  rate: 1.0
+The prior process used for assigning rows to categories. Can either be a Dirichlet process with a Gamma prior on alpha:
+
+```yaml,deserializeTo=ViewPriorProcess
+view_prior_process: !dirichlet
+  alpha_prior:
+    shape: 1.0
+    rate: 1.0
+```
+
+or a Pitman-Yor process with a Gamma prior on alpha and a Beta prior on d.
+
+```yaml,deserializeTo=ViewPriorProcess
+view_prior_process: !pitman_yor
+  alpha_prior:
+    shape: 1.0
+    rate: 1.0
+  d_prior:
+    alpha: 0.5
+    beta: 0.5
 ```
 
 ### `col_metadata`

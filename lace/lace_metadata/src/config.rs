@@ -28,7 +28,7 @@ impl FromStr for SerializedType {
 
 impl Default for SerializedType {
     fn default() -> Self {
-        Self::Yaml
+        Self::Bincode
     }
 }
 

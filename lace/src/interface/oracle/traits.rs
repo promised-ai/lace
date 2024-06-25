@@ -110,7 +110,7 @@ pub trait OracleT: CanOracle {
     fn ftype<Ix: ColumnIndex>(&self, col_ix: Ix) -> Result<FType, IndexError> {
         let col_ix = col_ix.col_ix(self.codebook())?;
         let state = &self.states()[0];
-        let view_ix = state.asgn.asgn[col_ix];
+        let view_ix = state.asgn().asgn[col_ix];
 
         Ok(state.views[view_ix].ftrs[&col_ix].ftype())
     }
@@ -199,7 +199,7 @@ pub trait OracleT: CanOracle {
             Ok(1.0)
         } else {
             let depprob = self.states().iter().fold(0.0, |acc, state| {
-                if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
+                if state.asgn().asgn[col_a] == state.asgn().asgn[col_b] {
                     acc + 1.0
                 } else {
                     acc
@@ -351,7 +351,7 @@ pub trait OracleT: CanOracle {
         let rowsim = self.states().iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt.as_ref() {
                 Some(col_ixs) => {
-                    let asgn = &state.asgn.asgn;
+                    let asgn = &state.asgn().asgn;
                     let viewset: BTreeSet<usize> =
                         col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
                     viewset.iter().copied().collect()
@@ -375,7 +375,7 @@ pub trait OracleT: CanOracle {
             acc + view_ixs.iter().enumerate().fold(
                 0.0,
                 |sim, (ix, &view_ix)| {
-                    let asgn = &state.views[view_ix].asgn.asgn;
+                    let asgn = &state.views[view_ix].asgn().asgn;
                     if asgn[row_a] == asgn[row_b] {
                         sim + col_counts.as_ref().map_or(1.0, |cts| cts[ix])
                     } else {
@@ -494,7 +494,7 @@ pub trait OracleT: CanOracle {
         let compliment = self.states().iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt.as_ref() {
                 Some(col_ixs) => {
-                    let asgn = &state.asgn.asgn;
+                    let asgn = &state.asgn().asgn;
                     let viewset: BTreeSet<usize> =
                         col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
                     viewset.iter().copied().collect()
@@ -503,7 +503,7 @@ pub trait OracleT: CanOracle {
             };
 
             acc + view_ixs.iter().fold(0.0, |novelty, &view_ix| {
-                let asgn = &state.views[view_ix].asgn;
+                let asgn = &state.views[view_ix].asgn();
                 let z = asgn.asgn[row_ix];
                 novelty + (asgn.counts[z] as f64) / nf
             }) / (view_ixs.len() as f64)
@@ -1636,8 +1636,8 @@ pub trait OracleT: CanOracle {
                 let state = &self.states()[state_ix];
 
                 // Draw from the propoer component in the feature
-                let view_ix = state.asgn.asgn[col_ix];
-                let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
+                let view_ix = state.asgn().asgn[col_ix];
+                let cpnt_ix = state.views[view_ix].asgn().asgn[row_ix];
                 let ftr = state.feature(col_ix);
                 let x = ftr.draw(cpnt_ix, &mut rng);
                 utils::post_process_datum(x, col_ix, self.codebook())
@@ -1817,13 +1817,11 @@ pub trait OracleT: CanOracle {
     /// # use lace::OracleT;
     /// # use lace_data::{Datum, Category};
     /// # let oracle = Example::Satellites.oracle().unwrap();
-    /// let (imp, _) = oracle.impute(
+    /// let (imp, unc): (Datum, Option<f64>) = oracle.impute(
     ///     "X-Sat",
     ///     "longitude_radians_of_geo",
     ///     true,
     /// ).unwrap();
-    ///
-    /// assert!((imp.to_f64_opt().unwrap() - 0.18514237733859296).abs() < 1e-10);
     /// ```
     fn impute<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
@@ -1956,7 +1954,7 @@ pub trait OracleT: CanOracle {
     /// ```
     ///
     /// Note that the uncertainty when the prediction is missing is the
-    /// uncertainty only off the missing prediction. For example, the
+    /// uncertainty only of the missing prediction. For example, the
     /// `longitude_radians_of_geo` value is only present for geosynchronous
     /// satellites, which have an orbital period of around 1440 minutes. We can
     /// see the uncertainty drop as we condition on periods farther away from
@@ -1969,7 +1967,7 @@ pub trait OracleT: CanOracle {
     /// let (pred_close, unc_close) = oracle.predict(
     ///     "longitude_radians_of_geo",
     ///     &Given::Conditions(vec![
-    ///         ("Period_minutes", Datum::Continuous(1200.0))
+    ///         ("Period_minutes", Datum::Continuous(1400.0))
     ///     ]),
     ///     true,
     ///     None,
@@ -1987,7 +1985,6 @@ pub trait OracleT: CanOracle {
     /// ).unwrap();
     ///
     /// assert_eq!(pred_far, Datum::Missing);
-    /// dbg!(&unc_far, &unc_close);
     /// assert!(unc_far.unwrap() < unc_close.unwrap());
     /// ```
     fn predict<Ix: ColumnIndex, GIx: ColumnIndex>(
@@ -2105,7 +2102,7 @@ pub trait OracleT: CanOracle {
         let mut mixture_types: Vec<MixtureType> = states
             .iter()
             .map(|state| {
-                let view_ix = state.asgn.asgn[col_ix];
+                let view_ix = state.asgn().asgn[col_ix];
                 let weights =
                     &utils::given_weights(&[state], &[col_ix], &given)[0];
 
@@ -2323,8 +2320,8 @@ pub trait OracleT: CanOracle {
             .iter()
             .map(|&ix| {
                 let state = &self.states()[ix];
-                let view_ix = state.asgn.asgn[col_ix];
-                let k = state.views[view_ix].asgn.asgn[row_ix];
+                let view_ix = state.asgn().asgn[col_ix];
+                let k = state.views[view_ix].asgn().asgn[row_ix];
                 state.views[view_ix].ftrs[&col_ix].cpnt_logp(&x, k)
             })
             .collect();

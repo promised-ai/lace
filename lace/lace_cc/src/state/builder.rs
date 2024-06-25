@@ -3,6 +3,8 @@ use lace_data::SparseContainer;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::prior_process::Builder as AssignmentBuilder;
+use lace_stats::prior_process::Process;
 use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
 };
@@ -11,7 +13,6 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
-use crate::assignment::AssignmentBuilder;
 use crate::feature::{ColModel, Column, Feature};
 use crate::state::State;
 
@@ -24,6 +25,7 @@ pub struct Builder {
     pub col_configs: Option<Vec<ColType>>,
     pub ftrs: Option<Vec<ColModel>>,
     pub seed: Option<u64>,
+    pub prior_process: Option<Process>,
 }
 
 #[derive(Debug, Error, PartialEq)]
@@ -106,6 +108,12 @@ impl Builder {
         self
     }
 
+    #[must_use]
+    pub fn prior_process(mut self, process: Process) -> Self {
+        self.prior_process = Some(process);
+        self
+    }
+
     /// Build the `State`
     pub fn build(self) -> Result<State, BuildStateError> {
         let mut rng = match self.seed {
@@ -168,13 +176,15 @@ impl Builder {
                 col_asgn.append(&mut vec![view_ix; to_drain]);
                 col_counts.push(to_drain);
                 let ftrs_view = ftrs.drain(0..to_drain).collect();
-                let asgn = AssignmentBuilder::new(n_rows)
+
+                let prior_process = AssignmentBuilder::new(n_rows)
                     .with_n_cats(n_cats)
                     .unwrap()
                     .seed_from_rng(&mut rng)
                     .build()
                     .unwrap();
-                crate::view::Builder::from_assignment(asgn)
+
+                crate::view::Builder::from_prior_process(prior_process)
                     .features(ftrs_view)
                     .seed_from_rng(&mut rng)
                     .build()
@@ -183,12 +193,22 @@ impl Builder {
 
         assert_eq!(ftrs.len(), 0);
 
-        let asgn = AssignmentBuilder::from_vec(col_asgn)
+        let process = self.prior_process.unwrap_or_else(|| {
+            Process::Dirichlet(
+                lace_stats::prior_process::Dirichlet::from_prior(
+                    lace_consts::state_alpha_prior(),
+                    &mut rng,
+                ),
+            )
+        });
+
+        let process = AssignmentBuilder::from_vec(col_asgn)
             .seed_from_rng(&mut rng)
+            .with_process(process)
             .build()
             .unwrap();
-        let alpha_prior: Gamma = lace_consts::state_alpha_prior();
-        Ok(State::new(views, asgn, alpha_prior))
+
+        Ok(State::new(views, process))
     }
 }
 
@@ -313,15 +333,15 @@ mod tests {
                 .expect("Failed to build state")
         };
 
-        assert_eq!(state_1.asgn.asgn, state_2.asgn.asgn);
+        assert_eq!(state_1.asgn().asgn, state_2.asgn().asgn);
 
         for (view_1, view_2) in state_1.views.iter().zip(state_2.views.iter()) {
-            assert_eq!(view_1.asgn.asgn, view_2.asgn.asgn);
+            assert_eq!(view_1.asgn().asgn, view_2.asgn().asgn);
         }
     }
 
     #[test]
-    fn n_rows_overriden_by_features() {
+    fn n_rows_overridden_by_features() {
         let n_cols = 5;
         let col_models = {
             let state = Builder::new()

@@ -20,7 +20,7 @@ jobs:
     defaults:
       run:
         working-directory: pylace
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +30,7 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: "pylace/requirements-lint.txt"
-      
+
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
@@ -102,10 +102,11 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
+          maturin-version: 1.5.1
           target: ${{ matrix.target }}
           args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
           manylinux: auto
-    
+
       - name: Install dev dependencies
         run: |
           pip install --upgrade pip
@@ -113,7 +114,6 @@ jobs:
 
       - name: Install pylace
         run: |
-          ls -l ./dist
           WHEEL_FILE=$(python3 .github/scripts/find_compatible_wheel.py pylace ./dist)
           echo "Installing $WHEEL_FILE"
           pip install $WHEEL_FILE
@@ -147,9 +147,10 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
+          maturin-version: 1.5.1
           target: ${{ matrix.target }}
           args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
-    
+
       - name: Install dev dependencies
         run: |
           pip install --upgrade pip
@@ -157,7 +158,6 @@ jobs:
 
       - name: Install pylace
         run: |
-          ls -l ./dist
           $WHEEL_FILE = (python3 .github/scripts/find_compatible_wheel.py pylace ./dist)
           echo "Installing $WHEEL_FILE"
           pip install $WHEEL_FILE
@@ -172,11 +172,15 @@ jobs:
           path: dist
 
   macos:
-    runs-on: macos-latest
     needs: ["lint-python", "lint-rust"]
     strategy:
       matrix:
-        target: [x86_64, aarch64]
+        include:
+          - os: macos-latest
+            target: aarch64
+          - os: macos-13
+            target: x86_64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -190,24 +194,22 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
+          maturin-version: 1.5.1
           target: ${{ matrix.target }}
           args: --release --out dist -i python3.8 -i python3.9 -i python3.10 -i python3.11 -i python3.12 --manifest-path pylace/Cargo.toml
 
       - name: Install dev dependencies
-        if: ${{ matrix.target != 'aarch64' }}
         run: |
           pip install --upgrade pip
           pip install -r pylace/requirements-dev.txt
 
       - name: Install pylace
-        if: ${{ matrix.target != 'aarch64' }}
         run: |
           WHEEL_FILE=$(python3 .github/scripts/find_compatible_wheel.py pylace ./dist)
           echo "Installing $WHEEL_FILE"
           pip install $WHEEL_FILE
 
       - name: Run Tests
-        if: ${{ matrix.target != 'aarch64' }}
         run: pytest pylace/tests
 
       - name: Upload wheels

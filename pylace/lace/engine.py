@@ -2,7 +2,7 @@
 
 import itertools as it
 from os import PathLike
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, Set
 
 import pandas as pd
 import plotly.express as px
@@ -208,7 +208,7 @@ class Engine:
         │ ---   ┆ ---  ┆ ---      ┆ ---   │
         │ u32   ┆ u32  ┆ u32      ┆ u32   │
         ╞═══════╪══════╪══════════╪═══════╡
-        │ 34    ┆ 49   ┆ 20       ┆ 49    │
+        │ 34    ┆ 48   ┆ 26       ┆ 35    │
         └───────┴──────┴──────────┴───────┘
 
         If we set the seed, we get the same data.
@@ -410,7 +410,7 @@ class Engine:
         >>> engine.column_assignment(0)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
         >>> engine.column_assignment(1)
-        [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 0, 0, 2, 2, 2, 2, 0]
+        [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         >>> engine.flatten_columns()
         >>> engine.column_assignment(0)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -470,7 +470,7 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.row_assignments(0)[1][11]
-        3
+        1
 
         """
         return self.engine.row_assignments(state_ix)
@@ -503,18 +503,18 @@ class Engine:
         >>> gauss_params = sats.feature_params("Period_minutes")
         >>> g = gauss_params[1][0]
         >>> g
-        Gaussian(mu=97.38792034245135, sigma=8.864698646528195)
+        Gaussian(mu=2216.995855497483, sigma=2809.7999447423026)
         >>> g.mu
-        97.38792034245135
+        2216.995855497483
 
         Get categorical weights from the Satellites dataset
 
         >>> cat_params = sats.feature_params("Class_of_Orbit", state_ixs=[2])
         >>> c = cat_params[2][0]
         >>> c
-        Categorical_4(weights=[0.7196355242414928, ..., 0.12915471912497747])
+        Categorical_4(weights=[0.23464953242044007, ..., 0.04544555912284563])
         >>> c.weights  # doctest: +ELLIPSIS
-        [0.7196355242414928, ..., 0.12915471912497747]
+        [0.23464953242044007, ..., 0.04544555912284563]
 
         You can also select columns by integer index
 
@@ -522,7 +522,7 @@ class Engine:
         'Class_of_Orbit'
         >>> params = sats.feature_params(3)
         >>> params[0][1]
-        Categorical_4(weights=[0.0016550494108113051, ..., 0.000028906241993218738])
+        Categorical_4(weights=[0.0010264756471345055, ..., 0.9963828657821785])
 
         """
         if state_ixs is None:
@@ -571,17 +571,16 @@ class Engine:
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
         │ f64          ┆ f64          ┆ f64          ┆ f64          │
         ╞══════════════╪══════════════╪══════════════╪══════════════╡
-        │ -2882.424453 ┆ -2809.0876   ┆ -2638.714156 ┆ -2604.137622 │
-        │ -2695.299327 ┆ -2666.497867 ┆ -2608.185358 ┆ -2576.545684 │
-        │ -2642.539971 ┆ -2532.638368 ┆ -2576.463401 ┆ -2568.516617 │
-        │ -2488.369418 ┆ -2513.134161 ┆ -2549.299382 ┆ -2554.131179 │
+        │ -2533.503142 ┆ -2531.11451  ┆ -2488.379725 ┆ -2527.653495 │
+        │ -2510.144546 ┆ -2519.318755 ┆ -2449.46579  ┆ -2529.866394 │
+        │ -2494.957427 ┆ -2527.118066 ┆ -2417.423267 ┆ -2518.054613 │
+        │ -2517.055318 ┆ -2534.235993 ┆ -2413.22879  ┆ -2523.029661 │
         │ …            ┆ …            ┆ …            ┆ …            │
-        │ -1972.005746 ┆ -2122.788121 ┆ -1965.921104 ┆ -1969.328651 │
-        │ -1966.516529 ┆ -2117.398333 ┆ -1993.351756 ┆ -1986.589833 │
-        │ -1969.400394 ┆ -2147.941128 ┆ -1968.697139 ┆ -1988.805311 │
-        │ -1920.217666 ┆ -2081.368421 ┆ -1909.655836 ┆ -1920.432849 │
+        │ -1763.593686 ┆ -1601.3273   ┆ -1873.277623 ┆ -1767.766707 │
+        │ -1724.87438  ┆ -1648.269934 ┆ -1906.093392 ┆ -1809.921707 │
+        │ -1776.739292 ┆ -1670.216919 ┆ -1898.314835 ┆ -1756.702674 │
+        │ -1733.91896  ┆ -1665.882412 ┆ -1900.749398 ┆ -1750.687124 │
         └──────────────┴──────────────┴──────────────┴──────────────┘
-
         """
         diag = self.engine.diagnostics()
 
@@ -627,11 +626,11 @@ class Engine:
         │ ---        ┆ ---    ┆ ---       │
         │ str        ┆ u8     ┆ f64       │
         ╞════════════╪════════╪═══════════╡
-        │ pig        ┆ 1      ┆ 1.565845  │
-        │ rhinoceros ┆ 1      ┆ 1.094639  │
-        │ buffalo    ┆ 1      ┆ 1.094639  │
-        │ chihuahua  ┆ 1      ┆ 0.802085  │
-        │ chimpanzee ┆ 1      ┆ 0.723817  │
+        │ pig        ┆ 1      ┆ 1.574539  │
+        │ buffalo    ┆ 1      ┆ 1.240631  │
+        │ rhinoceros ┆ 1      ┆ 1.076105  │
+        │ collie     ┆ 0      ┆ 0.72471   │
+        │ chimpanzee ┆ 1      ┆ 0.697159  │
         └────────────┴────────┴───────────┘
         >>>  # change  pig to not fierce
         >>> animals.edit_cell('pig', 'fierce', 0)
@@ -644,11 +643,11 @@ class Engine:
         │ ---        ┆ ---    ┆ ---       │
         │ str        ┆ u8     ┆ f64       │
         ╞════════════╪════════╪═══════════╡
-        │ rhinoceros ┆ 1      ┆ 1.094639  │
-        │ buffalo    ┆ 1      ┆ 1.094639  │
-        │ chihuahua  ┆ 1      ┆ 0.802085  │
-        │ chimpanzee ┆ 1      ┆ 0.723817  │
-        │ dalmatian  ┆ 0      ┆ 0.594919  │
+        │ buffalo    ┆ 1      ┆ 1.240631  │
+        │ rhinoceros ┆ 1      ┆ 1.076105  │
+        │ collie     ┆ 0      ┆ 0.72471   │
+        │ chimpanzee ┆ 1      ┆ 0.697159  │
+        │ chihuahua  ┆ 1      ┆ 0.614058  │
         └────────────┴────────┴───────────┘
 
         Set a value to missing
@@ -662,7 +661,7 @@ class Engine:
         │ ---   ┆ ---    ┆ ---         │
         │ str   ┆ u8     ┆ f64         │
         ╞═══════╪════════╪═════════════╡
-        │ pig   ┆ 0      ┆ 0.07593     │
+        │ pig   ┆ 0      ┆ 0.094179    │
         └───────┴────────┴─────────────┘
 
         """
@@ -1030,7 +1029,7 @@ class Engine:
         ...     timeout=30,
         ...     transitions=[
         ...         StateTransition.row_assignment(RowKernel.slice()),
-        ...         StateTransition.view_alphas(),
+        ...         StateTransition.view_prior_process_params(),
         ...     ],
         ... )
 
@@ -1088,14 +1087,14 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.entropy(["slow"])
-        0.6755931727528786
+        0.6812321322736966
         >>> animals.entropy(["water"])
-        0.49836129824622094
+        0.46626932307630625
 
         Joint entropy
 
         >>> animals.entropy(["swims", "fast"])
-        0.9552642751735604
+        0.9367950081783651
 
         We can use entropies to compute mutual information, I(X, Y) = H(X) +
         H(Y) - H(X, Y).
@@ -1108,7 +1107,7 @@ class Engine:
         >>> h_fast = animals.entropy(["fast"])
         >>> h_swims_and_fast = animals.entropy(["swims", "fast"])
         >>> h_swims + h_fast - h_swims_and_fast
-        3.510013543328583e-05
+        7.03684751313105e-06
 
         But swimming and having flippers are mutually predictive, so we should
         see more mutual information.
@@ -1116,7 +1115,7 @@ class Engine:
         >>> h_flippers = animals.entropy(["flippers"])
         >>> h_swims_and_flippers = animals.entropy(["swims", "flippers"])
         >>> h_swims + h_flippers - h_swims_and_flippers
-        0.19361180218629537
+        0.18686797893023643
 
         """
         return self.engine.entropy(cols, n_mc_samples)
@@ -1178,9 +1177,9 @@ class Engine:
         shape: (3,)
         Series: 'logp' [f64]
         [
-            0.523575
-            0.06601
-            0.380453
+        	0.515602
+        	0.06607
+        	0.38637
         ]
 
         Conditioning using ``given``
@@ -1192,9 +1191,9 @@ class Engine:
         shape: (3,)
         Series: 'logp' [f64]
         [
-            0.000349
-            0.000756
-            0.998017
+        	0.000975
+        	0.018733
+        	0.972718
         ]
 
         Ask about the likelihood of values belonging to multiple features
@@ -1209,9 +1208,9 @@ class Engine:
         shape: (3,)
         Series: 'logp' [f64]
         [
-            0.000306
-            0.000008
-            0.016546
+        	0.000353
+        	0.000006
+        	0.015253
         ]
 
         An example of the scaled variant:
@@ -1223,9 +1222,9 @@ class Engine:
         shape: (3,)
         Series: 'logp_scaled' [f64]
         [
-            0.137554
-            0.167357
-            0.577699
+        	0.260898
+        	0.133143
+        	0.592816
         ]
 
         For columns which we explicitly model missing-not-at-random data, we can
@@ -1234,13 +1233,13 @@ class Engine:
         >>> from math import exp
         >>> no_long_geo = pl.Series("longitude_radians_of_geo", [None])
         >>> exp(engine.logp(no_long_geo))
-        0.631030460838865
+        0.626977387513902
 
         The probability of a value missing (not-at-random) changes depending on
         the conditions.
 
         >>> exp(engine.logp(no_long_geo, given={"Class_of_Orbit": "GEO"}))
-        0.048855132811982976
+        0.07779133514786091
 
         And we can condition on missingness
 
@@ -1251,9 +1250,9 @@ class Engine:
         shape: (3,)
         Series: 'logp' [f64]
         [
-            0.827158
-            0.099435
-            0.029606
+        	0.818785
+        	0.090779
+        	0.04799
         ]
 
         Plot the marginal distribution of `Period_minutes` for each state
@@ -1325,15 +1324,15 @@ class Engine:
         │ ---            ┆ ---           │
         │ str            ┆ f64           │
         ╞════════════════╪═══════════════╡
-        │ collie         ┆ 0.816517      │
-        │ beaver         ┆ 0.809991      │
-        │ rabbit         ┆ 0.785911      │
-        │ polar+bear     ┆ 0.783775      │
+        │ beaver         ┆ 0.830524      │
+        │ collie         ┆ 0.826842      │
+        │ rabbit         ┆ 0.80862       │
+        │ skunk          ┆ 0.801401      │
         │ …              ┆ …             │
-        │ killer+whale   ┆ 0.513013      │
-        │ blue+whale     ┆ 0.503965      │
-        │ dolphin        ┆ 0.480259      │
-        │ humpback+whale ┆ 0.434979      │
+        │ walrus         ┆ 0.535375      │
+        │ blue+whale     ┆ 0.48628       │
+        │ killer+whale   ┆ 0.466145      │
+        │ humpback+whale ┆ 0.433302      │
         └────────────────┴───────────────┘
 
         Find satellites with inconsistent orbital periods
@@ -1371,15 +1370,15 @@ class Engine:
         │ ---                               ┆ ---           ┆ ---            │
         │ str                               ┆ f64           ┆ f64            │
         ╞═══════════════════════════════════╪═══════════════╪════════════════╡
-        │ Intelsat 903                      ┆ 1.973348      ┆ 1436.16        │
-        │ TianLian 2 (TL-1-02, CTDRS)       ┆ 1.3645        ┆ 1436.1         │
-        │ QZS-1 (Quazi-Zenith Satellite Sy… ┆ 1.364247      ┆ 1436.0         │
-        │ Compass G-8 (Beidou IGSO-3)       ┆ 1.364093      ┆ 1435.93        │
+        │ Intelsat 903                      ┆ 1.767642      ┆ 1436.16        │
+        │ Mercury 2 (Advanced Vortex 2, US… ┆ 1.649006      ┆ 1436.12        │
+        │ INSAT 4CR (Indian National Satel… ┆ 1.648992      ┆ 1436.11        │
+        │ QZS-1 (Quazi-Zenith Satellite Sy… ┆ 1.64879       ┆ 1436.0         │
         │ …                                 ┆ …             ┆ …              │
-        │ Navstar GPS II-24 (Navstar SVN 3… ┆ 0.646141      ┆ 716.69         │
-        │ Navstar GPS IIR-10 (Navstar SVN … ┆ 0.646027      ┆ 716.47         │
-        │ Navstar GPS IIR-M-6 (Navstar SVN… ┆ 0.645991      ┆ 716.4          │
-        │ BSAT-3B                           ┆ 0.625282      ┆ 1365.61        │
+        │ Glonass 723 (Glonass 37-3, Cosmo… ┆ 0.646552      ┆ 680.75         │
+        │ Glonass 721 (Glonass 37-1, Cosmo… ┆ 0.646474      ┆ 680.91         │
+        │ Glonass 730 (Glonass 41-1, Cosmo… ┆ 0.646183      ┆ 681.53         │
+        │ Wind (International Solar-Terres… ┆ 0.526911      ┆ 19700.45       │
         └───────────────────────────────────┴───────────────┴────────────────┘
 
         It looks like Intelsat 903 is the most inconsistent by a good amount.
@@ -1476,13 +1475,12 @@ class Engine:
         │ ---                               ┆ ---               ┆ ---       │
         │ str                               ┆ f64               ┆ f64       │
         ╞═══════════════════════════════════╪═══════════════════╪═══════════╡
-        │ International Space Station (ISS… ┆ 30.0              ┆ 7.02499   │
-        │ Landsat 7                         ┆ 15.0              ┆ 4.869031  │
-        │ Milstar DFS-5 (USA 164, Milstar … ┆ 0.0               ┆ 4.74869   │
-        │ Optus B3                          ┆ 0.5               ┆ 4.653549  │
-        │ SDS III-3 (Satellite Data System… ┆ 0.5               ┆ 4.558333  │
+        │ International Space Station (ISS… ┆ 30.0              ┆ 11.423102 │
+        │ Milstar DFS-5 (USA 164, Milstar … ┆ 0.0               ┆ 6.661427  │
+        │ DSP 21 (USA 159) (Defense Suppor… ┆ 0.5               ┆ 6.366436  │
+        │ DSP 22 (USA 176) (Defense Suppor… ┆ 0.5               ┆ 6.366436  │
+        │ Intelsat 701                      ┆ 0.5               ┆ 6.366436  │
         └───────────────────────────────────┴───────────────────┴───────────┘
-
 
         Compute the surprisal for specific cells
 
@@ -1495,8 +1493,8 @@ class Engine:
         │ ---          ┆ ---               ┆ ---       │
         │ str          ┆ f64               ┆ f64       │
         ╞══════════════╪═══════════════════╪═══════════╡
-        │ Landsat 7    ┆ 15.0              ┆ 4.869031  │
-        │ Intelsat 701 ┆ 0.5               ┆ 4.533067  │
+        │ Landsat 7    ┆ 15.0              ┆ 4.588265  │
+        │ Intelsat 701 ┆ 0.5               ┆ 6.366436  │
         └──────────────┴───────────────────┴───────────┘
 
         Compute the surprisal of specific values in specific cells
@@ -1512,8 +1510,8 @@ class Engine:
         │ ---          ┆ ---               ┆ ---       │
         │ str          ┆ f64               ┆ f64       │
         ╞══════════════╪═══════════════════╪═══════════╡
-        │ Landsat 7    ┆ 10.0              ┆ 3.037384  │
-        │ Intelsat 701 ┆ 10.0              ┆ 2.559729  │
+        │ Landsat 7    ┆ 10.0              ┆ 2.984587  │
+        │ Intelsat 701 ┆ 10.0              ┆ 2.52041   │
         └──────────────┴───────────────────┴───────────┘
 
         Compute the surprisal of multiple values in a single cell
@@ -1526,10 +1524,10 @@ class Engine:
         shape: (4,)
         Series: 'surprisal' [f64]
         [
-            3.126282
-            2.938583
-            2.24969
-            3.037384
+                3.225658
+                3.036696
+                2.273096
+                2.984587
         ]
 
         Surprisal will be different under different_states
@@ -1546,8 +1544,8 @@ class Engine:
         │ ---          ┆ ---               ┆ ---       │
         │ str          ┆ f64               ┆ f64       │
         ╞══════════════╪═══════════════════╪═══════════╡
-        │ Landsat 7    ┆ 10.0              ┆ 2.743636  │
-        │ Intelsat 701 ┆ 10.0              ┆ 2.587096  │
+        │ Landsat 7    ┆ 10.0              ┆ 3.431414  │
+        │ Intelsat 701 ┆ 10.0              ┆ 2.609992  │
         └──────────────┴───────────────────┴───────────┘
 
         """
@@ -1596,11 +1594,11 @@ class Engine:
         │ ---            ┆ ---            │
         │ str            ┆ f64            │
         ╞════════════════╪════════════════╡
-        │ MEO            ┆ 2807.568333    │
-        │ GEO            ┆ 1421.333515    │
-        │ LEO            ┆ 92.435621      │
-        │ GEO            ┆ 1435.7067      │
-        │ LEO            ┆ 84.896787      │
+        │ LEO            ┆ 140.214617     │
+        │ MEO            ┆ 707.76105      │
+        │ MEO            ┆ 649.888366     │
+        │ LEO            ┆ 109.460389     │
+        │ GEO            ┆ 1309.460359    │
         └────────────────┴────────────────┘
 
         Simulate a pair of columns conditioned on another
@@ -1616,11 +1614,11 @@ class Engine:
         │ ---            ┆ ---            │
         │ str            ┆ f64            │
         ╞════════════════╪════════════════╡
-        │ GEO            ┆ 1439.041087    │
-        │ GEO            ┆ 1426.020318    │
-        │ GEO            ┆ 1430.553113    │
-        │ GEO            ┆ 1451.192889    │
-        │ GEO            ┆ 1431.855712    │
+        │ LEO            ┆ 97.079974      │
+        │ GEO            ┆ -45.703234     │
+        │ LEO            ┆ 114.135217     │
+        │ LEO            ┆ 103.676199     │
+        │ GEO            ┆ 1434.897091    │
         └────────────────┴────────────────┘
 
         Simulate missing values for columns that are missing not-at-random
@@ -1632,11 +1630,11 @@ class Engine:
         │ ---                      │
         │ f64                      │
         ╞══════════════════════════╡
+        │ -2.719645                │
+        │ -0.154891                │
         │ null                     │
         │ null                     │
-        │ null                     │
-        │ null                     │
-        │ null                     │
+        │ 0.712423                 │
         └──────────────────────────┘
         >>> engine.simulate(
         ...     ["longitude_radians_of_geo"],
@@ -1649,11 +1647,11 @@ class Engine:
         │ ---                      │
         │ f64                      │
         ╞══════════════════════════╡
-        │ 0.396442                 │
-        │ 0.794023                 │
-        │ 0.643669                 │
-        │ -0.005531                │
-        │ 1.827976                 │
+        │ 0.850506                 │
+        │ 0.666353                 │
+        │ 0.682146                 │
+        │ 0.221179                 │
+        │ 2.621126                 │
         └──────────────────────────┘
 
         If we simulate using ``given`` conditions, we can include the
@@ -1671,11 +1669,11 @@ class Engine:
         │ ---            ┆ ---            ┆ ---            │
         │ f64            ┆ str            ┆ str            │
         ╞════════════════╪════════════════╪════════════════╡
-        │ 1436.038447    ┆ Communications ┆ GEO            │
-        │ 1447.908161    ┆ Communications ┆ GEO            │
-        │ 1452.635331    ┆ Communications ┆ GEO            │
-        │ 1443.983013    ┆ Communications ┆ GEO            │
-        │ 1437.544045    ┆ Communications ┆ GEO            │
+        │ 1426.679095    ┆ Communications ┆ GEO            │
+        │ 54.08657       ┆ Communications ┆ GEO            │
+        │ 1433.563215    ┆ Communications ┆ GEO            │
+        │ 1436.388876    ┆ Communications ┆ GEO            │
+        │ 1434.298969    ┆ Communications ┆ GEO            │
         └────────────────┴────────────────┴────────────────┘
 
         """
@@ -1719,13 +1717,12 @@ class Engine:
         shape: (5,)
         Series: 'Period_minutes' [f64]
         [
-            110.076567
-            108.096406
-            102.34334
-            90.175641
-            94.512276
+                125.0209
+                173.739372
+                103.887763
+                115.319662
+                98.08124
         ]
-
         """
         srs = self.engine.draw(row, col, n)
         return utils.return_srs(srs)
@@ -1771,18 +1768,18 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.predict("swims")
-        (0, 0.04384630488890182)
+        (0, 0.03782005724890601)
 
         Predict whether an animal swims given that it has flippers
 
         >>> animals.predict("swims", given={"flippers": 1})
-        (1, 0.09588592928237495)
+        (1, 0.08920133574559677)
 
         Let's confuse lace and see what happens to its uncertainty. Let's
         predict whether an non-water animal with flippers swims
 
         >>> animals.predict("swims", given={"flippers": 1, "water": 0})
-        (0, 0.36077426258767503)
+        (0, 0.23777388425463844)
 
         If you want to save time and you do not care about quantifying your
         epistemic uncertainty, you don't have to compute uncertainty.
@@ -1828,19 +1825,19 @@ class Engine:
         >>> from lace.examples import Satellites
         >>> sats = Satellites()
         >>> sats.variability("Period_minutes")
-        691324.3941953736
+        709857.0508301815
 
         Compute the variance of Period_minutes for geosynchronous satellite
 
         >>> sats.variability("Period_minutes", given={"Class_of_Orbit": "GEO"})
-        136818.61181890886
+        148682.45531411088
 
         Compute the entropy of Class_of_orbit
 
         >>> sats.variability("Class_of_Orbit")
-        0.9362550555890782
+        0.9571321355529944
         >>> sats.variability("Class_of_Orbit", given={"Period_minutes": 1440.0})
-        0.01569677151657056
+        0.1455965989424529
 
         """
         return self.engine.variability(target, given, state_ixs)
@@ -1909,15 +1906,15 @@ class Engine:
         │ ---                               ┆ ---             ┆ ---         │
         │ str                               ┆ str             ┆ f64         │
         ╞═══════════════════════════════════╪═════════════════╪═════════════╡
-        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.186415    │
-        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.360331    │
-        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.425853    │
-        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.360331    │
+        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.190897    │
+        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.422782    │
+        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.422782    │
+        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.422782    │
         │ …                                 ┆ …               ┆ …           │
-        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.360331    │
-        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.404823    │
-        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.360331    │
-        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.360331    │
+        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.422782    │
+        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.422782    │
+        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.422782    │
+        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.422782    │
         └───────────────────────────────────┴─────────────────┴─────────────┘
 
         Impute a defined set of rows
@@ -1929,8 +1926,8 @@ class Engine:
         │ ---           ┆ ---                    ┆ ---         │
         │ str           ┆ str                    ┆ f64         │
         ╞═══════════════╪════════════════════════╪═════════════╡
-        │ AAUSat-3      ┆ Technology Development ┆ 0.238355    │
-        │ Zhongxing 20A ┆ Communications         ┆ 0.129248    │
+        │ AAUSat-3      ┆ Technology Development ┆ 0.236857    │
+        │ Zhongxing 20A ┆ Communications         ┆ 0.142772    │
         └───────────────┴────────────────────────┴─────────────┘
 
         Uncertainty is optional
@@ -2088,12 +2085,12 @@ class Engine:
         >>> from lace.examples import Animals
         >>> engine = Animals()
         >>> engine.mi([("swims", "flippers")])
-        0.27197816458827445
+        0.2785114781561444
 
         You can select different normalizations of mutual information
 
         >>> engine.mi([("swims", "flippers")], mi_type="unnormed")
-        0.19361180218629537
+        0.18686797893023643
 
         Multiple pairs as inputs gets you a polars ``Series``
 
@@ -2106,8 +2103,8 @@ class Engine:
         shape: (2,)
         Series: 'mi' [f64]
         [
-            0.271978
-            0.005378
+                0.278511
+                0.012031
         ]
 
         """
@@ -2163,25 +2160,25 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.rowsim([("beaver", "polar+bear")])
-        0.6059523809523808
+        0.5305059523809523
 
         What about if we weight similarity by columns and not the standard
         views?
 
         >>> animals.rowsim([("beaver", "polar+bear")], col_weighted=True)
-        0.5698529411764706
+        0.5095588235294117
 
         Not much change. How similar are they with respect to how we model their
         swimming?
 
         >>> animals.rowsim([("beaver", "polar+bear")], wrt=["swims"])
-        0.875
+        1.0
 
         Very similar. But will all animals that swim be highly similar with
         respect to their swimming?
 
         >>> animals.rowsim([("otter", "polar+bear")], wrt=["swims"])
-        0.375
+        0.3125
 
         Lace predicts an otter's swimming for different reasons than a polar
         bear's.
@@ -2199,8 +2196,8 @@ class Engine:
         shape: (2,)
         Series: 'rowsim' [f64]
         [
-            0.629315
-            0.772545
+                0.712798
+                0.841518
         ]
 
         """
@@ -2243,13 +2240,13 @@ class Engine:
         │ str   ┆ str   ┆ f64      │
         ╞═══════╪═══════╪══════════╡
         │ wolf  ┆ wolf  ┆ 1.0      │
-        │ wolf  ┆ rat   ┆ 0.71689  │
-        │ wolf  ┆ otter ┆ 0.492262 │
-        │ rat   ┆ wolf  ┆ 0.71689  │
+        │ wolf  ┆ rat   ┆ 0.801339 │
+        │ wolf  ┆ otter ┆ 0.422619 │
+        │ rat   ┆ wolf  ┆ 0.801339 │
         │ rat   ┆ rat   ┆ 1.0      │
-        │ rat   ┆ otter ┆ 0.613095 │
-        │ otter ┆ wolf  ┆ 0.492262 │
-        │ otter ┆ rat   ┆ 0.613095 │
+        │ rat   ┆ otter ┆ 0.572173 │
+        │ otter ┆ wolf  ┆ 0.422619 │
+        │ otter ┆ rat   ┆ 0.572173 │
         │ otter ┆ otter ┆ 1.0      │
         └───────┴───────┴──────────┘
 
@@ -2267,13 +2264,13 @@ class Engine:
         │ str   ┆ str   ┆ f64      │
         ╞═══════╪═══════╪══════════╡
         │ wolf  ┆ wolf  ┆ 1.0      │
-        │ wolf  ┆ rat   ┆ 0.642647 │
-        │ wolf  ┆ otter ┆ 0.302206 │
-        │ rat   ┆ wolf  ┆ 0.642647 │
+        │ wolf  ┆ rat   ┆ 0.804412 │
+        │ wolf  ┆ otter ┆ 0.323529 │
+        │ rat   ┆ wolf  ┆ 0.804412 │
         │ rat   ┆ rat   ┆ 1.0      │
-        │ rat   ┆ otter ┆ 0.491176 │
-        │ otter ┆ wolf  ┆ 0.302206 │
-        │ otter ┆ rat   ┆ 0.491176 │
+        │ rat   ┆ otter ┆ 0.469853 │
+        │ otter ┆ wolf  ┆ 0.323529 │
+        │ otter ┆ rat   ┆ 0.469853 │
         │ otter ┆ otter ┆ 1.0      │
         └───────┴───────┴──────────┘
 
@@ -2288,13 +2285,13 @@ class Engine:
         │ str      ┆ str          ┆ f64      │
         ╞══════════╪══════════════╪══════════╡
         │ antelope ┆ antelope     ┆ 1.0      │
-        │ antelope ┆ grizzly+bear ┆ 0.464137 │
-        │ antelope ┆ killer+whale ┆ 0.479613 │
-        │ antelope ┆ beaver       ┆ 0.438467 │
+        │ antelope ┆ grizzly+bear ┆ 0.457589 │
+        │ antelope ┆ killer+whale ┆ 0.469494 │
+        │ antelope ┆ beaver       ┆ 0.332589 │
         │ …        ┆ …            ┆ …        │
-        │ dolphin  ┆ walrus       ┆ 0.724702 │
-        │ dolphin  ┆ raccoon      ┆ 0.340923 │
-        │ dolphin  ┆ cow          ┆ 0.482887 │
+        │ dolphin  ┆ walrus       ┆ 0.799851 │
+        │ dolphin  ┆ raccoon      ┆ 0.236607 │
+        │ dolphin  ┆ cow          ┆ 0.441964 │
         │ dolphin  ┆ dolphin      ┆ 1.0      │
         └──────────┴──────────────┴──────────┘
 
@@ -2389,6 +2386,41 @@ class Engine:
             return ClusterMap(df, linkage, fig)
         else:
             return ClusterMap(df, linkage)
+
+    def remove_rows(
+        self,
+        indices: Union[pd.Series, List[str], pd.Series, Set[str]],
+    ) -> pl.DataFrame:
+        """
+        Remove rows from the table.
+
+        Parameters
+        ----------
+        indices: Union[pd.Series, List[str], pd.Series, Set[str]]
+            Rows to remove from the Engine, specified by index or id name.
+
+        Example
+        -------
+        Remove crab and squid from the animals example engine.
+
+        >>> from lace.examples import Animals
+        >>> engine = Animals()
+        >>> n_rows = engine.n_rows
+        >>> removed = engine.remove_rows(["cow", "wolf"])
+        >>> n_rows == engine.n_rows + 1
+        True
+        >>> removed["index"] # doctest: +NORMALIZE_WHITESPACE
+        ┌────────┐
+        │ index  │
+        │ ---    │
+        │ str    │
+        ╞════════╡
+        │ cow    │
+        │ wolf   │
+        └────────┘
+
+        """
+        return self.engine.remove_rows(indices)
 
 
 class _TqdmUpdateHandler:

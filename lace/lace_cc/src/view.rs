@@ -3,7 +3,12 @@ use std::f64::NEG_INFINITY;
 
 use lace_data::{Datum, FeatureData};
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use lace_stats::rv::dist::{Dirichlet, Gamma};
+use lace_stats::assignment::Assignment;
+use lace_stats::prior_process::Builder as AssignmentBuilder;
+use lace_stats::prior_process::{
+    PriorProcess, PriorProcessT, PriorProcessType, Process,
+};
+use lace_stats::rv::dist::Dirichlet;
 use lace_stats::rv::misc::ln_pflip;
 use lace_stats::rv::traits::Rv;
 use lace_utils::{logaddexp, unused_components, Matrix, Shape};
@@ -13,7 +18,6 @@ use serde::{Deserialize, Serialize};
 
 // use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::alg::RowAssignAlg;
-use crate::assignment::{Assignment, AssignmentBuilder};
 use crate::feature::geweke::GewekeColumnSummary;
 use crate::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::feature::{ColModel, FType, Feature};
@@ -30,7 +34,7 @@ pub struct View {
     /// A Map of features indexed by the feature ID
     pub ftrs: BTreeMap<usize, ColModel>,
     /// The assignment of rows to categories
-    pub asgn: Assignment,
+    pub prior_process: PriorProcess,
     /// The weights of each category
     pub weights: Vec<f64>,
 }
@@ -38,7 +42,7 @@ pub struct View {
 /// Builds a `View`
 pub struct Builder {
     n_rows: usize,
-    alpha_prior: Option<Gamma>,
+    process: Option<Process>,
     asgn: Option<Assignment>,
     ftrs: Option<Vec<ColModel>>,
     seed: Option<u64>,
@@ -50,7 +54,7 @@ impl Builder {
         Builder {
             n_rows,
             asgn: None,
-            alpha_prior: None,
+            process: None,
             ftrs: None,
             seed: None,
         }
@@ -63,7 +67,17 @@ impl Builder {
         Builder {
             n_rows: asgn.len(),
             asgn: Some(asgn),
-            alpha_prior: None, // is ignored in asgn set
+            process: None, // is ignored in asgn set
+            ftrs: None,
+            seed: None,
+        }
+    }
+
+    pub fn from_prior_process(prior_process: PriorProcess) -> Self {
+        Builder {
+            n_rows: prior_process.asgn.len(),
+            asgn: Some(prior_process.asgn),
+            process: Some(prior_process.process),
             ftrs: None,
             seed: None,
         }
@@ -71,13 +85,9 @@ impl Builder {
 
     /// Put a custom `Gamma` prior on the CRP alpha
     #[must_use]
-    pub fn alpha_prior(mut self, alpha_prior: Gamma) -> Self {
-        if self.asgn.is_some() {
-            panic!("Cannot add alpha_prior once Assignment added");
-        } else {
-            self.alpha_prior = Some(alpha_prior);
-            self
-        }
+    pub fn prior_process(mut self, process: Process) -> Self {
+        self.process = Some(process);
+        self
     }
 
     /// Add features to the `View`
@@ -103,51 +113,58 @@ impl Builder {
 
     /// Build the `View` and consume the builder
     pub fn build(self) -> View {
+        use lace_consts::general_alpha_prior;
+        use lace_stats::prior_process::Dirichlet;
+
         let mut rng = match self.seed {
             Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
             None => Xoshiro256Plus::from_entropy(),
         };
 
+        let process = self.process.unwrap_or_else(|| {
+            Process::Dirichlet(Dirichlet::from_prior(
+                general_alpha_prior(),
+                &mut rng,
+            ))
+        });
+
         let asgn = match self.asgn {
             Some(asgn) => asgn,
-            None => {
-                if self.alpha_prior.is_none() {
-                    AssignmentBuilder::new(self.n_rows)
-                        .seed_from_rng(&mut rng)
-                        .build()
-                        .unwrap()
-                } else {
-                    AssignmentBuilder::new(self.n_rows)
-                        .with_prior(self.alpha_prior.unwrap())
-                        .seed_from_rng(&mut rng)
-                        .build()
-                        .unwrap()
-                }
-            }
+            None => process.draw_assignment(self.n_rows, &mut rng),
         };
 
-        let weights = asgn.weights();
+        let prior_process = PriorProcess { process, asgn };
+
+        let weights = prior_process.weight_vec(false);
         let mut ftr_tree = BTreeMap::new();
         if let Some(mut ftrs) = self.ftrs {
             for mut ftr in ftrs.drain(..) {
-                ftr.reassign(&asgn, &mut rng);
+                ftr.reassign(&prior_process.asgn, &mut rng);
                 ftr_tree.insert(ftr.id(), ftr);
             }
         }
 
         View {
             ftrs: ftr_tree,
-            asgn,
+            prior_process,
             weights,
         }
     }
 }
 
 impl View {
+    pub fn asgn(&self) -> &Assignment {
+        &self.prior_process.asgn
+    }
+
+    pub fn asgn_mut(&mut self) -> &mut Assignment {
+        &mut self.prior_process.asgn
+    }
+
     /// The number of rows in the `View`
     #[inline]
     pub fn n_rows(&self) -> usize {
-        self.asgn.asgn.len()
+        self.asgn().len()
     }
 
     /// The number of columns in the `View`
@@ -171,19 +188,13 @@ impl View {
     /// The number of categories
     #[inline]
     pub fn n_cats(&self) -> usize {
-        self.asgn.n_cats
-    }
-
-    /// The current value of the CPR alpha parameter
-    #[inline]
-    pub fn alpha(&self) -> f64 {
-        self.asgn.alpha
+        self.asgn().n_cats
     }
 
     // Extend the columns by a number of cells, increasing the total number of
     // rows. The added entries will be empty.
     pub fn extend_cols(&mut self, n_rows: usize) {
-        (0..n_rows).for_each(|_| self.asgn.push_unassigned());
+        (0..n_rows).for_each(|_| self.asgn_mut().push_unassigned());
         self.ftrs.values_mut().for_each(|ftr| {
             (0..n_rows).for_each(|_| ftr.append_datum(Datum::Missing))
         })
@@ -195,7 +206,7 @@ impl View {
         row_ix: usize,
         col_ix: usize,
     ) -> Option<Datum> {
-        let k = self.asgn.asgn[row_ix];
+        let k = self.asgn().asgn[row_ix];
         let is_assigned = k != usize::max_value();
 
         if is_assigned {
@@ -212,7 +223,7 @@ impl View {
             return;
         }
 
-        let k = self.asgn.asgn[row_ix];
+        let k = self.asgn().asgn[row_ix];
         let is_assigned = k != usize::max_value();
 
         let ftr = self.ftrs.get_mut(&col_ix).unwrap();
@@ -267,8 +278,8 @@ impl View {
     ) {
         for transition in transitions {
             match transition {
-                ViewTransition::Alpha => {
-                    self.update_alpha(&mut rng);
+                ViewTransition::PriorProcessParams => {
+                    self.update_prior_process_params(&mut rng);
                 }
                 ViewTransition::RowAssignment(alg) => {
                     self.reassign(*alg, &mut rng);
@@ -287,7 +298,7 @@ impl View {
     pub fn default_transitions() -> Vec<ViewTransition> {
         vec![
             ViewTransition::RowAssignment(RowAssignAlg::FiniteCpu),
-            ViewTransition::Alpha,
+            ViewTransition::PriorProcessParams,
             ViewTransition::FeaturePriors,
         ]
     }
@@ -365,13 +376,13 @@ impl View {
         // it does not explicitly update the weights. Non-updated weights means
         // wrong probabilities. To avoid this, we set the weights by the
         // partition here.
-        self.weights = self.asgn.weights();
-        debug_assert!(self.asgn.validate().is_valid());
+        self.weights = self.prior_process.weight_vec(false);
+        debug_assert!(self.asgn().validate().is_valid());
     }
 
     /// Use the finite approximation (on the CPU) to reassign the rows
     pub fn reassign_rows_finite_cpu(&mut self, mut rng: &mut impl Rng) {
-        let n_cats = self.asgn.n_cats;
+        let n_cats = self.n_cats();
         let n_rows = self.n_rows();
 
         self.resample_weights(true, &mut rng);
@@ -392,17 +403,17 @@ impl View {
 
     /// Use the improved slice algorithm to reassign the rows
     pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
-        use crate::misc::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
         let weights: Vec<f64> = {
-            let dirvec = self.asgn.dirvec(true);
+            // FIXME: only works for dirichlet
+            let dirvec = self.prior_process.weight_vec_unnormed(true);
             let dir = Dirichlet::new(dirvec).unwrap();
             dir.draw(&mut rng)
         };
 
         let us: Vec<f64> = self
-            .asgn
+            .asgn()
             .asgn
             .iter()
             .map(|&zi| {
@@ -416,9 +427,10 @@ impl View {
             us.iter()
                 .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
-        let weights =
-            sb_slice_extend(weights, self.asgn.alpha, u_star, &mut rng)
-                .unwrap();
+        let weights = self
+            .prior_process
+            .process
+            .slice_sb_extend(weights, u_star, &mut rng);
 
         let n_new_cats = weights.len() - self.weights.len();
         let n_cats = weights.len();
@@ -461,7 +473,14 @@ impl View {
         add_empty_component: bool,
         mut rng: &mut impl Rng,
     ) {
-        let dirvec = self.asgn.dirvec(add_empty_component);
+        let dirvec =
+            self.prior_process.weight_vec_unnormed(add_empty_component);
+
+        if dirvec.iter().any(|&p| p < 0.0) {
+            eprintln!("{:?}", dirvec);
+            eprintln!("{:?}\n", self.prior_process.process);
+        }
+
         let dir = Dirichlet::new(dirvec).unwrap();
         self.weights = dir.draw(&mut rng)
     }
@@ -475,8 +494,8 @@ impl View {
             let i = ixs[0];
             let j = ixs[1];
 
-            let zi = self.asgn.asgn[i];
-            let zj = self.asgn.asgn[j];
+            let zi = self.asgn().asgn[i];
+            let zj = self.asgn().asgn[j];
 
             if zi < zj {
                 (i, j, zi, zj)
@@ -491,14 +510,15 @@ impl View {
             assert!(zi < zj);
             self.sams_merge(i, j, rng);
         }
-        debug_assert!(self.asgn.validate().is_valid());
+        debug_assert!(self.asgn().validate().is_valid());
     }
 
     /// MCMC update on the CPR alpha parameter
     #[inline]
-    pub fn update_alpha(&mut self, mut rng: &mut impl Rng) -> f64 {
-        self.asgn
-            .update_alpha(lace_consts::MH_PRIOR_ITERS, &mut rng)
+    pub fn update_prior_process_params(&mut self, rng: &mut impl Rng) -> f64 {
+        self.prior_process.update_params(rng);
+        // FIXME: should be the new likelihood
+        0.0
     }
 
     /// Insert a new `Feature` into the `View`, but draw the feature
@@ -511,8 +531,8 @@ impl View {
             "Feature {} already in view",
             id
         );
-        ftr.init_components(self.asgn.n_cats, &mut rng);
-        ftr.reassign(&self.asgn, &mut rng);
+        ftr.init_components(self.asgn().n_cats, &mut rng);
+        ftr.reassign(self.asgn(), &mut rng);
         self.ftrs.insert(id, ftr);
     }
 
@@ -530,7 +550,7 @@ impl View {
             "Feature {} already in view",
             id
         );
-        ftr.geweke_init(&self.asgn, rng);
+        ftr.geweke_init(self.asgn(), rng);
         self.ftrs.insert(id, ftr);
     }
 
@@ -547,7 +567,7 @@ impl View {
             "Feature {} already in view",
             id
         );
-        ftr.reassign(&self.asgn, &mut rng);
+        ftr.reassign(self.asgn(), &mut rng);
 
         self.ftrs.insert(id, ftr);
     }
@@ -570,7 +590,7 @@ impl View {
         // assignment to preserve canonical order.
         (0..n).for_each(|_| {
             self.remove_row(ix);
-            self.asgn.asgn.remove(ix);
+            self.asgn_mut().asgn.remove(ix);
         });
 
         // remove data from features
@@ -596,7 +616,7 @@ impl View {
     #[inline]
     pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
-            ftr.reassign(&self.asgn, &mut rng);
+            ftr.reassign(&self.prior_process.asgn, &mut rng);
         }
     }
 
@@ -615,7 +635,7 @@ impl View {
         // problem is that I can't iterate on self.asgn then call
         // self.reinsert_row inside the for_each closure
         let mut unassigned_rows: Vec<usize> = self
-            .asgn
+            .asgn()
             .iter()
             .enumerate()
             .filter_map(|(row_ix, &z)| {
@@ -640,10 +660,10 @@ impl View {
     // Remove the row for the purposes of MCMC without deleting its data.
     #[inline]
     fn remove_row(&mut self, row_ix: usize) {
-        let k = self.asgn.asgn[row_ix];
-        let is_singleton = self.asgn.counts[k] == 1;
+        let k = self.asgn().asgn[row_ix];
+        let is_singleton = self.asgn().counts[k] == 1;
         self.forget_row(row_ix, k);
-        self.asgn.unassign(row_ix);
+        self.asgn_mut().unassign(row_ix);
 
         if is_singleton {
             self.drop_component(k);
@@ -660,25 +680,31 @@ impl View {
 
     #[inline]
     fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
-        let k_new = if self.asgn.n_cats == 0 {
+        let k_new = if self.asgn().n_cats == 0 {
             // If empty, assign to category zero
             debug_assert!(self.ftrs.values().all(|f| f.k() == 0));
             self.append_empty_component(&mut rng);
             0
         } else {
             // If not empty, do a Gibbs step
-            let mut logps: Vec<f64> = Vec::with_capacity(self.asgn.n_cats + 1);
-            self.asgn.counts.iter().enumerate().for_each(|(k, &ct)| {
-                logps.push(
-                    (ct as f64).ln() + self.predictive_score_at(row_ix, k),
-                );
+            let mut logps: Vec<f64> =
+                Vec::with_capacity(self.asgn().n_cats + 1);
+
+            self.asgn().counts.iter().enumerate().for_each(|(k, &ct)| {
+                let w = self.prior_process.process.ln_gibbs_weight(ct);
+                logps.push(w + self.predictive_score_at(row_ix, k));
             });
 
-            logps.push(self.asgn.alpha.ln() + self.singleton_score(row_ix));
+            logps.push(
+                self.prior_process
+                    .process
+                    .ln_singleton_weight(self.n_cats())
+                    + self.singleton_score(row_ix),
+            );
 
             let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
 
-            if k_new == self.asgn.n_cats {
+            if k_new == self.n_cats() {
                 self.append_empty_component(&mut rng);
             }
 
@@ -686,7 +712,7 @@ impl View {
         };
 
         self.observe_row(row_ix, k_new);
-        self.asgn.reassign(row_ix, k_new);
+        self.asgn_mut().reassign(row_ix, k_new);
     }
 
     #[inline]
@@ -724,20 +750,20 @@ impl View {
             }
         }
 
-        self.asgn
+        self.asgn_mut()
             .set_asgn(new_asgn_vec)
             .expect("new asgn is invalid");
         self.resample_weights(false, &mut rng);
         for ftr in self.ftrs.values_mut() {
-            ftr.reassign(&self.asgn, &mut rng)
+            ftr.reassign(&self.prior_process.asgn, &mut rng)
         }
     }
 
     fn set_asgn<R: Rng>(&mut self, asgn: Assignment, rng: &mut R) {
-        self.asgn = asgn;
+        self.prior_process.asgn = asgn;
         self.resample_weights(false, rng);
         for ftr in self.ftrs.values_mut() {
-            ftr.reassign(&self.asgn, rng)
+            ftr.reassign(&self.prior_process.asgn, rng)
         }
     }
 
@@ -768,7 +794,7 @@ impl View {
         if calc_reverse {
             // Get the indices of the columns assigned to the clusters that
             // were split
-            self.asgn
+            self.asgn()
                 .asgn
                 .iter()
                 .enumerate()
@@ -785,7 +811,7 @@ impl View {
         } else {
             // Get the indices of the columns assigned to the cluster to split
             let mut row_ixs: Vec<usize> = self
-                .asgn
+                .asgn()
                 .asgn
                 .iter()
                 .enumerate()
@@ -798,17 +824,16 @@ impl View {
     }
 
     fn sams_merge<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
-        use crate::assignment::lcrp;
         use std::cmp::Ordering;
 
-        let zi = self.asgn.asgn[i];
-        let zj = self.asgn.asgn[j];
+        let zi = self.asgn().asgn[i];
+        let zj = self.asgn().asgn[j];
 
         let (logp_spt, logq_spt, ..) = self.propose_split(i, j, true, rng);
 
         let asgn = {
             let zs = self
-                .asgn
+                .asgn()
                 .asgn
                 .iter()
                 .map(|&z| match z.cmp(&zj) {
@@ -819,11 +844,11 @@ impl View {
                 .collect();
 
             AssignmentBuilder::from_vec(zs)
-                .with_prior(self.asgn.prior.clone())
-                .with_alpha(self.asgn.alpha)
+                .with_process(self.prior_process.process.clone())
                 .seed_from_rng(rng)
                 .build()
                 .unwrap()
+                .asgn
         };
 
         self.append_empty_component(rng);
@@ -833,8 +858,8 @@ impl View {
             }
         });
 
-        let logp_mrg = self.logm(self.n_cats())
-            + lcrp(asgn.len(), &asgn.counts, asgn.alpha);
+        let logp_mrg =
+            self.logm(self.n_cats()) + self.prior_process.ln_f_partition(&asgn);
 
         self.drop_component(self.n_cats());
 
@@ -844,12 +869,11 @@ impl View {
     }
 
     fn sams_split<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
-        use crate::assignment::lcrp;
+        let zi = self.asgn().asgn[i];
 
-        let zi = self.asgn.asgn[i];
-
-        let logp_mrg = self.logm(zi)
-            + lcrp(self.asgn.len(), &self.asgn.counts, self.asgn.alpha);
+        // FIXME: only works for CRP
+        let logp_mrg =
+            self.logm(zi) + self.prior_process.ln_f_partition(self.asgn());
         let (logp_spt, logq_spt, asgn_opt) =
             self.propose_split(i, j, false, rng);
 
@@ -868,15 +892,13 @@ impl View {
         calc_reverse: bool,
         rng: &mut R,
     ) -> (f64, f64, Option<Assignment>) {
-        use crate::assignment::lcrp;
-
-        let zi = self.asgn.asgn[i];
-        let zj = self.asgn.asgn[j];
+        let zi = self.asgn().asgn[i];
+        let zj = self.asgn().asgn[j];
 
         self.append_empty_component(rng);
         self.append_empty_component(rng);
 
-        let zi_tmp = self.asgn.n_cats;
+        let zi_tmp = self.n_cats();
         let zj_tmp = zi_tmp + 1;
 
         self.force_observe_row(i, zi_tmp);
@@ -885,7 +907,7 @@ impl View {
         let mut tmp_z: Vec<usize> = {
             // mark everything assigned to the split cluster as unassigned (-1)
             let mut zs: Vec<usize> = self
-                .asgn
+                .asgn()
                 .iter()
                 .map(|&z| if z == zi { std::usize::MAX } else { z })
                 .collect();
@@ -909,7 +931,7 @@ impl View {
                 let lognorm = logaddexp(logp_zi, logp_zj);
 
                 let assign_to_zi = if calc_reverse {
-                    self.asgn.asgn[ix] == zi
+                    self.asgn().asgn[ix] == zi
                 } else {
                     rng.gen::<f64>().ln() < logp_zi - lognorm
                 };
@@ -930,7 +952,7 @@ impl View {
         let mut logp = self.logm(zi_tmp) + self.logm(zj_tmp);
 
         let asgn = if calc_reverse {
-            logp += lcrp(self.asgn.len(), &self.asgn.counts, self.asgn.alpha);
+            logp += self.prior_process.ln_f_partition(self.asgn());
             None
         } else {
             tmp_z.iter_mut().for_each(|z| {
@@ -941,14 +963,15 @@ impl View {
                 }
             });
 
+            // FIXME: create (draw) new process outside to carry forward alpha
             let asgn = AssignmentBuilder::from_vec(tmp_z)
-                .with_prior(self.asgn.prior.clone())
-                .with_alpha(self.asgn.alpha)
+                .with_process(self.prior_process.process.clone())
                 .seed_from_rng(rng)
                 .build()
-                .unwrap();
+                .unwrap()
+                .asgn;
 
-            logp += lcrp(asgn.len(), &asgn.counts, asgn.alpha);
+            logp += self.prior_process.ln_f_partition(&asgn);
             Some(asgn)
         };
 
@@ -1002,6 +1025,8 @@ pub struct ViewGewekeSettings {
     pub cm_types: Vec<FType>,
     /// Which transitions to run
     pub transitions: Vec<ViewTransition>,
+    /// Which prior process to use
+    pub process_type: PriorProcessType,
 }
 
 impl ViewGewekeSettings {
@@ -1015,13 +1040,24 @@ impl ViewGewekeSettings {
             // parameter updates explicitly (they marginalize over the component
             // parameters) and the data resample relies on the component
             // parameters.
+            process_type: PriorProcessType::Dirichlet,
             transitions: vec![
                 ViewTransition::RowAssignment(RowAssignAlg::Slice),
                 ViewTransition::FeaturePriors,
                 ViewTransition::ComponentParams,
-                ViewTransition::Alpha,
+                ViewTransition::PriorProcessParams,
             ],
         }
+    }
+
+    pub fn with_pitman_yor_process(mut self) -> Self {
+        self.process_type = PriorProcessType::PitmanYor;
+        self
+    }
+
+    pub fn with_dirichlet_process(mut self) -> Self {
+        self.process_type = PriorProcessType::Dirichlet;
+        self
     }
 
     pub fn do_row_asgn_transition(&self) -> bool {
@@ -1030,29 +1066,61 @@ impl ViewGewekeSettings {
             .any(|t| matches!(t, ViewTransition::RowAssignment(_)))
     }
 
-    pub fn do_alpha_transition(&self) -> bool {
+    pub fn do_process_params_transition(&self) -> bool {
         self.transitions
             .iter()
-            .any(|t| matches!(t, ViewTransition::Alpha))
+            .any(|t| matches!(t, ViewTransition::PriorProcessParams))
     }
 }
 
-fn view_geweke_asgn(
+fn view_geweke_asgn<R: Rng>(
     n_rows: usize,
-    do_alpha_transition: bool,
+    do_process_params_transition: bool,
     do_row_asgn_transition: bool,
-) -> AssignmentBuilder {
-    let mut bldr = AssignmentBuilder::new(n_rows).with_geweke_prior();
+    process_type: PriorProcessType,
+    rng: &mut R,
+) -> (AssignmentBuilder, Process) {
+    use lace_consts::geweke_alpha_prior;
+    let process = match process_type {
+        PriorProcessType::Dirichlet => {
+            use lace_stats::prior_process::Dirichlet;
+            let inner = if do_process_params_transition {
+                Dirichlet::from_prior(geweke_alpha_prior(), rng)
+            } else {
+                Dirichlet {
+                    alpha: 1.0,
+                    alpha_prior: geweke_alpha_prior(),
+                }
+            };
+            Process::Dirichlet(inner)
+        }
+        PriorProcessType::PitmanYor => {
+            use lace_stats::prior_process::PitmanYor;
+            use lace_stats::rv::dist::Beta;
+            let inner = if do_process_params_transition {
+                PitmanYor::from_prior(
+                    geweke_alpha_prior(),
+                    Beta::jeffreys(),
+                    rng,
+                )
+            } else {
+                PitmanYor {
+                    alpha: 1.0,
+                    d: 0.2,
+                    alpha_prior: geweke_alpha_prior(),
+                    d_prior: Beta::jeffreys(),
+                }
+            };
+            Process::PitmanYor(inner)
+        }
+    };
+    let mut bldr = AssignmentBuilder::new(n_rows).with_process(process.clone());
 
     if !do_row_asgn_transition {
         bldr = bldr.flat();
     }
 
-    if !do_alpha_transition {
-        bldr = bldr.with_alpha(1.0);
-    }
-
-    bldr
+    (bldr, process)
 }
 
 impl GewekeModel for View {
@@ -1065,14 +1133,15 @@ impl GewekeModel for View {
             .iter()
             .any(|&t| t == ViewTransition::FeaturePriors);
 
-        let asgn = view_geweke_asgn(
+        // FIXME: Redundant! asgn_builder builds a PriorProcess
+        let (asgn_builder, process) = view_geweke_asgn(
             settings.n_rows,
-            settings.do_alpha_transition(),
+            settings.do_process_params_transition(),
             settings.do_row_asgn_transition(),
-        )
-        .seed_from_rng(&mut rng)
-        .build()
-        .unwrap();
+            settings.process_type,
+            rng,
+        );
+        let asgn = asgn_builder.seed_from_rng(&mut rng).build().unwrap();
 
         // this function sets up dummy features that we can properly populate with
         // Feature.geweke_init in the next loop
@@ -1087,15 +1156,20 @@ impl GewekeModel for View {
             .drain(..)
             .enumerate()
             .map(|(id, mut ftr)| {
-                ftr.geweke_init(&asgn, &mut rng);
+                ftr.geweke_init(&asgn.asgn, &mut rng);
                 (id, ftr)
             })
             .collect();
 
+        let prior_process = PriorProcess {
+            process,
+            asgn: asgn.asgn,
+        };
+
         View {
             ftrs,
-            weights: asgn.weights(),
-            asgn,
+            weights: prior_process.weight_vec(false),
+            prior_process,
         }
     }
 
@@ -1116,8 +1190,10 @@ impl GewekeResampleData for View {
         rng: &mut impl Rng,
     ) {
         let s = settings.unwrap();
-        let col_settings =
-            ColumnGewekeSettings::new(self.asgn.clone(), s.transitions.clone());
+        let col_settings = ColumnGewekeSettings::new(
+            self.asgn().clone(),
+            s.transitions.clone(),
+        );
         for ftr in self.ftrs.values_mut() {
             ftr.geweke_resample_data(Some(&col_settings), rng);
         }
@@ -1168,7 +1244,7 @@ impl GewekeSummarize for View {
 
     fn geweke_summarize(&self, settings: &ViewGewekeSettings) -> Self::Summary {
         let col_settings = ColumnGewekeSettings::new(
-            self.asgn.clone(),
+            self.asgn().clone(),
             settings.transitions.clone(),
         );
 
@@ -1178,8 +1254,11 @@ impl GewekeSummarize for View {
             } else {
                 None
             },
-            alpha: if settings.do_alpha_transition() {
-                Some(self.asgn.alpha)
+            alpha: if settings.do_process_params_transition() {
+                Some(match self.prior_process.process {
+                    Process::Dirichlet(ref inner) => inner.alpha,
+                    Process::PitmanYor(ref inner) => inner.alpha,
+                })
             } else {
                 None
             },
@@ -1282,7 +1361,7 @@ mod tests {
             gen_gauss_view(1000, &mut rng)
         };
 
-        assert_eq!(view_1.asgn.asgn, view_2.asgn.asgn);
+        assert_eq!(view_1.asgn().asgn, view_2.asgn().asgn);
     }
 
     #[test]
@@ -1294,9 +1373,9 @@ mod tests {
 
         view.extend_cols(2);
 
-        assert_eq!(view.asgn.asgn.len(), 12);
-        assert_eq!(view.asgn.asgn[10], usize::max_value());
-        assert_eq!(view.asgn.asgn[11], usize::max_value());
+        assert_eq!(view.asgn().asgn.len(), 12);
+        assert_eq!(view.asgn().asgn[10], usize::max_value());
+        assert_eq!(view.asgn().asgn[11], usize::max_value());
 
         for ftr in view.ftrs.values() {
             assert_eq!(ftr.len(), 12);
@@ -1314,13 +1393,13 @@ mod tests {
 
         let components_start = extract_components(&view);
 
-        let view_ix_start = view.asgn.asgn[2];
+        let view_ix_start = view.asgn().asgn[2];
         let component_start = components_start[3][view_ix_start].clone();
 
         view.insert_datum(2, 3, Datum::Continuous(20.22));
 
         let components_end = extract_components(&view);
-        let view_ix_end = view.asgn.asgn[2];
+        let view_ix_end = view.asgn().asgn[2];
         let component_end = components_end[3][view_ix_end].clone();
 
         assert_ne!(components_start, components_end);

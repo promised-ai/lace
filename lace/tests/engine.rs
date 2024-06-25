@@ -55,7 +55,7 @@ fn loaded_engine_should_have_same_rng_state() {
     engine_2.run(5).unwrap();
 
     for (s1, s2) in engine_1.states.iter().zip(engine_2.states.iter()) {
-        assert_eq!(s1.asgn.asgn, s2.asgn.asgn);
+        assert_eq!(s1.asgn().asgn, s2.asgn().asgn);
     }
 }
 
@@ -152,7 +152,7 @@ fn run_engine_after_flatten_cols_smoke_test() {
     engine.run(1).unwrap();
 }
 
-mod contructor {
+mod constructor {
     use super::*;
     use lace::error::{DataParseError, NewEngineError};
     use lace_codebook::{ColMetadata, ColType};
@@ -229,7 +229,7 @@ fn engine_build_without_flat_col_is_not_flat() {
     let path = animals_data_path();
     let df = lace_codebook::data::read_csv(path).unwrap();
     let engine = EngineBuilder::new(DataSource::Polars(df))
-        .with_nstates(8)
+        .with_nstates(32)
         .build()
         .unwrap();
     assert!(engine.states.iter().any(|state| state.n_views() > 1));
@@ -1336,9 +1336,9 @@ mod insert_data {
             n_iters: 10,
             transitions: vec![
                 StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
-                StateTransition::StateAlpha,
+                StateTransition::StatePriorProcessParams,
                 StateTransition::RowAssignment(RowAssignAlg::Gibbs),
-                StateTransition::ViewAlphas,
+                StateTransition::ViewPriorProcessParams,
                 StateTransition::FeaturePriors,
             ],
             ..Default::default()
@@ -1432,9 +1432,9 @@ mod insert_data {
             n_iters: 10,
             transitions: vec![
                 StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
-                StateTransition::StateAlpha,
+                StateTransition::StatePriorProcessParams,
                 StateTransition::RowAssignment(RowAssignAlg::Gibbs),
-                StateTransition::ViewAlphas,
+                StateTransition::ViewPriorProcessParams,
                 StateTransition::FeaturePriors,
             ],
             ..Default::default()
@@ -1754,8 +1754,8 @@ mod insert_data {
                         EngineUpdateConfig {
                             n_iters: 2,
                             transitions: vec![
-                                StateTransition::StateAlpha,
-                                StateTransition::ViewAlphas,
+                                StateTransition::StatePriorProcessParams,
+                                StateTransition::ViewPriorProcessParams,
                                 StateTransition::ComponentParams,
                                 StateTransition::FeaturePriors,
                                 StateTransition::RowAssignment(
@@ -2147,9 +2147,9 @@ mod insert_data {
                     n_iters: 2,
                     transitions: vec![
                         StateTransition::ColumnAssignment($col_kernel),
-                        StateTransition::StateAlpha,
+                        StateTransition::StatePriorProcessParams,
                         StateTransition::RowAssignment($row_kernel),
-                        StateTransition::ViewAlphas,
+                        StateTransition::ViewPriorProcessParams,
                         StateTransition::FeaturePriors,
                     ],
                     ..Default::default()
@@ -2630,19 +2630,19 @@ mod prior_in_codebook {
     use lace_cc::feature::ColModel;
     use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
     use lace_stats::prior::nix::NixHyper;
-    use lace_stats::rv::dist::{Gamma, NormalInvChiSquared};
+    use lace_stats::rv::dist::NormalInvChiSquared;
     use lace_stats::rv::traits::Rv;
     use std::convert::TryInto;
     use std::io::Write;
 
-    // Generate a two-column codebook ('x' and 'y'). The x column will alyways
+    // Generate a two-column codebook ('x' and 'y'). The x column will always
     // have a hyper for the x column, but will have a prior defined if set_prior
     // is true. The y column will have neither a prior or hyper defined.
     fn gen_codebook(n_rows: usize, set_prior: bool) -> Codebook {
         Codebook {
             table_name: String::from("table"),
-            state_alpha_prior: Some(Gamma::default()),
-            view_alpha_prior: Some(Gamma::default()),
+            state_prior_process: None,
+            view_prior_process: None,
             col_metadata: {
                 let mut col_metadata = ColMetadataList::new(vec![]).unwrap();
                 col_metadata
@@ -2691,12 +2691,12 @@ mod prior_in_codebook {
             "
         ---
         table_name: table
-        state_alpha_prior:
-            !Gamma
+        state_prior_process: !dirichlet
+            alpha_prior:
                 shape: 1.0
                 rate: 1.0
-        view_alpha_prior:
-            !Gamma
+        view_prior_process: !dirichlet
+            alpha_prior:
                 shape: 1.0
                 rate: 1.0
         col_metadata:

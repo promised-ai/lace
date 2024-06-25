@@ -35,12 +35,13 @@ fn gen_all_gauss_state<R: Rng>(
     for i in 0..n_cols {
         ftrs.push(gen_col(i, n_rows, &mut rng));
     }
-    State::from_prior(
-        ftrs,
-        Gamma::new(1.0, 1.0).unwrap(),
-        Gamma::new(1.0, 1.0).unwrap(),
-        &mut rng,
-    )
+    let process = lace_stats::prior_process::Process::Dirichlet(
+        lace_stats::prior_process::Dirichlet::from_prior(
+            Gamma::default(),
+            &mut rng,
+        ),
+    );
+    State::from_prior(ftrs, process.clone(), process, &mut rng)
 }
 
 fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
@@ -63,8 +64,8 @@ fn dummy_codebook_from_state(state: &State) -> Codebook {
 
     Codebook {
         table_name: "my_table".into(),
-        state_alpha_prior: None,
-        view_alpha_prior: None,
+        state_prior_process: None,
+        view_prior_process: None,
         col_metadata: (0..state.n_cols())
             .map(|ix| {
                 let ftr = state.feature(ix);

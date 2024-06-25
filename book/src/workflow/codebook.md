@@ -49,7 +49,7 @@ let df = CsvReader::from_path(paths.data)
     .unwrap();
 
 // Create the default codebook
-let codebook = Codebook::from_df(&df, None, None, false).unwrap();
+let codebook = Codebook::from_df(&df, None, None, None, false).unwrap();
 ```
 
 </div>

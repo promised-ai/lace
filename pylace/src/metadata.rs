@@ -5,7 +5,7 @@ use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
 use lace::stats::prior::pg::PgHyper;
 use lace::stats::rv::dist::{
-    Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
+    Beta, Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
 };
 use polars::prelude::DataFrame;
 use pyo3::exceptions::{PyIOError, PyIndexError};
@@ -278,7 +278,7 @@ impl ValueMap {
     /// Create a map of ``k`` unsigned integers
     #[classmethod]
     #[pyo3(signature = (k))]
-    pub fn int(_cls: &PyType, k: usize) -> Self {
+    pub fn int(_cls: &Bound<PyType>, k: usize) -> Self {
         Self(lace::codebook::ValueMap::U8(k))
     }
 
@@ -295,7 +295,7 @@ impl ValueMap {
     ///     The strings are not unique
     #[classmethod]
     #[pyo3(signature = (values))]
-    pub fn string(_cls: &PyType, values: Vec<String>) -> PyResult<Self> {
+    pub fn string(_cls: &Bound<PyType>, values: Vec<String>) -> PyResult<Self> {
         lace::codebook::ValueMap::try_from(values)
             .map_err(PyValueError::new_err)
             .map(Self)
@@ -303,7 +303,7 @@ impl ValueMap {
 
     /// Create a map from boolean
     #[classmethod]
-    pub fn bool(_cls: &PyType) -> Self {
+    pub fn bool(_cls: &Bound<PyType>) -> Self {
         Self(lace::codebook::ValueMap::Bool)
     }
 
@@ -349,7 +349,7 @@ impl ColumnMetadata {
     #[classmethod]
     #[pyo3(signature = (name, prior=None, hyper=None))]
     pub fn continuous(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         name: String,
         prior: Option<ContinuousPrior>,
         hyper: Option<ContinuousHyper>,
@@ -386,7 +386,7 @@ impl ColumnMetadata {
     #[classmethod]
     #[pyo3(signature = (name, k, value_map=None, prior=None, hyper=None))]
     pub fn categorical(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         name: String,
         k: usize,
         value_map: Option<ValueMap>,
@@ -423,7 +423,7 @@ impl ColumnMetadata {
     #[classmethod]
     #[pyo3(signature = (name, prior=None, hyper=None))]
     pub fn count(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         name: String,
         prior: Option<CountPrior>,
         hyper: Option<CountHyper>,
@@ -485,7 +485,8 @@ enum CodebookMethod {
     Path(PathBuf),
     Inferred {
         cat_cutoff: Option<u8>,
-        alpha_prior_opt: Option<Gamma>,
+        state_prior_process: Option<PriorProcess>,
+        view_prior_process: Option<PriorProcess>,
         no_hypers: bool,
     },
     Codebook(Codebook),
@@ -495,9 +496,44 @@ impl Default for CodebookMethod {
     fn default() -> Self {
         Self::Inferred {
             cat_cutoff: None,
-            alpha_prior_opt: None,
+            state_prior_process: None,
+            view_prior_process: None,
             no_hypers: false,
         }
+    }
+}
+
+#[pyclass]
+#[derive(Clone, Debug)]
+pub struct PriorProcess(lace::codebook::PriorProcess);
+
+#[pymethods]
+impl PriorProcess {
+    #[classmethod]
+    #[pyo3(signature=(alpha_shape=1.0, alpha_rate=1.0, d_a=0.5, d_b=0.5))]
+    pub fn pitman_yor(
+        _cls: &Bound<PyType>,
+        alpha_shape: f64,
+        alpha_rate: f64,
+        d_a: f64,
+        d_b: f64,
+    ) -> Self {
+        PriorProcess(lace::codebook::PriorProcess::PitmanYor {
+            alpha_prior: Gamma::new(alpha_shape, alpha_rate).unwrap(),
+            d_prior: Beta::new(d_a, d_b).unwrap(),
+        })
+    }
+
+    #[classmethod]
+    #[pyo3(signature=(alpha_shape=1.0, alpha_rate=1.0))]
+    pub fn dirichlet(
+        _cls: &Bound<PyType>,
+        alpha_shape: f64,
+        alpha_rate: f64,
+    ) -> Self {
+        PriorProcess(lace::codebook::PriorProcess::Dirichlet {
+            alpha_prior: Gamma::new(alpha_shape, alpha_rate).unwrap(),
+        })
     }
 }
 
@@ -518,25 +554,19 @@ impl Codebook {
         self.0.table_name = table_name;
     }
 
-    #[pyo3(signature=(shape=1.0, rate=1.0))]
-    pub fn set_state_alpha_prior(
+    pub fn set_state_prior_process(
         &mut self,
-        shape: f64,
-        rate: f64,
+        process: PriorProcess,
     ) -> PyResult<()> {
-        let gamma = Gamma::new(shape, rate).map_err(to_pyerr)?;
-        self.0.state_alpha_prior = Some(gamma);
+        self.0.state_prior_process = Some(process.0);
         Ok(())
     }
 
-    #[pyo3(signature=(shape=1.0, rate=1.0))]
-    pub fn set_view_alpha_prior(
+    pub fn set_view_prior_process(
         &mut self,
-        shape: f64,
-        rate: f64,
+        process: PriorProcess,
     ) -> PyResult<()> {
-        let gamma = Gamma::new(shape, rate).map_err(to_pyerr)?;
-        self.0.view_alpha_prior = Some(gamma);
+        self.0.view_prior_process = Some(process.0);
         Ok(())
     }
 
@@ -583,19 +613,19 @@ impl Codebook {
     pub fn __repr__(&self) -> String {
         format!(
             "Codebook '{}'\
-            \n  state_alpha_prior: {}\
-            \n  view_alpha_prior: {}\
+            \n  state_prior_process: {}\
+            \n  view_prior_process: {}\
             \n  columns: {}\
             \n  rows: {}",
             self.0.table_name,
             self.0
-                .state_alpha_prior
+                .state_prior_process
                 .clone()
-                .map_or_else(|| String::from("None"), |g| format!("{g}")),
+                .map_or_else(|| String::from("None"), |p| format!("{}", p)),
             self.0
-                .view_alpha_prior
+                .view_prior_process
                 .clone()
-                .map_or_else(|| String::from("None"), |g| format!("{g}")),
+                .map_or_else(|| String::from("None"), |p| format!("{}", p)),
             self.0.col_metadata.len(),
             self.0.row_names.len()
         )
@@ -642,6 +672,15 @@ impl Codebook {
             Ok(())
         }
     }
+
+    /// Create a new codebook with the same columns but row indices from another dataframe.
+    fn with_index(&self, new_index: Vec<String>) -> PyResult<Self> {
+        let row_names = RowNameList::try_from(new_index).map_err(to_pyerr)?;
+        Ok(Self(lace::codebook::Codebook {
+            row_names,
+            ..self.0.clone()
+        }))
+    }
 }
 
 #[pyfunction]
@@ -654,7 +693,8 @@ pub fn codebook_from_df(
     CodebookBuilder {
         method: CodebookMethod::Inferred {
             cat_cutoff,
-            alpha_prior_opt: None,
+            state_prior_process: None,
+            view_prior_process: None,
             no_hypers,
         },
     }
@@ -672,36 +712,33 @@ pub struct CodebookBuilder {
 impl CodebookBuilder {
     #[classmethod]
     /// Load a Codebook from a path.
-    fn load(_cls: &PyType, path: PathBuf) -> Self {
+    fn load(_cls: &Bound<PyType>, path: PathBuf) -> Self {
         Self {
             method: CodebookMethod::Path(path),
         }
     }
 
     #[classmethod]
-    #[pyo3(signature = (cat_cutoff=None, alpha_prior_shape_rate=None, use_hypers=true))]
+    #[pyo3(signature = (cat_cutoff=None, state_prior_process=None, view_prior_process=None, use_hypers=true))]
     fn infer(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         cat_cutoff: Option<u8>,
-        alpha_prior_shape_rate: Option<(f64, f64)>,
+        state_prior_process: Option<PriorProcess>,
+        view_prior_process: Option<PriorProcess>,
         use_hypers: bool,
     ) -> PyResult<Self> {
-        let alpha_prior_opt = alpha_prior_shape_rate
-            .map(|(shape, rate)| Gamma::new(shape, rate))
-            .transpose()
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-
         Ok(Self {
             method: CodebookMethod::Inferred {
                 cat_cutoff,
-                alpha_prior_opt,
+                state_prior_process,
+                view_prior_process,
                 no_hypers: !use_hypers,
             },
         })
     }
 
     #[classmethod]
-    fn codebook(_cls: &PyType, codebook: Codebook) -> Self {
+    fn codebook(_cls: &Bound<PyType>, codebook: Codebook) -> Self {
         Self {
             method: CodebookMethod::Codebook(codebook),
         }
@@ -730,14 +767,21 @@ impl CodebookBuilder {
             }
             CodebookMethod::Inferred {
                 cat_cutoff,
-                alpha_prior_opt,
+                state_prior_process,
+                view_prior_process,
                 no_hypers,
-            } => df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
-                .map_err(|e| {
-                    PyValueError::new_err(format!(
-                        "Failed to infer the Codebook. Error: {e}"
-                    ))
-                }),
+            } => df_to_codebook(
+                df,
+                cat_cutoff,
+                state_prior_process.map(|p| p.0),
+                view_prior_process.map(|p| p.0),
+                no_hypers,
+            )
+            .map_err(|e| {
+                PyValueError::new_err(format!(
+                    "Failed to infer the Codebook. Error: {e}"
+                ))
+            }),
             CodebookMethod::Codebook(codebook) => Ok(codebook.0),
         }
     }
@@ -745,7 +789,7 @@ impl CodebookBuilder {
     fn __repr__(&self) -> String {
         match &self.method {
             CodebookMethod::Path(path) => format!("<CodebookBuilder path='{}'>", path.display()),
-            CodebookMethod::Inferred { cat_cutoff, alpha_prior_opt, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, alpha_prior_opt={alpha_prior_opt:?}, use_hypers={})", !no_hypers),
+            CodebookMethod::Inferred { cat_cutoff, state_prior_process, view_prior_process, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, state_prior_process={state_prior_process:?}, view_prior_process={view_prior_process:?}, use_hypers={})", !no_hypers),
             CodebookMethod::Codebook(_) => String::from("Codebook (fully specified)"),
         }
     }

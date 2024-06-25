@@ -3,6 +3,7 @@ import pandas as pd
 import polars as pl
 
 import lace
+from lace.examples import Animals
 
 
 def test_engine_from_polars_with_codebook_smoke():
@@ -65,3 +66,10 @@ def test_engine_with_boolean_string_columns():
     assert str(engine.codebook.column_metadata["b"].value_map) == str(
         lace.ValueMap.bool()
     )
+
+
+def test_with_index():
+    codebook = Animals().engine.codebook
+    new_codebook = codebook.with_index(["a", "b", "c"])
+
+    assert new_codebook.shape[0] == 3

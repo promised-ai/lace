@@ -1,15 +1,9 @@
 //! Data structures for assignments of items to components (partitions)
-use lace_stats::mh::mh_prior;
-use lace_stats::rv::dist::Gamma;
-use lace_stats::rv::traits::Rv;
-use rand::SeedableRng;
-use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::misc::crp_draw;
-
 /// Validates assignments if the `LACE_NOCHECK` is not set to `"1"`.
+#[macro_export]
 macro_rules! validate_assignment {
     ($asgn:expr) => {{
         let validate_asgn: bool = match option_env!("LACE_NOCHECK") {
@@ -28,8 +22,6 @@ macro_rules! validate_assignment {
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Assignment {
-    /// The `Crp` discount parameter
-    pub alpha: f64,
     /// The assignment vector. `asgn[i]` is the partition index of the
     /// i<sup>th</sup> datum.
     pub asgn: Vec<usize>,
@@ -37,8 +29,6 @@ pub struct Assignment {
     pub counts: Vec<usize>,
     /// The number of partitions/categories
     pub n_cats: usize,
-    /// The prior on `alpha`
-    pub prior: Gamma,
 }
 
 /// The possible ways an assignment can go wrong with incorrect bookkeeping
@@ -208,166 +198,15 @@ impl AssignmentDiagnostics {
     }
 }
 
-/// Constructs `Assignment`s
-#[derive(Clone, Debug)]
-pub struct AssignmentBuilder {
-    n: usize,
-    asgn: Option<Vec<usize>>,
-    alpha: Option<f64>,
-    prior: Option<Gamma>,
-    seed: Option<u64>,
-}
-
-#[derive(Debug, Error, PartialEq)]
-pub enum BuildAssignmentError {
-    #[error("alpha is zero")]
-    AlphaIsZero,
-    #[error("non-finite alpha: {alpha}")]
-    AlphaNotFinite { alpha: f64 },
-    #[error("assignment vector is empty")]
-    EmptyAssignmentVec,
-    #[error("there are {n_cats} categories but {n} data")]
-    NLessThanNCats { n: usize, n_cats: usize },
-    #[error("invalid assignment: {0}")]
-    AssignmentError(#[from] AssignmentError),
-}
-
-impl AssignmentBuilder {
-    /// Create a builder for `n`-length assignments
-    ///
-    /// # Arguments
-    /// - n: the number of data/entries in the assignment
-    pub fn new(n: usize) -> Self {
-        AssignmentBuilder {
-            n,
-            asgn: None,
-            prior: None,
-            alpha: None,
-            seed: None,
-        }
-    }
-
-    /// Initialize the builder from an assignment vector
-    ///
-    /// # Note:
-    /// The validity of `asgn` will not be verified until `build` is called.
-    pub fn from_vec(asgn: Vec<usize>) -> Self {
-        AssignmentBuilder {
-            n: asgn.len(),
-            asgn: Some(asgn),
-            prior: None,
-            alpha: None,
-            seed: None,
-        }
-    }
-
-    /// Add a prior on the `Crp` `alpha` parameter
-    #[must_use]
-    pub fn with_prior(mut self, prior: Gamma) -> Self {
-        self.prior = Some(prior);
-        self
-    }
-
-    /// Use the Geweke `Crp` `alpha` prior
-    #[must_use]
-    pub fn with_geweke_prior(mut self) -> Self {
-        self.prior = Some(lace_consts::geweke_alpha_prior());
-        self
-    }
-
-    /// Set the `Crp` `alpha` to a specific value
-    #[must_use]
-    pub fn with_alpha(mut self, alpha: f64) -> Self {
-        self.alpha = Some(alpha);
-        self
-    }
-
-    /// Set the RNG seed
-    #[must_use]
-    pub fn with_seed(mut self, seed: u64) -> Self {
-        self.seed = Some(seed);
-        self
-    }
-
-    /// Set the RNG seed from another RNG
-    #[must_use]
-    pub fn seed_from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
-        self.seed = Some(rng.next_u64());
-        self
-    }
-
-    /// Use a *flat* assignment with one partition
-    #[must_use]
-    pub fn flat(mut self) -> Self {
-        self.asgn = Some(vec![0; self.n]);
-        self
-    }
-
-    /// Use an assignment with `n_cats`, evenly populated partitions/categories
-    pub fn with_n_cats(
-        mut self,
-        n_cats: usize,
-    ) -> Result<Self, BuildAssignmentError> {
-        if n_cats > self.n {
-            Err(BuildAssignmentError::NLessThanNCats { n: self.n, n_cats })
-        } else {
-            let asgn: Vec<usize> = (0..self.n).map(|i| i % n_cats).collect();
-            self.asgn = Some(asgn);
-            Ok(self)
-        }
-    }
-
-    /// Build the assignment and consume the builder
-    pub fn build(self) -> Result<Assignment, BuildAssignmentError> {
-        let prior = self.prior.unwrap_or_else(lace_consts::general_alpha_prior);
-
-        let mut rng_opt = if self.alpha.is_none() || self.asgn.is_none() {
-            let rng = match self.seed {
-                Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
-                None => Xoshiro256Plus::from_entropy(),
-            };
-            Some(rng)
-        } else {
-            None
-        };
-
-        let alpha = match self.alpha {
-            Some(alpha) => alpha,
-            None => prior.draw(&mut rng_opt.as_mut().unwrap()),
-        };
-
-        let n = self.n;
-        let asgn = self.asgn.unwrap_or_else(|| {
-            crp_draw(n, alpha, &mut rng_opt.as_mut().unwrap()).asgn
-        });
-
-        let n_cats: usize = asgn.iter().max().map(|&m| m + 1).unwrap_or(0);
-        let mut counts: Vec<usize> = vec![0; n_cats];
-        for z in &asgn {
-            counts[*z] += 1;
-        }
-
-        let asgn_out = Assignment {
-            alpha,
-            asgn,
-            counts,
-            n_cats,
-            prior,
-        };
-
-        if validate_assignment!(asgn_out) {
-            Ok(asgn_out)
-        } else {
-            asgn_out
-                .validate()
-                .emit_error()
-                .map_err(BuildAssignmentError::AssignmentError)
-                .map(|_| asgn_out)
-        }
-    }
-}
-
 impl Assignment {
+    pub fn empty() -> Self {
+        Self {
+            asgn: Vec::new(),
+            counts: Vec::new(),
+            n_cats: 0,
+        }
+    }
+
     /// Replace the assignment vector
     pub fn set_asgn(
         &mut self,
@@ -405,52 +244,6 @@ impl Assignment {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    /// Returns the Dirichlet posterior
-    ///
-    /// # Arguments
-    ///
-    /// - append_alpha: if `true` append `alpha` to the end of the vector. This
-    ///   is used primarily for the `FiniteCpu` assignment kernel.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use lace_cc::assignment::AssignmentBuilder;
-    /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 1, 2])
-    ///     .with_alpha(0.5)
-    ///     .build()
-    ///     .unwrap();
-    ///
-    /// assert_eq!(assignment.asgn, vec![0, 0, 1, 2]);
-    /// assert_eq!(assignment.counts, vec![2, 1, 1]);
-    /// assert_eq!(assignment.dirvec(false), vec![2.0, 1.0, 1.0]);
-    /// assert_eq!(assignment.dirvec(true), vec![2.0, 1.0, 1.0, 0.5]);
-    /// ```
-    pub fn dirvec(&self, append_alpha: bool) -> Vec<f64> {
-        let mut dv: Vec<f64> = self.counts.iter().map(|&x| x as f64).collect();
-        if append_alpha {
-            dv.push(self.alpha);
-        }
-        dv
-    }
-
-    /// Returns the log of the Dirichlet posterior
-    ///
-    /// # Arguments
-    ///
-    /// - append_alpha: if `true` append `alpha` to the end of the vector. This
-    ///   is used primarily for the `FiniteCpu` assignment kernel.
-    pub fn log_dirvec(&self, append_alpha: bool) -> Vec<f64> {
-        let mut dv: Vec<f64> =
-            self.counts.iter().map(|&x| (x as f64).ln()).collect();
-
-        if append_alpha {
-            dv.push(self.alpha.ln());
-        }
-
-        dv
     }
 
     /// Mark the entry at ix as unassigned. Will remove the entry's contribution
@@ -503,14 +296,15 @@ impl Assignment {
 
     /// Append a new, unassigned entry to th end of the assignment
     ///
-    /// # Eample
+    /// # Example
     ///
     /// ```
-    /// # use lace_cc::assignment::AssignmentBuilder;
+    /// # use lace_stats::prior_process::Builder;
     ///
-    /// let mut assignment = AssignmentBuilder::from_vec(vec![0, 0, 1])
+    /// let mut assignment = Builder::from_vec(vec![0, 0, 1])
     ///     .build()
-    ///     .unwrap();
+    ///     .unwrap()
+    ///     .asgn;
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1]);
     ///
@@ -520,50 +314,6 @@ impl Assignment {
     /// ```
     pub fn push_unassigned(&mut self) {
         self.asgn.push(usize::max_value())
-    }
-
-    /// Returns the proportion of data assigned to each partition/category
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use lace_cc::assignment::AssignmentBuilder;
-    /// let mut rng = rand::thread_rng();
-    /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 1, 2])
-    ///     .build()
-    ///     .unwrap();
-    ///
-    /// assert_eq!(assignment.asgn, vec![0, 0, 1, 2]);
-    /// assert_eq!(assignment.counts, vec![2, 1, 1]);
-    /// assert_eq!(assignment.weights(), vec![0.5, 0.25, 0.25]);
-    /// ```
-    pub fn weights(&self) -> Vec<f64> {
-        let z: f64 = self.len() as f64;
-        self.dirvec(false).iter().map(|&w| w / z).collect()
-    }
-
-    /// The log of the weights
-    pub fn log_weights(&self) -> Vec<f64> {
-        self.weights().iter().map(|w| w.ln()).collect()
-    }
-
-    /// Posterior update of `alpha` given the prior and the current assignment
-    /// vector
-    pub fn update_alpha<R: rand::Rng>(
-        &mut self,
-        n_iter: usize,
-        rng: &mut R,
-    ) -> f64 {
-        // TODO: Should we use a different method to draw CRP alpha that can
-        // extend outside of the bulk of the prior's mass?
-        let cts = &self.counts;
-        let n: usize = self.len();
-        let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
-        let prior_ref = &self.prior;
-        let prior_draw = |rng: &mut R| prior_ref.draw(rng);
-        let mh_result = mh_prior(self.alpha, loglike, prior_draw, n_iter, rng);
-        self.alpha = mh_result.x;
-        mh_result.score_x
     }
 
     /// Validates the assignment
@@ -582,20 +332,45 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     gsum + k.mul_add(alpha.ln(), cpnt_2)
 }
 
+fn ln_py_bracket(x: f64, m: usize, alpha: f64) -> f64 {
+    if m == 0 {
+        return 0.0;
+    }
+    (1..=m)
+        .map(|m_i| (m_i as f64 - 1.0).mul_add(alpha, x).ln())
+        .sum::<f64>()
+}
+
+/// Formula from:
+/// Pitman, Jim. "Exchangeable and partially exchangeable random partitions."
+///   Probability theory and related fields 102.2 (1995): 145-158.
+///   https://www.stat.berkeley.edu/~aldous/206-Exch/Papers/pitman95a.pdf
+pub fn lpyp(cts: &[usize], alpha: f64, d: f64) -> f64 {
+    let k = cts.len();
+    let n = cts.iter().copied().sum::<usize>();
+    let term_a = ln_py_bracket(alpha + d, k - 1, d);
+    let term_b = ln_py_bracket(alpha + 1.0, n - 1, 1.0);
+    let term_c = cts
+        .iter()
+        .map(|&ct_i| ln_py_bracket(1.0 - d, ct_i - 1, 1.0))
+        .sum::<f64>();
+    term_a - term_b + term_c
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prior_process::Builder as AssignmentBuilder;
+    use crate::prior_process::{Dirichlet, Process};
+    use crate::rv::dist::Gamma;
     use approx::*;
-    use lace_stats::rv::dist::Gamma;
 
     #[test]
     fn zero_count_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
             n_cats: 1,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -614,11 +389,9 @@ mod tests {
     #[test]
     fn bad_counts_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
             n_cats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -637,11 +410,9 @@ mod tests {
     #[test]
     fn low_n_cats_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             n_cats: 1,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -660,11 +431,9 @@ mod tests {
     #[test]
     fn high_n_cats_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             n_cats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -683,11 +452,9 @@ mod tests {
     #[test]
     fn no_zero_cat_fails_validation() {
         let asgn = Assignment {
-            alpha: 1.0,
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
             n_cats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -709,29 +476,34 @@ mod tests {
 
         // do the test 100 times because it's random
         for _ in 0..100 {
-            let asgn = AssignmentBuilder::new(n).build().unwrap();
+            let asgn = AssignmentBuilder::new(n).build().unwrap().asgn;
             assert!(asgn.validate().is_valid());
         }
     }
 
     #[test]
-    fn from_prior_should_have_valid_alpha_and_proper_length() {
+    fn from_prior_process_should_have_valid_alpha_and_proper_length() {
         let n: usize = 50;
+        let mut rng = rand::thread_rng();
+        let process = Process::Dirichlet(Dirichlet::from_prior(
+            Gamma::new(1.0, 1.0).unwrap(),
+            &mut rng,
+        ));
         let asgn = AssignmentBuilder::new(n)
-            .with_prior(Gamma::new(1.0, 1.0).unwrap())
+            .with_process(process)
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
 
         assert!(!asgn.is_empty());
         assert_eq!(asgn.len(), n);
         assert!(asgn.validate().is_valid());
-        assert!(asgn.alpha > 0.0);
     }
 
     #[test]
     fn flat_partition_validation() {
         let n: usize = 50;
-        let asgn = AssignmentBuilder::new(n).flat().build().unwrap();
+        let asgn = AssignmentBuilder::new(n).flat().build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 1);
         assert_eq!(asgn.counts.len(), 1);
@@ -742,7 +514,7 @@ mod tests {
     #[test]
     fn from_vec() {
         let z = vec![0, 1, 2, 0, 1, 0];
-        let asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts[0], 3);
         assert_eq!(asgn.counts[1], 2);
@@ -755,7 +527,8 @@ mod tests {
             .with_n_cats(5)
             .expect("Whoops!")
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.n_cats, 5);
         assert_eq!(asgn.counts[0], 20);
@@ -771,7 +544,8 @@ mod tests {
             .with_n_cats(5)
             .expect("Whoops!")
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.n_cats, 5);
         assert_eq!(asgn.counts[0], 21);
@@ -779,79 +553,6 @@ mod tests {
         assert_eq!(asgn.counts[2], 21);
         assert_eq!(asgn.counts[3], 20);
         assert_eq!(asgn.counts[4], 20);
-    }
-
-    #[test]
-    fn dirvec_with_alpha_1() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.0)
-            .build()
-            .unwrap();
-        let dv = asgn.dirvec(false);
-
-        assert_eq!(dv.len(), 3);
-        assert_relative_eq!(dv[0], 3.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[1], 2.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[2], 1.0, epsilon = 10E-10);
-    }
-
-    #[test]
-    fn dirvec_with_alpha_15() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.5)
-            .build()
-            .unwrap();
-        let dv = asgn.dirvec(true);
-
-        assert_eq!(dv.len(), 4);
-        assert_relative_eq!(dv[0], 3.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[1], 2.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[2], 1.0, epsilon = 10E-10);
-        assert_relative_eq!(dv[3], 1.5, epsilon = 10E-10);
-    }
-
-    #[test]
-    fn log_dirvec_with_alpha_1() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.0)
-            .build()
-            .unwrap();
-        let ldv = asgn.log_dirvec(false);
-
-        assert_eq!(ldv.len(), 3);
-        assert_relative_eq!(ldv[0], 3.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[1], 2.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[2], 1.0_f64.ln(), epsilon = 10E-10);
-    }
-
-    #[test]
-    fn log_dirvec_with_alpha_15() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.5)
-            .build()
-            .unwrap();
-
-        let ldv = asgn.log_dirvec(true);
-
-        assert_eq!(ldv.len(), 4);
-        assert_relative_eq!(ldv[0], 3.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[1], 2.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[2], 1.0_f64.ln(), epsilon = 10E-10);
-        assert_relative_eq!(ldv[3], 1.5_f64.ln(), epsilon = 10E-10);
-    }
-
-    #[test]
-    fn weights() {
-        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
-            .with_alpha(1.0)
-            .build()
-            .unwrap();
-        let weights = asgn.weights();
-
-        assert_eq!(weights.len(), 3);
-        assert_relative_eq!(weights[0], 3.0 / 6.0, epsilon = 10E-10);
-        assert_relative_eq!(weights[1], 2.0 / 6.0, epsilon = 10E-10);
-        assert_relative_eq!(weights[2], 1.0 / 6.0, epsilon = 10E-10);
     }
 
     #[test]
@@ -866,7 +567,7 @@ mod tests {
     #[test]
     fn unassign_non_singleton() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -881,7 +582,7 @@ mod tests {
     #[test]
     fn unassign_singleton_low() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -896,7 +597,7 @@ mod tests {
     #[test]
     fn unassign_singleton_high() {
         let z: Vec<usize> = vec![0, 0, 1, 1, 1, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![2, 3, 1]);
@@ -911,7 +612,7 @@ mod tests {
     #[test]
     fn unassign_singleton_middle() {
         let z: Vec<usize> = vec![0, 0, 1, 2, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![2, 1, 3]);
@@ -926,7 +627,7 @@ mod tests {
     #[test]
     fn reassign_to_existing_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -947,7 +648,7 @@ mod tests {
     #[test]
     fn reassign_to_new_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap().asgn;
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -966,41 +667,43 @@ mod tests {
     }
 
     #[test]
-    fn dirvec_with_unassigned_entry() {
-        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = AssignmentBuilder::from_vec(z)
-            .with_alpha(1.0)
-            .build()
-            .unwrap();
-
-        asgn.unassign(5);
-
-        let dv = asgn.dirvec(false);
-
-        assert_eq!(dv.len(), 3);
-        assert_relative_eq!(dv[0], 1.0, epsilon = 10e-10);
-        assert_relative_eq!(dv[1], 3.0, epsilon = 10e-10);
-        assert_relative_eq!(dv[2], 1.0, epsilon = 10e-10);
-    }
-
-    #[test]
     fn manual_seed_control_works() {
-        let asgn_1 = AssignmentBuilder::new(25).with_seed(17_834_795).build();
-        let asgn_2 = AssignmentBuilder::new(25).with_seed(17_834_795).build();
-        let asgn_3 = AssignmentBuilder::new(25).build();
+        let n = 100;
+        let asgn_1 = AssignmentBuilder::new(n)
+            .with_seed(17_834_795)
+            .build()
+            .unwrap()
+            .asgn;
+
+        let asgn_2 = AssignmentBuilder::new(n)
+            .with_seed(17_834_795)
+            .build()
+            .unwrap()
+            .asgn;
+
+        let asgn_3 = AssignmentBuilder::new(n).build().unwrap().asgn;
         assert_eq!(asgn_1, asgn_2);
         assert_ne!(asgn_1, asgn_3);
     }
 
     #[test]
     fn from_rng_seed_control_works() {
-        let mut rng_1 = Xoshiro256Plus::seed_from_u64(17_834_795);
-        let mut rng_2 = Xoshiro256Plus::seed_from_u64(17_834_795);
-        let asgn_1 =
-            AssignmentBuilder::new(25).seed_from_rng(&mut rng_1).build();
-        let asgn_2 =
-            AssignmentBuilder::new(25).seed_from_rng(&mut rng_2).build();
-        let asgn_3 = AssignmentBuilder::new(25).build();
+        use rand::rngs::SmallRng;
+        use rand::SeedableRng;
+
+        let mut rng_1 = SmallRng::seed_from_u64(17_834_795);
+        let mut rng_2 = SmallRng::seed_from_u64(17_834_795);
+        let asgn_1 = AssignmentBuilder::new(50)
+            .seed_from_rng(&mut rng_1)
+            .build()
+            .unwrap()
+            .asgn;
+        let asgn_2 = AssignmentBuilder::new(50)
+            .seed_from_rng(&mut rng_2)
+            .build()
+            .unwrap()
+            .asgn;
+        let asgn_3 = AssignmentBuilder::new(50).build().unwrap().asgn;
         assert_eq!(asgn_1, asgn_2);
         assert_ne!(asgn_1, asgn_3);
     }

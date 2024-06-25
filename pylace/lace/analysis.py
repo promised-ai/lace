@@ -268,15 +268,15 @@ def held_out_neglogp(
     │ ---                     ┆ ---                 ┆ ---       │
     │ list[str]               ┆ f64                 ┆ i64       │
     ╞═════════════════════════╪═════════════════════╪═══════════╡
-    │ null                    ┆ 7.808063            ┆ 0         │
-    │ ["Apogee_km"]           ┆ 5.082683            ┆ 1         │
-    │ ["Eccentricity"]        ┆ 2.931816            ┆ 2         │
-    │ ["Launch_Vehicle"]      ┆ 2.931816            ┆ 3         │
+    │ null                    ┆ 7.115493            ┆ 0         │
+    │ ["Apogee_km"]           ┆ 4.484848            ┆ 1         │
+    │ ["Eccentricity"]        ┆ 3.022424            ┆ 2         │
+    │ ["Date_of_Launch"]      ┆ 3.022424            ┆ 3         │
     │ …                       ┆ …                   ┆ …         │
-    │ ["Power_watts"]         ┆ 2.932103            ┆ 15        │
-    │ ["Inclination_radians"] ┆ 2.933732            ┆ 16        │
-    │ ["Users"]               ┆ 2.940667            ┆ 17        │
-    │ ["Perigee_km"]          ┆ 3.956759            ┆ 18        │
+    │ ["Launch_Site"]         ┆ 3.022426            ┆ 15        │
+    │ ["Power_watts"]         ┆ 3.022582            ┆ 16        │
+    │ ["Inclination_radians"] ┆ 3.024748            ┆ 17        │
+    │ ["Perigee_km"]          ┆ 4.025416            ┆ 18        │
     └─────────────────────────┴─────────────────────┴───────────┘
 
     If we don't want to use the greedy search, we can enumerate, but we need to
@@ -297,15 +297,15 @@ def held_out_neglogp(
     │ ---                               ┆ ---                 ┆ ---       │
     │ list[str]                         ┆ f64                 ┆ i64       │
     ╞═══════════════════════════════════╪═════════════════════╪═══════════╡
-    │ null                              ┆ 7.853468            ┆ 0         │
-    │ ["Apogee_km"]                     ┆ 5.106627            ┆ 1         │
-    │ ["Apogee_km", "Eccentricity"]     ┆ 2.951662            ┆ 2         │
-    │ ["Apogee_km", "Country_of_Operat… ┆ 2.951254            ┆ 3         │
-    │ ["Apogee_km", "Country_of_Operat… ┆ 2.952801            ┆ 4         │
-    │ ["Apogee_km", "Country_of_Contra… ┆ 2.956224            ┆ 5         │
-    │ ["Apogee_km", "Country_of_Contra… ┆ 2.96479             ┆ 6         │
-    │ ["Apogee_km", "Country_of_Contra… ┆ 2.992173            ┆ 7         │
-    │ ["Apogee_km", "Class_of_Orbit", … ┆ 3.956759            ┆ 8         │
+    │ null                              ┆ 7.187543            ┆ 0         │
+    │ ["Apogee_km"]                     ┆ 4.502691            ┆ 1         │
+    │ ["Apogee_km", "Eccentricity"]     ┆ 3.033792            ┆ 2         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 3.033296            ┆ 3         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 3.035064            ┆ 4         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 3.037117            ┆ 5         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 3.046293            ┆ 6         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 3.076149            ┆ 7         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 4.025416            ┆ 8         │
     └───────────────────────────────────┴─────────────────────┴───────────┘
 
     """
@@ -382,14 +382,14 @@ def held_out_inconsistency(
     │ ---                     ┆ ---                       ┆ ---       │
     │ list[str]               ┆ f64                       ┆ i64       │
     ╞═════════════════════════╪═══════════════════════════╪═══════════╡
-    │ null                    ┆ 1.973348                  ┆ 0         │
-    │ ["Apogee_km"]           ┆ 1.284557                  ┆ 1         │
-    │ ["Eccentricity"]        ┆ 0.740964                  ┆ 2         │
-    │ ["Launch_Vehicle"]      ┆ 0.740964                  ┆ 3         │
+    │ null                    ┆ 1.767642                  ┆ 0         │
+    │ ["Apogee_km"]           ┆ 1.114133                  ┆ 1         │
+    │ ["Eccentricity"]        ┆ 0.750835                  ┆ 2         │
+    │ ["Date_of_Launch"]      ┆ 0.750835                  ┆ 3         │
     │ …                       ┆ …                         ┆ …         │
-    │ ["Power_watts"]         ┆ 0.741036                  ┆ 15        │
-    │ ["Inclination_radians"] ┆ 0.741448                  ┆ 16        │
-    │ ["Users"]               ┆ 0.743201                  ┆ 17        │
+    │ ["Launch_Site"]         ┆ 0.750836                  ┆ 15        │
+    │ ["Power_watts"]         ┆ 0.750874                  ┆ 16        │
+    │ ["Inclination_radians"] ┆ 0.751413                  ┆ 17        │
     │ ["Perigee_km"]          ┆ 1.0                       ┆ 18        │
     └─────────────────────────┴───────────────────────────┴───────────┘
 
@@ -411,14 +411,14 @@ def held_out_inconsistency(
     │ ---                               ┆ ---                       ┆ ---       │
     │ list[str]                         ┆ f64                       ┆ i64       │
     ╞═══════════════════════════════════╪═══════════════════════════╪═══════════╡
-    │ null                              ┆ 1.984823                  ┆ 0         │
-    │ ["Apogee_km"]                     ┆ 1.290609                  ┆ 1         │
-    │ ["Apogee_km", "Eccentricity"]     ┆ 0.74598                   ┆ 2         │
-    │ ["Apogee_km", "Country_of_Operat… ┆ 0.745877                  ┆ 3         │
-    │ ["Apogee_km", "Country_of_Operat… ┆ 0.746268                  ┆ 4         │
-    │ ["Apogee_km", "Country_of_Contra… ┆ 0.747133                  ┆ 5         │
-    │ ["Apogee_km", "Country_of_Contra… ┆ 0.749297                  ┆ 6         │
-    │ ["Apogee_km", "Country_of_Contra… ┆ 0.756218                  ┆ 7         │
+    │ null                              ┆ 1.785541                  ┆ 0         │
+    │ ["Apogee_km"]                     ┆ 1.118565                  ┆ 1         │
+    │ ["Apogee_km", "Eccentricity"]     ┆ 0.753659                  ┆ 2         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 0.753536                  ┆ 3         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.753975                  ┆ 4         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.754485                  ┆ 5         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.756765                  ┆ 6         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.764182                  ┆ 7         │
     │ ["Apogee_km", "Class_of_Orbit", … ┆ 1.0                       ┆ 8         │
     └───────────────────────────────────┴───────────────────────────┴───────────┘
 
@@ -488,21 +488,21 @@ def held_out_uncertainty(
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     shape: (19, 3)
-    ┌──────────────────────────────────┬─────────────────────────┬───────────┐
-    │ feature_rmed                     ┆ HoldOutFunc.Uncertainty ┆ keys_rmed │
-    │ ---                              ┆ ---                     ┆ ---       │
-    │ list[str]                        ┆ f64                     ┆ i64       │
-    ╞══════════════════════════════════╪═════════════════════════╪═══════════╡
-    │ null                             ┆ 0.43212                 ┆ 0         │
-    │ ["Perigee_km"]                   ┆ 0.43212                 ┆ 1         │
-    │ ["Class_of_Orbit"]               ┆ 0.43212                 ┆ 2         │
-    │ ["Source_Used_for_Orbital_Data"] ┆ 0.431921                ┆ 3         │
-    │ …                                ┆ …                       ┆ …         │
-    │ ["Country_of_Operator"]          ┆ 0.054156                ┆ 15        │
-    │ ["Country_of_Contractor"]        ┆ 0.06069                 ┆ 16        │
-    │ ["Dry_Mass_kg"]                  ┆ 0.139502                ┆ 17        │
-    │ ["Inclination_radians"]          ┆ 0.089026                ┆ 18        │
-    └──────────────────────────────────┴─────────────────────────┴───────────┘
+    ┌───────────────────────────┬─────────────────────────┬───────────┐
+    │ feature_rmed              ┆ HoldOutFunc.Uncertainty ┆ keys_rmed │
+    │ ---                       ┆ ---                     ┆ ---       │
+    │ list[str]                 ┆ f64                     ┆ i64       │
+    ╞═══════════════════════════╪═════════════════════════╪═══════════╡
+    │ null                      ┆ 0.505795                ┆ 0         │
+    │ ["Purpose"]               ┆ 0.505794                ┆ 1         │
+    │ ["Launch_Mass_kg"]        ┆ 0.499515                ┆ 2         │
+    │ ["Country_of_Contractor"] ┆ 0.497596                ┆ 3         │
+    │ …                         ┆ …                       ┆ …         │
+    │ ["Expected_Lifetime"]     ┆ 0.252419                ┆ 15        │
+    │ ["Launch_Vehicle"]        ┆ 0.225609                ┆ 16        │
+    │ ["Users"]                 ┆ 0.19823                 ┆ 17        │
+    │ ["Country_of_Operator"]   ┆ 0.185145                ┆ 18        │
+    └───────────────────────────┴─────────────────────────┴───────────┘
 
     If we don't want to use the greedy search, we can enumerate, but we need to
     be mindful that the number of conditions we must enumerate over is 2^n
@@ -522,15 +522,15 @@ def held_out_uncertainty(
     │ ---                               ┆ ---                     ┆ ---       │
     │ list[str]                         ┆ f64                     ┆ i64       │
     ╞═══════════════════════════════════╪═════════════════════════╪═══════════╡
-    │ null                              ┆ 0.445501                ┆ 0         │
-    │ ["Expected_Lifetime"]             ┆ 0.437647                ┆ 1         │
-    │ ["Apogee_km", "Eccentricity"]     ┆ 0.05561                 ┆ 2         │
-    │ ["Apogee_km", "Country_of_Operat… ┆ 0.055283                ┆ 3         │
-    │ ["Apogee_km", "Country_of_Operat… ┆ 0.056185                ┆ 4         │
-    │ ["Apogee_km", "Country_of_Operat… ┆ 0.057624                ┆ 5         │
-    │ ["Apogee_km", "Country_of_Contra… ┆ 0.0595                  ┆ 6         │
-    │ ["Apogee_km", "Country_of_Contra… ┆ 0.077359                ┆ 7         │
-    │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.089026                ┆ 8         │
+    │ null                              ┆ 0.515391                ┆ 0         │
+    │ ["Class_of_Orbit"]                ┆ 0.484085                ┆ 1         │
+    │ ["Apogee_km", "Eccentricity"]     ┆ 0.260645                ┆ 2         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.251961                ┆ 3         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.247123                ┆ 4         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.220715                ┆ 5         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.211055                ┆ 6         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.1979                  ┆ 7         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 0.185145                ┆ 8         │
     └───────────────────────────────────┴─────────────────────────┴───────────┘
 
     """
@@ -656,7 +656,7 @@ def attributable_inconsistency(
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     >>> frac
-    0.2930260843667006
+    0.2702093046733929
 
     """
 
@@ -730,7 +730,7 @@ def attributable_neglogp(
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     >>> frac
-    0.29302608436670047
+    0.2702093046733929
 
     """
 
@@ -801,7 +801,7 @@ def attributable_uncertainty(
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     >>> frac
-    0.1814171785207335
+    0.17905287760659047
 
     """
 
@@ -950,15 +950,15 @@ def explain_prediction(
     │ ---                          ┆ ---         │
     │ str                          ┆ f64         │
     ╞══════════════════════════════╪═════════════╡
-    │ Country_of_Operator          ┆ 2.4617e-16  │
-    │ Users                        ┆ -2.1412e-15 │
-    │ Purpose                      ┆ -8.0193e-15 │
-    │ Class_of_Orbit               ┆ -2.2727e-15 │
+    │ Country_of_Operator          ┆ 3.9980e-15  │
+    │ Users                        ┆ -3.4701e-13 │
+    │ Purpose                      ┆ -5.3209e-15 │
+    │ Class_of_Orbit               ┆ -1.8481e-15 │
     │ …                            ┆ …           │
-    │ Launch_Site                  ┆ -5.8214e-16 │
-    │ Launch_Vehicle               ┆ -9.6101e-16 │
-    │ Source_Used_for_Orbital_Data ┆ -9.1997e-15 │
-    │ Inclination_radians          ┆ -1.5407e-15 │
+    │ Launch_Site                  ┆ -4.2856e-13 │
+    │ Launch_Vehicle               ┆ -8.2878e-14 │
+    │ Source_Used_for_Orbital_Data ┆ 1.7684e-14  │
+    │ Inclination_radians          ┆ -2.6242e-13 │
     └──────────────────────────────┴─────────────┘
 
     Get the importances using the 'ablative-dist' method, which measures how
@@ -977,15 +977,15 @@ def explain_prediction(
     │ ---                          ┆ ---       │
     │ str                          ┆ f64       │
     ╞══════════════════════════════╪═══════════╡
-    │ Country_of_Operator          ┆ -0.000109 │
-    │ Users                        ┆ 0.081289  │
-    │ Purpose                      ┆ 0.18938   │
-    │ Class_of_Orbit               ┆ 0.000119  │
+    │ Country_of_Operator          ┆ -0.012699 │
+    │ Users                        ┆ 0.003983  │
+    │ Purpose                      ┆ -0.042624 │
+    │ Class_of_Orbit               ┆ -0.00122  │
     │ …                            ┆ …         │
-    │ Launch_Site                  ┆ 0.003411  │
-    │ Launch_Vehicle               ┆ -0.018817 │
-    │ Source_Used_for_Orbital_Data ┆ 0.001454  │
-    │ Inclination_radians          ┆ 0.057333  │
+    │ Launch_Site                  ┆ -0.011698 │
+    │ Launch_Vehicle               ┆ -0.09602  │
+    │ Source_Used_for_Orbital_Data ┆ -0.027222 │
+    │ Inclination_radians          ┆ 0.012758  │
     └──────────────────────────────┴───────────┘
 
     """

@@ -108,9 +108,14 @@ mod requires_formats {
 
         // generate codebook
         println!("Generating codebook");
-        let codebook =
-            lace_codebook::data::codebook_from_csv(f.path(), None, None, false)
-                .unwrap();
+        let codebook = lace_codebook::data::codebook_from_csv(
+            f.path(),
+            None,
+            None,
+            None,
+            false,
+        )
+        .unwrap();
 
         // generate engine
         println!("Constructing Engine");
@@ -143,7 +148,7 @@ mod requires_formats {
         engine
             .states
             .iter()
-            .for_each(|state| print!("{} ", state.views[0].asgn.n_cats));
+            .for_each(|state| print!("{} ", state.views[0].asgn().n_cats));
 
         println!("\nPlotting");
         plot(xs_in, ys_in, xs_sim, ys_sim);

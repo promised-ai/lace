@@ -1,0 +1,312 @@
+table_name: my_table
+state_prior_process: null
+view_prior_process: null
+col_metadata:
+- name: cat
+  coltype: !Categorical
+    k: 3
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !string
+      0: blue
+      1: green
+      2: red
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: cts
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: -0.12554951392089267
+        sigma: 1.0060712163273107
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 5.298317366548036
+        scale: 5.298317366548036
+      pr_s2:
+        shape: 5.298317366548036
+        scale: 1.0121792923223145
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: count
+  coltype: !Count
+    hyper:
+      pr_shape:
+        shape: 1.2463818344393327
+        rate: 1.0
+      pr_rate:
+        shape: 67.03804379304536
+        scale: 1.0
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: cat_msng
+  coltype: !Categorical
+    k: 3
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !string
+      0: blue
+      1: green
+      2: red
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: cts_msng
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: -0.1339303540874964
+        sigma: 1.018971505873358
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 4.941642422609304
+        scale: 4.941642422609304
+      pr_s2:
+        shape: 4.941642422609304
+        scale: 1.038302929781819
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: count_msng
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 87.98571428571428
+        sigma: 67.47147394209178
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 4.941642422609304
+        scale: 4.941642422609304
+      pr_s2:
+        shape: 4.941642422609304
+        scale: 4552.399795918369
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: count_msgn
+  coltype: !Count
+    hyper:
+      pr_shape:
+        shape: 1.148060403429
+        rate: 1.0
+      pr_rate:
+        shape: 76.72567926097102
+        scale: 1.0
+    prior: null
+  notes: null
+  missing_not_at_random: false
+comments: null
+row_names:
+- '0'
+- '1'
+- '2'
+- '3'
+- '4'
+- '5'
+- '6'
+- '7'
+- '8'
+- '9'
+- '10'
+- '11'
+- '12'
+- '13'
+- '14'
+- '15'
+- '16'
+- '17'
+- '18'
+- '19'
+- '20'
+- '21'
+- '22'
+- '23'
+- '24'
+- '25'
+- '26'
+- '27'
+- '28'
+- '29'
+- '30'
+- '31'
+- '32'
+- '33'
+- '34'
+- '35'
+- '36'
+- '37'
+- '38'
+- '39'
+- '40'
+- '41'
+- '42'
+- '43'
+- '44'
+- '45'
+- '46'
+- '47'
+- '48'
+- '49'
+- '50'
+- '51'
+- '52'
+- '53'
+- '54'
+- '55'
+- '56'
+- '57'
+- '58'
+- '59'
+- '60'
+- '61'
+- '62'
+- '63'
+- '64'
+- '65'
+- '66'
+- '67'
+- '68'
+- '69'
+- '70'
+- '71'
+- '72'
+- '73'
+- '74'
+- '75'
+- '76'
+- '77'
+- '78'
+- '79'
+- '80'
+- '81'
+- '82'
+- '83'
+- '84'
+- '85'
+- '86'
+- '87'
+- '88'
+- '89'
+- '90'
+- '91'
+- '92'
+- '93'
+- '94'
+- '95'
+- '96'
+- '97'
+- '98'
+- '99'
+- '100'
+- '101'
+- '102'
+- '103'
+- '104'
+- '105'
+- '106'
+- '107'
+- '108'
+- '109'
+- '110'
+- '111'
+- '112'
+- '113'
+- '114'
+- '115'
+- '116'
+- '117'
+- '118'
+- '119'
+- '120'
+- '121'
+- '122'
+- '123'
+- '124'
+- '125'
+- '126'
+- '127'
+- '128'
+- '129'
+- '130'
+- '131'
+- '132'
+- '133'
+- '134'
+- '135'
+- '136'
+- '137'
+- '138'
+- '139'
+- '140'
+- '141'
+- '142'
+- '143'
+- '144'
+- '145'
+- '146'
+- '147'
+- '148'
+- '149'
+- '150'
+- '151'
+- '152'
+- '153'
+- '154'
+- '155'
+- '156'
+- '157'
+- '158'
+- '159'
+- '160'
+- '161'
+- '162'
+- '163'
+- '164'
+- '165'
+- '166'
+- '167'
+- '168'
+- '169'
+- '170'
+- '171'
+- '172'
+- '173'
+- '174'
+- '175'
+- '176'
+- '177'
+- '178'
+- '179'
+- '180'
+- '181'
+- '182'
+- '183'
+- '184'
+- '185'
+- '186'
+- '187'
+- '188'
+- '189'
+- '190'
+- '191'
+- '192'
+- '193'
+- '194'
+- '195'
+- '196'
+- '197'
+- '198'
+- '199'

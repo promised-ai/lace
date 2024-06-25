@@ -418,7 +418,10 @@ impl UpdateHandler for ProgressBar {
             sender
                 .lock()
                 .unwrap()
-                .send((state_id, state.log_prior + state.loglike))
+                .send((
+                    state_id,
+                    state.score.ln_prior + state.score.ln_likelihood,
+                ))
                 .unwrap();
         }
     }

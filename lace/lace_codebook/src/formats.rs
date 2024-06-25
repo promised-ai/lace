@@ -1,5 +1,4 @@
 use crate::ReadError;
-use lace_stats::rv::dist::Gamma;
 use polars::prelude::{
     CsvReader, DataFrame, IpcReader, JsonFormat, JsonReader, ParquetReader,
     SerReader,
@@ -54,14 +53,16 @@ macro_rules! codebook_from_fn {
         pub fn $fn_name<P: AsRef<Path>>(
             path: P,
             cat_cutoff: Option<u8>,
-            alpha_prior_opt: Option<Gamma>,
+            state_prior_process: Option<$crate::codebook::PriorProcess>,
+            view_prior_process: Option<$crate::codebook::PriorProcess>,
             no_hypers: bool,
         ) -> Result<$crate::codebook::Codebook, $crate::error::CodebookError> {
             let df = $reader(path).unwrap();
             $crate::data::df_to_codebook(
                 &df,
                 cat_cutoff,
-                alpha_prior_opt,
+                state_prior_process,
+                view_prior_process,
                 no_hypers,
             )
         }

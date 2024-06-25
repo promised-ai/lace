@@ -4,6 +4,7 @@ use std::vec::Drain;
 use enum_dispatch::enum_dispatch;
 use lace_data::{Category, FeatureData};
 use lace_data::{Container, SparseContainer};
+use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -20,7 +21,6 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::sync::OnceLock;
 
 use super::{Component, MissingNotAtRandom};
-use crate::assignment::Assignment;
 use crate::component::ConjugateComponent;
 use crate::feature::traits::{Feature, FeatureHelper, TranslateDatum};
 use crate::feature::FType;
@@ -712,18 +712,22 @@ impl QmcEntropy for ColModel {
 mod tests {
     use super::*;
 
-    use crate::assignment::AssignmentBuilder;
     use crate::feature::{Column, Feature};
     use lace_data::{FeatureData, SparseContainer};
+    use lace_stats::prior_process::{Builder, Dirichlet, Process};
 
     use lace_stats::prior::nix::NixHyper;
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();
-        let asgn = AssignmentBuilder::new(5)
-            .with_alpha(1.0)
+        let asgn = Builder::new(5)
+            .with_process(Process::Dirichlet(Dirichlet {
+                alpha: 1.0,
+                alpha_prior: Gamma::default(),
+            }))
             .flat()
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
         let hyper = NixHyper::default();
         let data = SparseContainer::from(data_vec);
@@ -736,11 +740,15 @@ mod tests {
 
     fn categorical_fixture_u8() -> ColModel {
         let mut rng = rand::thread_rng();
-        let asgn = AssignmentBuilder::new(5)
-            .with_alpha(1.0)
+        let asgn = Builder::new(5)
+            .with_process(Process::Dirichlet(Dirichlet {
+                alpha: 1.0,
+                alpha_prior: Gamma::default(),
+            }))
             .flat()
             .build()
-            .unwrap();
+            .unwrap()
+            .asgn;
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
         let data = SparseContainer::from(data_vec);
         let hyper = CsdHyper::vague(3);

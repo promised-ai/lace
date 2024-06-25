@@ -32,6 +32,7 @@ def runtest(mod):
 if __name__ == "__main__":
     runtest("lace.engine")
     runtest("lace.analysis")
+    runtest("lace.codebook")
 
     if not NOPLOT:
         runtest("lace.plot")

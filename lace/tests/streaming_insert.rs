@@ -6,7 +6,6 @@ use lace_codebook::{Codebook, ColMetadata, ColType};
 use lace_data::Datum;
 use lace_stats::prior::nix::NixHyper;
 
-use lace_stats::rv::dist::Gamma;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -63,8 +62,8 @@ fn gen_engine() -> Engine {
 
     let codebook = Codebook {
         table_name: "table".into(),
-        state_alpha_prior: Some(Gamma::default()),
-        view_alpha_prior: Some(Gamma::default()),
+        state_prior_process: None,
+        view_prior_process: None,
         col_metadata: (0..14)
             .map(|i| ColMetadata {
                 name: format!("{}", i),
