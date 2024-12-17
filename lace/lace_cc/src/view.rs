@@ -10,7 +10,7 @@ use lace_stats::prior_process::{
 };
 use lace_stats::rv::dist::Dirichlet;
 use lace_stats::rv::misc::ln_pflip;
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 use lace_utils::{logaddexp, unused_components, Matrix, Shape};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -702,7 +702,7 @@ impl View {
                     + self.singleton_score(row_ix),
             );
 
-            let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
+            let k_new = ln_pflip(&logps, false, &mut rng);
 
             if k_new == self.n_cats() {
                 self.append_empty_component(&mut rng);

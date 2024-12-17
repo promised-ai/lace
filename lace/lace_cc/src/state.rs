@@ -389,7 +389,7 @@ impl State {
             ftr.set_id(self.n_cols());
             self.asgn_mut().push_unassigned();
             // insert into random existing view
-            let view_ix = pflip(&vec![p; k], 1, &mut rng)[0];
+            let view_ix = pflip(&vec![p; k], None, &mut rng);
             let n_cols = self.n_cols();
             self.asgn_mut().reassign(n_cols, view_ix);
             self.views[view_ix].insert_feature(ftr, &mut rng);
@@ -497,7 +497,7 @@ impl State {
         debug_assert_eq!(n_views + m, logps.len());
 
         // Gibbs step (draw from categorical)
-        let v_new = ln_pflip(&logps, 1, false, rng)[0];
+        let v_new = ln_pflip(&logps, false, rng);
         let logp_out = ftr_logps[v_new];
 
         // If we chose a singleton view...
@@ -680,7 +680,7 @@ impl State {
                     },
                 );
 
-                let mut v_new = ln_pflip(&logps, 1, false, rng)[0];
+                let mut v_new = ln_pflip(&logps, false, rng);
 
                 if v_new != this_view_ix {
                     if v_new >= n_views {

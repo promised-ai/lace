@@ -29,26 +29,26 @@ impl DataStore {
         DataStore(data)
     }
 
-    /// Get the datum at [row_ix, col_ix] as a `Datum`
-    pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
-        // TODO: SparseContainer index get (xs[i]) should return an option
-        match self.0[&col_ix] {
-            FeatureData::Binary(ref xs) => {
-                xs.get(row_ix).map(Datum::Binary).unwrap_or(Datum::Missing)
-            }
-            FeatureData::Continuous(ref xs) => xs
-                .get(row_ix)
-                .map(Datum::Continuous)
-                .unwrap_or(Datum::Missing),
-            FeatureData::Categorical(ref xs) => xs
-                .get(row_ix)
-                .map(|x| Datum::Categorical(Category::U8(x)))
-                .unwrap_or(Datum::Missing),
-            FeatureData::Count(ref xs) => {
-                xs.get(row_ix).map(Datum::Count).unwrap_or(Datum::Missing)
-            }
-        }
-    }
+    // /// Get the datum at [row_ix, col_ix] as a `Datum`
+    // pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
+    //     // TODO: SparseContainer index get (xs[i]) should return an option
+    //     match self.0[&col_ix] {
+    //         FeatureData::Binary(ref xs) => {
+    //             xs.get(row_ix).map(Datum::Binary).unwrap_or(Datum::Missing)
+    //         }
+    //         FeatureData::Continuous(ref xs) => xs
+    //             .get(row_ix)
+    //             .map(Datum::Continuous)
+    //             .unwrap_or(Datum::Missing),
+    //         FeatureData::Categorical(ref xs) => xs
+    //             .get(row_ix)
+    //             .map(|x| Datum::Categorical(Category::UInt(x)))
+    //             .unwrap_or(Datum::Missing),
+    //         FeatureData::Count(ref xs) => {
+    //             xs.get(row_ix).map(Datum::Count).unwrap_or(Datum::Missing)
+    //         }
+    //     }
+    // }
 }
 
 #[cfg(test)]
@@ -65,7 +65,7 @@ mod tests {
             (0.0, true),
         ]);
 
-        let dc2: SparseContainer<u8> = SparseContainer::from(vec![
+        let dc2: SparseContainer<u32> = SparseContainer::from(vec![
             (5, true),
             (3, true),
             (2, true),
@@ -89,8 +89,8 @@ mod tests {
     #[test]
     fn gets_present_categorical_data() {
         let ds = fixture();
-        assert_eq!(ds.get(0, 1), Datum::Categorical(5_u8.into()));
-        assert_eq!(ds.get(4, 1), Datum::Categorical(4_u8.into()));
+        assert_eq!(ds.get(0, 1), Datum::Categorical(5_u32.into()));
+        assert_eq!(ds.get(4, 1), Datum::Categorical(4_u32.into()));
     }
 
     #[test]

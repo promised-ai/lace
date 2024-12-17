@@ -11,7 +11,7 @@ use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Sampleable;
 use lace_utils::{mean, std};
 use rand::Rng;
 
@@ -180,7 +180,7 @@ macro_rules! impl_gewek_resample {
     };
 }
 
-impl_gewek_resample!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+impl_gewek_resample!(u32, Categorical, SymmetricDirichlet, CsdHyper);
 impl_gewek_resample!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 impl_gewek_resample!(u32, Poisson, Gamma, PgHyper);
 
@@ -258,7 +258,7 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
 
 // Categorical
 // -----------
-impl GewekeModel for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
+impl GewekeModel for Column<u32, Categorical, SymmetricDirichlet, CsdHyper> {
     #[must_use]
     fn geweke_from_prior(
         settings: &Self::Settings,
@@ -266,7 +266,7 @@ impl GewekeModel for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
     ) -> Self {
         let k = 5;
         let f = Categorical::uniform(k);
-        let xs: Vec<u8> = f.sample(settings.asgn.len(), &mut rng);
+        let xs: Vec<u32> = f.sample(settings.asgn.len(), &mut rng);
         let data = SparseContainer::from(xs); // initial data is resampled anyway
         let hyper = CsdHyper::geweke();
         let prior = if settings.fixed_prior {
@@ -292,7 +292,9 @@ impl GewekeModel for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
     }
 }
 
-impl GewekeSummarize for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
+impl GewekeSummarize
+    for Column<u32, Categorical, SymmetricDirichlet, CsdHyper>
+{
     type Summary = GewekeColumnSummary;
     fn geweke_summarize(
         &self,
@@ -483,7 +485,7 @@ pub fn gen_geweke_col_models(
                         lace_stats::prior::csd::geweke(k)
                     };
                     let f: Categorical = prior.draw(&mut rng);
-                    let xs: Vec<u8> = f.sample(n_rows, &mut rng);
+                    let xs: Vec<u32> = f.sample(n_rows, &mut rng);
                     let data = SparseContainer::from(xs);
                     let column = Column::new(id, data, prior, hyper);
                     ColModel::Categorical(column)

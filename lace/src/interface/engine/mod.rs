@@ -324,7 +324,7 @@ impl Engine {
                         InsertDataError::CategoryNotInValueMap(cat.clone())
                     })
                 })?;
-            Datum::Categorical(Category::U8(ix as u8))
+            Datum::Categorical(Category::UInt(ix as u8))
         } else {
             datum
         };

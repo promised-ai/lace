@@ -743,10 +743,10 @@ pub(crate) fn maybe_add_categories<R: RowIndex, C: ColumnIndex>(
                                     };
                                     Ok(())
                                 },
-                                (Datum::Categorical(Category::U8(x)), ValueMap::U8(old_max)) => {
+                                (Datum::Categorical(Category::UInt(x)), ValueMap::UInt(old_max)) => {
                                     if *old_max as u8 <= *x {
-                                        let ext_max = extended_value_map.entry(col_ix).or_insert_with(ValueMapExtension::new_u8);
-                                        ext_max.extend(Category::U8(*x)).map_err(
+                                        let ext_max = extended_value_map.entry(col_ix).or_insert_with(ValueMapExtension::new_uint);
+                                        ext_max.extend(Category::UInt(*x)).map_err(
                                             |e| match e {
                                                 ValueMapExtensionError::ExtensionOfDifferingType(a, b) => {
                                                     InsertDataError::WrongCategoryAndType(a, b, col_name.to_string())
@@ -1132,7 +1132,7 @@ mod tests {
                     k: 2,
                     hyper: None,
                     prior: None,
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::UInt(2),
                 },
                 notes: None,
                 missing_not_at_random: false,
@@ -1399,7 +1399,7 @@ mod tests {
                     k: 2,
                     hyper: None,
                     prior: None,
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::UInt(2),
                 },
                 notes: None,
                 missing_not_at_random: false,
@@ -1457,7 +1457,7 @@ mod tests {
                     k: 2,
                     hyper: None,
                     prior: None,
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::UInt(2),
                 },
                 notes: None,
                 missing_not_at_random: false,
@@ -1518,7 +1518,7 @@ mod tests {
                         k: 2,
                         hyper: None,
                         prior: None,
-                        value_map: ValueMap::U8(2),
+                        value_map: ValueMap::UInt(2),
                     },
                     notes: None,
                     missing_not_at_random: false,
@@ -1529,7 +1529,7 @@ mod tests {
                         k: 2,
                         hyper: None,
                         prior: None,
-                        value_map: ValueMap::U8(2),
+                        value_map: ValueMap::UInt(2),
                     },
                     notes: None,
                     missing_not_at_random: false,
@@ -1618,7 +1618,7 @@ mod tests {
                 k: 3,
                 hyper: None,
                 prior: None,
-                value_map: ValueMap::U8(3),
+                value_map: ValueMap::UInt(3),
             },
             notes: None,
             missing_not_at_random: false,
@@ -1635,7 +1635,7 @@ mod tests {
         let n_cats_before = match &codebook.col_metadata[2].coltype {
             ColType::Categorical {
                 k,
-                value_map: ValueMap::U8(3),
+                value_map: ValueMap::UInt(3),
                 ..
             } => *k,
             ColType::Categorical { value_map, .. } => {
@@ -1649,8 +1649,8 @@ mod tests {
 
         assert_eq!(n_cats_before, 3);
 
-        let mut extension = ValueMapExtension::new_u8();
-        extension.extend(Category::U8(3)).unwrap();
+        let mut extension = ValueMapExtension::new_uint();
+        extension.extend(Category::UInt(3)).unwrap();
 
         let result = incr_category_in_codebook(&mut codebook, 2, &extension);
         result.unwrap();
@@ -1658,7 +1658,7 @@ mod tests {
         let n_cats_after = match &codebook.col_metadata[2].coltype {
             ColType::Categorical {
                 k,
-                value_map: ValueMap::U8(4),
+                value_map: ValueMap::UInt(4),
                 ..
             } => *k,
             ColType::Categorical { value_map, .. } => {

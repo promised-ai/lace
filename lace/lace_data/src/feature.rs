@@ -1,5 +1,6 @@
-use crate::{Category, Datum};
+use crate::Datum;
 use crate::{Container, SparseContainer};
+use lace_consts::rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -20,9 +21,9 @@ pub enum SummaryStatistics {
     },
     #[serde(rename = "categorical")]
     Categorical {
-        min: u8,
-        max: u8,
-        mode: Vec<u8>,
+        min: u32,
+        max: u32,
+        mode: Vec<u32>,
     },
     #[serde(rename = "count")]
     Count {
@@ -43,7 +44,7 @@ pub enum FeatureData {
     /// Univariate continuous data
     Continuous(SparseContainer<f64>),
     /// Categorical data
-    Categorical(SparseContainer<u8>),
+    Categorical(SparseContainer<u32>),
     /// Count data
     Count(SparseContainer<u32>),
     /// Binary data
@@ -78,19 +79,10 @@ impl FeatureData {
     pub fn get(&self, ix: usize) -> Datum {
         // TODO: SparseContainer index get (xs[i]) should return an option
         match self {
-            FeatureData::Binary(xs) => {
-                xs.get(ix).map(Datum::Binary).unwrap_or(Datum::Missing)
-            }
-            FeatureData::Continuous(xs) => {
-                xs.get(ix).map(Datum::Continuous).unwrap_or(Datum::Missing)
-            }
-            FeatureData::Categorical(xs) => xs
-                .get(ix)
-                .map(|x| Datum::Categorical(Category::U8(x)))
-                .unwrap_or(Datum::Missing),
-            FeatureData::Count(xs) => {
-                xs.get(ix).map(Datum::Count).unwrap_or(Datum::Missing)
-            }
+            FeatureData::Binary(xs) => xs.get_datum::<Bernoulli>(ix),
+            FeatureData::Continuous(xs) => xs.get_datum::<Gaussian>(ix),
+            FeatureData::Categorical(xs) => xs.get_datum::<Categorical>(ix),
+            FeatureData::Count(xs) => xs.get_datum::<Poisson>(ix),
         }
     }
 
@@ -139,13 +131,17 @@ pub fn summarize_continuous(
 }
 
 pub fn summarize_categorical(
-    container: &SparseContainer<u8>,
+    container: &SparseContainer<u32>,
 ) -> SummaryStatistics {
     use lace_utils::{bincount, minmax};
-    let xs: Vec<u8> = container.present_cloned();
+    let xs: Vec<usize> = container
+        .present_cloned()
+        .drain(..)
+        .map(|x| x as usize)
+        .collect();
 
     let (min, max) = minmax(&xs);
-    let counts = bincount(&xs, (max + 1) as usize);
+    let counts = bincount(&xs, max + 1);
     let max_ct = counts
         .iter()
         .fold(0_usize, |acc, &ct| if ct > acc { ct } else { acc });
@@ -153,10 +149,14 @@ pub fn summarize_categorical(
         .iter()
         .enumerate()
         .filter(|(_, &ct)| ct == max_ct)
-        .map(|(ix, _)| ix as u8)
+        .map(|(ix, _)| ix as u32)
         .collect();
 
-    SummaryStatistics::Categorical { min, max, mode }
+    SummaryStatistics::Categorical {
+        min: min as u32,
+        max: max as u32,
+        mode,
+    }
 }
 
 pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {
@@ -209,6 +209,7 @@ pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Category;
     use approx::*;
 
     fn get_continuous() -> FeatureData {
@@ -224,7 +225,7 @@ mod tests {
     }
 
     fn get_categorical() -> FeatureData {
-        let dc2: SparseContainer<u8> = SparseContainer::from(vec![
+        let dc2: SparseContainer<u32> = SparseContainer::from(vec![
             (5, true),
             (3, true),
             (2, true),
@@ -245,8 +246,8 @@ mod tests {
     #[test]
     fn gets_present_categorical_data() {
         let ds = get_categorical();
-        assert_eq!(ds.get(0), Datum::Categorical(Category::U8(5)));
-        assert_eq!(ds.get(4), Datum::Categorical(Category::U8(4)));
+        assert_eq!(ds.get(0), Datum::Categorical(Category::UInt(5)));
+        assert_eq!(ds.get(4), Datum::Categorical(Category::UInt(4)));
     }
 
     #[test]
@@ -276,7 +277,7 @@ mod tests {
 
     #[test]
     fn summarize_categorical_works_one_mode() {
-        let container: SparseContainer<u8> = SparseContainer::from(vec![
+        let container: SparseContainer<u32> = SparseContainer::from(vec![
             (5, true),
             (3, true),
             (2, true),
@@ -298,7 +299,7 @@ mod tests {
 
     #[test]
     fn summarize_categorical_works_two_modes() {
-        let container: SparseContainer<u8> = SparseContainer::from(vec![
+        let container: SparseContainer<u32> = SparseContainer::from(vec![
             (5, true),
             (3, true),
             (2, true),

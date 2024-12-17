@@ -243,8 +243,8 @@ fn gen_feature<R: rand::Rng>(
             let prior = hyper.draw(k, rng);
             let components: Vec<Categorical> =
                 (0..n_cats).map(|_| prior.draw(rng)).collect();
-            let xs: Vec<u8> = (0..n_rows)
-                .map::<u8, _>(|i| components[i % n_cats].draw::<R>(rng))
+            let xs: Vec<u32> = (0..n_rows)
+                .map::<u32, _>(|i| components[i % n_cats].draw::<R>(rng))
                 .collect();
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);

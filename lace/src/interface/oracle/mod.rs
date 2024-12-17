@@ -236,7 +236,7 @@ mod tests {
                             FType::Categorical => ColType::Categorical {
                                 k: 4,
                                 hyper: None,
-                                value_map: lace_codebook::ValueMap::U8(4),
+                                value_map: lace_codebook::ValueMap::UInt(4),
                                 prior: None,
                             },
                             FType::Count => ColType::Count {

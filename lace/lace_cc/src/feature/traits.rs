@@ -1,7 +1,7 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use enum_dispatch::enum_dispatch;
+use lace_data::Datum;
 use lace_data::FeatureData;
-use lace_data::{Datum, SparseContainer};
 use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
@@ -15,24 +15,6 @@ use rand::Rng;
 
 use super::Component;
 use crate::feature::{ColModel, Column, FType};
-
-pub trait TranslateDatum<X>
-where
-    X: Clone + Default,
-{
-    /// Create an `X` from a `Datum`
-    fn translate_datum(datum: Datum) -> X;
-    /// Convert an `X` into a `Datum`
-    fn translate_value(x: X) -> Datum;
-
-    /// Create a `SparseContainer` from a `FeatureData`
-    fn translate_feature_data(data: FeatureData) -> SparseContainer<X>;
-    /// Convert a `SparseContainer` into a `FeatureData`
-    fn translate_container(xs: SparseContainer<X>) -> FeatureData;
-
-    /// Get the feature type
-    fn ftype() -> FType;
-}
 
 /// A Cross-Categorization feature/column
 #[enum_dispatch(ColModel)]

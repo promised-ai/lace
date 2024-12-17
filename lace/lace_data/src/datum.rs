@@ -87,54 +87,54 @@ impl PartialEq for Datum {
     }
 }
 
-macro_rules! impl_try_from_datum {
-    ($out: ty, $pat_in: path, $err: expr) => {
-        impl TryFrom<Datum> for $out {
-            type Error = DatumConversionError;
+// macro_rules! impl_try_from_datum {
+//     ($out: ty, $pat_in: path, $err: expr) => {
+//         impl TryFrom<Datum> for $out {
+//             type Error = DatumConversionError;
 
-            fn try_from(datum: Datum) -> Result<$out, Self::Error> {
-                match datum {
-                    $pat_in(x) => Ok(x),
-                    Datum::Missing => {
-                        Err(DatumConversionError::CannotConvertMissing)
-                    }
-                    _ => Err($err),
-                }
-            }
-        }
-    };
-}
+//             fn try_from(datum: Datum) -> Result<$out, Self::Error> {
+//                 match datum {
+//                     $pat_in(x) => Ok(x),
+//                     Datum::Missing => {
+//                         Err(DatumConversionError::CannotConvertMissing)
+//                     }
+//                     _ => Err($err),
+//                 }
+//             }
+//         }
+//     };
+// }
 
-impl TryFrom<Datum> for u8 {
-    type Error = DatumConversionError;
+// impl TryFrom<Datum> for u32 {
+//     type Error = DatumConversionError;
 
-    fn try_from(datum: Datum) -> Result<u8, Self::Error> {
-        match datum {
-            Datum::Categorical(Category::U8(x)) => Ok(x),
-            Datum::Categorical(Category::Bool(x)) => Ok(x as u8),
-            Datum::Missing => Err(DatumConversionError::CannotConvertMissing),
-            _ => Err(DatumConversionError::InvalidTypeRequestedFromCategorical),
-        }
-    }
-}
+//     fn try_from(datum: Datum) -> Result<u32, Self::Error> {
+//         match datum {
+//             Datum::Categorical(Category::UInt(x)) => Ok(x),
+//             Datum::Categorical(Category::Bool(x)) => Ok(x as u32),
+//             Datum::Missing => Err(DatumConversionError::CannotConvertMissing),
+//             _ => Err(DatumConversionError::InvalidTypeRequestedFromCategorical),
+//         }
+//     }
+// }
 
-impl_try_from_datum!(
-    bool,
-    Datum::Binary,
-    DatumConversionError::InvalidTypeRequestedFromBinary
-);
+// impl_try_from_datum!(
+//     bool,
+//     Datum::Binary,
+//     DatumConversionError::InvalidTypeRequestedFromBinary
+// );
 
-impl_try_from_datum!(
-    f64,
-    Datum::Continuous,
-    DatumConversionError::InvalidTypeRequestedFromContinuous
-);
+// impl_try_from_datum!(
+//     f64,
+//     Datum::Continuous,
+//     DatumConversionError::InvalidTypeRequestedFromContinuous
+// );
 
-impl_try_from_datum!(
-    u32,
-    Datum::Count,
-    DatumConversionError::InvalidTypeRequestedFromCount
-);
+// impl_try_from_datum!(
+//     u32,
+//     Datum::Count,
+//     DatumConversionError::InvalidTypeRequestedFromCount
+// );
 
 // XXX: What happens when we add vector types? Error?
 impl Datum {
@@ -147,7 +147,7 @@ impl Datum {
     /// # use lace_data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_f64_opt(), Some(1.2));
     /// assert_eq!(Datum::Categorical(true.into()).to_f64_opt(), Some(1.0));
-    /// assert_eq!(Datum::Categorical(8_u8.into()).to_f64_opt(), Some(8.0));
+    /// assert_eq!(Datum::Categorical(8_u32.into()).to_f64_opt(), Some(8.0));
     /// assert_eq!(Datum::Categorical("cat".into()).to_f64_opt(), None);
     /// assert_eq!(Datum::Missing.to_f64_opt(), None);
     /// ```
@@ -158,32 +158,32 @@ impl Datum {
             Datum::Categorical(Category::Bool(x)) => {
                 Some(if *x { 1.0 } else { 0.0 })
             }
-            Datum::Categorical(Category::U8(x)) => Some(f64::from(*x)),
+            Datum::Categorical(Category::UInt(x)) => Some(f64::from(*x)),
             Datum::Categorical(Category::String(_)) => None,
             Datum::Count(x) => Some(f64::from(*x)),
             Datum::Missing => None,
         }
     }
 
-    /// Unwraps the datum as an `u8` if possible. The conversion will coerce
+    /// Unwraps the datum as an `u32` if possible. The conversion will coerce
     /// from other types if possible.
     ///
     /// # Example
     ///
     /// ```
     /// # use lace_data::Datum;
-    /// assert_eq!(Datum::Continuous(1.2).to_u8_opt(), None);
-    /// assert_eq!(Datum::Categorical(8_u8.into()).to_u8_opt(), Some(8));
-    /// assert_eq!(Datum::Categorical(true.into()).to_u8_opt(), Some(1));
-    /// assert_eq!(Datum::Categorical("cat".into()).to_u8_opt(), None);
-    /// assert_eq!(Datum::Missing.to_u8_opt(), None);
+    /// assert_eq!(Datum::Continuous(1.2).to_u32_opt(), None);
+    /// assert_eq!(Datum::Categorical(8_u32.into()).to_u32_opt(), Some(8));
+    /// assert_eq!(Datum::Categorical(true.into()).to_u32_opt(), Some(1));
+    /// assert_eq!(Datum::Categorical("cat".into()).to_u32_opt(), None);
+    /// assert_eq!(Datum::Missing.to_u32_opt(), None);
     /// ```
-    pub fn to_u8_opt(&self) -> Option<u8> {
+    pub fn to_u32_opt(&self) -> Option<u32> {
         match self {
             Datum::Binary(..) => None,
             Datum::Continuous(..) => None,
-            Datum::Categorical(Category::U8(x)) => Some(*x),
-            Datum::Categorical(Category::Bool(x)) => Some(*x as u8),
+            Datum::Categorical(Category::UInt(x)) => Some(*x),
+            Datum::Categorical(Category::Bool(x)) => Some(*x as u32),
             Datum::Categorical(Category::String(_)) => None,
             Datum::Count(..) => None,
             Datum::Missing => None,
@@ -230,16 +230,16 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn continuous_datum_try_into_u8_panics() {
+    fn continuous_datum_try_into_u32_panics() {
         let datum = Datum::Continuous(1.1);
-        let _res: u8 = datum.try_into().unwrap();
+        let _res: u32 = datum.try_into().unwrap();
     }
 
     #[test]
     #[should_panic]
-    fn missing_datum_try_into_u8_panics() {
+    fn missing_datum_try_into_u32_panics() {
         let datum = Datum::Missing;
-        let _res: u8 = datum.try_into().unwrap();
+        let _res: u32 = datum.try_into().unwrap();
     }
 
     #[test]
@@ -250,15 +250,15 @@ mod tests {
     }
 
     #[test]
-    fn categorical_datum_try_into_u8() {
-        let datum = Datum::Categorical(Category::U8(7));
-        let _res: u8 = datum.try_into().unwrap();
+    fn categorical_datum_try_into_u32() {
+        let datum = Datum::Categorical(Category::UInt(7));
+        let _res: u32 = datum.try_into().unwrap();
     }
 
     #[test]
     #[should_panic]
     fn categorical_datum_try_into_f64_panics() {
-        let datum = Datum::Categorical(Category::U8(7));
+        let datum = Datum::Categorical(Category::UInt(7));
         let _res: f64 = datum.try_into().unwrap();
     }
 
@@ -277,9 +277,9 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn count_data_try_into_u8_fails() {
+    fn count_data_try_into_u32_fails() {
         let datum = Datum::Count(12);
-        let _x: u8 = datum.try_into().unwrap();
+        let _x: u32 = datum.try_into().unwrap();
     }
 
     #[test]
@@ -295,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn serde_categorical_u8() {
+    fn serde_categorical_u32() {
         let data = r#"
             {
                 "categorical": 2
@@ -303,7 +303,7 @@ mod tests {
 
         let x: Datum = serde_json::from_str(data).unwrap();
 
-        assert_eq!(x, Datum::Categorical(Category::U8(2)));
+        assert_eq!(x, Datum::Categorical(Category::UInt(2)));
     }
 
     #[test]

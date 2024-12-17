@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case", untagged)]
 pub enum Category {
     Bool(bool),
-    U8(u8),
+    UInt(u32),
     String(String),
 }
 
@@ -15,11 +15,11 @@ impl Category {
         cat.into()
     }
 
-    /// Convert the category to a u8 or panic if it cannot be converted.
-    pub fn as_u8_or_panic(self) -> u8 {
+    /// Convert the category to a u32 or panic if it cannot be converted.
+    pub fn as_u32_or_panic(self) -> u32 {
         match self {
-            Category::Bool(x) => x as u8,
-            Category::U8(x) => x,
+            Category::Bool(x) => x as u32,
+            Category::UInt(x) => x,
             Category::String(x) => {
                 panic!("Cannot convert Category '{x}' to u8")
             }
@@ -33,9 +33,9 @@ impl From<bool> for Category {
     }
 }
 
-impl From<u8> for Category {
-    fn from(value: u8) -> Self {
-        Category::U8(value)
+impl From<u32> for Category {
+    fn from(value: u32) -> Self {
+        Category::UInt(value)
     }
 }
 

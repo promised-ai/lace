@@ -291,10 +291,10 @@ mod test {
     fn cpnt_logp_present() {
         let (col, _) = mnar_col();
 
-        let f0 = col.cpnt_logp(&Datum::Categorical(Category::U8(0)), 0);
-        let f1 = col.cpnt_logp(&Datum::Categorical(Category::U8(1)), 0);
-        let f2 = col.cpnt_logp(&Datum::Categorical(Category::U8(2)), 0);
-        let f3 = col.cpnt_logp(&Datum::Categorical(Category::U8(3)), 0);
+        let f0 = col.cpnt_logp(&Datum::Categorical(Category::UInt(0)), 0);
+        let f1 = col.cpnt_logp(&Datum::Categorical(Category::UInt(1)), 0);
+        let f2 = col.cpnt_logp(&Datum::Categorical(Category::UInt(2)), 0);
+        let f3 = col.cpnt_logp(&Datum::Categorical(Category::UInt(3)), 0);
 
         println!("{:?}", [f0, f1, f2, f3]);
 

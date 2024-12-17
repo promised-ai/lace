@@ -1,9 +1,11 @@
-use std::convert::TryFrom;
 use std::fmt::Debug;
 
-use crate::feature::Component;
-use lace_data::Datum;
+use lace_data::TranslateContainer;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
 use lace_data::SparseContainer;
+use lace_data::TranslateDatum;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -15,10 +17,13 @@ use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, NormalInvChiSquared,
     Poisson, SymmetricDirichlet,
 };
-use lace_stats::rv::traits::{ConjugatePrior, HasSuffStat, Mode, Rv};
+use lace_stats::rv::traits::{
+    ConjugatePrior, HasDensity, HasSuffStat, Mode, Rv, Sampleable,
+};
 use lace_stats::UpdatePrior;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+
+use crate::feature::Component;
+use crate::feature::FType;
 
 /// Score accumulation for `finite_cpu` and `slice` row transition kernels.
 ///
@@ -38,20 +43,33 @@ impl AccumScore<u32> for Poisson {}
 impl AccumScore<f64> for Gaussian {}
 impl AccumScore<bool> for Bernoulli {}
 
+pub trait HasFType {
+    fn ftype() -> FType;
+}
+
+macro_rules! impl_ftype {
+    ($Fx: ty, $ftype: ident) => {
+        impl $crate::traits::HasFType for $Fx {
+            fn ftype() -> $crate::feature::FType {
+                $crate::feature::FType::$ftype
+            }
+        }
+    };
+}
+
+impl_ftype!(Poisson, Count);
+impl_ftype!(Gaussian, Continuous);
+impl_ftype!(Bernoulli, Binary);
+impl_ftype!(Categorical, Categorical);
+
 /// A Lace-ready datum.
 pub trait LaceDatum:
-    Sync + Serialize + DeserializeOwned + TryFrom<Datum> + Default + Clone + Debug
+    Sync + Serialize + DeserializeOwned + Default + Clone + Debug
 {
 }
 
 impl<X> LaceDatum for X where
-    X: Sync
-        + Serialize
-        + DeserializeOwned
-        + TryFrom<Datum>
-        + Default
-        + Clone
-        + Debug
+    X: Sync + Serialize + DeserializeOwned + Default + Clone + Debug
 {
 }
 
@@ -67,7 +85,11 @@ impl<X> LaceStat for X where
 
 /// A Lace-ready likelihood function, f(x).
 pub trait LaceLikelihood<X: LaceDatum>:
-    Rv<X>
+    Sampleable<X>
+    + HasDensity<X>
+    + HasFType
+    + TranslateDatum<X>
+    + TranslateContainer<X>
     + Mode<X>
     + AccumScore<X>
     + HasSuffStat<X>
@@ -88,7 +110,11 @@ pub trait LaceLikelihood<X: LaceDatum>:
 impl<X, Fx> LaceLikelihood<X> for Fx
 where
     X: LaceDatum,
-    Fx: Rv<X>
+    Fx: Sampleable<X>
+        + HasDensity<X>
+        + HasFType
+        + TranslateDatum<X>
+        + TranslateContainer<X>
         + Mode<X>
         + AccumScore<X>
         + HasSuffStat<X>
@@ -106,6 +132,7 @@ where
 /// A Lace-ready prior π(f)
 pub trait LacePrior<X: LaceDatum, Fx: LaceLikelihood<X>, H>:
     ConjugatePrior<X, Fx>
+    + HasDensity<Fx>
     + UpdatePrior<X, Fx, H>
     + Serialize
     + DeserializeOwned
@@ -126,7 +153,7 @@ pub trait LacePrior<X: LaceDatum, Fx: LaceLikelihood<X>, H>:
     fn score_column<I: Iterator<Item = Fx::Stat>>(&self, stats: I) -> f64;
 }
 
-impl LacePrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
+impl LacePrior<u32, Categorical, CsdHyper> for SymmetricDirichlet {
     fn empty_suffstat(&self) -> CategoricalSuffStat {
         CategoricalSuffStat::new(self.k())
     }

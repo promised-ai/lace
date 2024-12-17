@@ -1,4 +1,5 @@
-use lace_consts::rv::{misc::pflip, traits::Rv};
+use lace_consts::rv::misc::pflip;
+use lace_consts::rv::traits::Sampleable;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -107,8 +108,8 @@ impl PriorProcessT for Dirichlet {
         let mut ps = vec![1.0, self.alpha];
         let mut zs = vec![0; n];
 
-        for z in zs.iter_mut().take(n).skip(1) {
-            let zi = pflip(&ps, 1, rng)[0];
+        for (i, z) in zs.iter_mut().take(n).enumerate().skip(1) {
+            let zi = pflip(&ps, Some(i as f64 + self.alpha), rng);
             *z = zi;
             if zi < counts.len() {
                 ps[zi] += 1.0;
@@ -235,7 +236,8 @@ impl PriorProcessT for PitmanYor {
         let mut zs = vec![0; n];
 
         for z in zs.iter_mut().take(n).skip(1) {
-            let zi = pflip(&ps, 1, rng)[0];
+            // TODO: Precompute sum
+            let zi = pflip(&ps, None, rng);
             *z = zi;
             if zi < counts.len() {
                 ps[zi] += 1.0;

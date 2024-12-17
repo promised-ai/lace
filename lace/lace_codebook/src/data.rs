@@ -11,7 +11,7 @@ use polars::prelude::{CsvReader, DataFrame, DataType, SerReader, Series};
 use std::convert::TryFrom;
 use std::path::Path;
 
-pub const DEFAULT_CAT_CUTOFF: u8 = 20;
+pub const DEFAULT_CAT_CUTOFF: u32 = 20;
 
 #[macro_export]
 macro_rules! series_to_opt_vec {
@@ -230,7 +230,7 @@ pub use series_to_vec;
 
 fn uint_coltype(
     srs: &Series,
-    cat_cutoff: Option<u8>,
+    cat_cutoff: Option<u32>,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
     let x_max: u64 = srs.max().unwrap().unwrap();
@@ -244,7 +244,7 @@ fn uint_coltype(
 
 fn int_coltype(
     srs: &Series,
-    cat_cutoff: Option<u8>,
+    cat_cutoff: Option<u32>,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
     let x_min: i64 = srs.min().unwrap().unwrap();
@@ -295,7 +295,7 @@ fn uint_categorical_coltype(
         k,
         hyper,
         prior,
-        value_map: ValueMap::U8(k),
+        value_map: ValueMap::UInt(k),
     })
 }
 
@@ -376,7 +376,7 @@ fn string_categorical_coltype(
 
 pub fn series_to_colmd(
     srs: &Series,
-    cat_cutoff: Option<u8>,
+    cat_cutoff: Option<u32>,
     no_hypers: bool,
 ) -> Result<ColMetadata, CodebookError> {
     let name = String::from(srs.name());
@@ -428,7 +428,7 @@ fn rownames_from_index(id_srs: &Series) -> Result<RowNameList, CodebookError> {
 
 pub fn df_to_codebook(
     df: &DataFrame,
-    cat_cutoff: Option<u8>,
+    cat_cutoff: Option<u32>,
     state_prior_process: Option<PriorProcess>,
     view_prior_process: Option<PriorProcess>,
     no_hypers: bool,
@@ -479,7 +479,7 @@ pub fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
 
 pub fn codebook_from_csv<P: AsRef<Path>>(
     path: P,
-    cat_cutoff: Option<u8>,
+    cat_cutoff: Option<u32>,
     state_prior_process: Option<PriorProcess>,
     view_prior_process: Option<PriorProcess>,
     no_hypers: bool,

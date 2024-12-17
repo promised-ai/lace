@@ -10,4 +10,5 @@ pub use component::Component;
 pub use ftype::FType;
 pub use mnar::MissingNotAtRandom;
 pub(crate) use traits::FeatureHelper;
-pub use traits::{Feature, TranslateDatum};
+// pub use traits::{Feature, TranslateDatum};
+pub use traits::Feature;

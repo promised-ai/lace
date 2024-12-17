@@ -10,6 +10,7 @@ description = "Data definitions and data container definitions for Lace"
 
 [dependencies]
 lace_utils = { path = "../lace_utils", version = "0.3.0" }
+lace_consts = { path = "../lace_consts", version = "0.2.1" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0.19"
 

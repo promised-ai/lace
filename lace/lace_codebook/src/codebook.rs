@@ -423,7 +423,7 @@ impl Codebook {
     /// - no_hypers: if `true` do not do prior parameter inference
     pub fn from_df(
         df: &DataFrame,
-        cat_cutoff: Option<u8>,
+        cat_cutoff: Option<u32>,
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         no_hypers: bool,
@@ -614,7 +614,7 @@ mod tests {
             k: 2,
             hyper: None,
             prior: None,
-            value_map: ValueMap::U8(2),
+            value_map: ValueMap::UInt(2),
         };
         let md0 = ColMetadata {
             name: "0".to_string(),
@@ -645,7 +645,7 @@ mod tests {
             k: 2,
             hyper: None,
             prior: None,
-            value_map: ValueMap::U8(2),
+            value_map: ValueMap::UInt(2),
         };
         let md0 = ColMetadata {
             name: "0".to_string(),
@@ -684,7 +684,7 @@ mod tests {
             let coltype = ColType::Categorical {
                 k: 2,
                 hyper: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
                 prior: None,
             };
             let md0 = ColMetadata {
@@ -721,7 +721,7 @@ mod tests {
             let coltype = ColType::Categorical {
                 k: 2,
                 hyper: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
                 prior: None,
             };
             let md0 = ColMetadata {
@@ -872,7 +872,7 @@ mod tests {
                         k: 2,
                         hyper: None,
                         prior: None,
-                        value_map: ValueMap::U8(2),
+                        value_map: ValueMap::UInt(2),
                     },
                     missing_not_at_random: false,
                 },
@@ -883,7 +883,7 @@ mod tests {
                         k: 3,
                         hyper: None,
                         prior: None,
-                        value_map: ValueMap::U8(3),
+                        value_map: ValueMap::UInt(3),
                     },
                     missing_not_at_random: false,
                 },
@@ -953,7 +953,7 @@ mod tests {
                         k: 2,
                         hyper: None,
                         prior: None,
-                        value_map: ValueMap::U8(2),
+                        value_map: ValueMap::UInt(2),
                     },
                     missing_not_at_random: false,
                 },
@@ -964,7 +964,7 @@ mod tests {
                         k: 3,
                         hyper: None,
                         prior: None,
-                        value_map: ValueMap::U8(3),
+                        value_map: ValueMap::UInt(3),
                     },
                     missing_not_at_random: false,
                 },

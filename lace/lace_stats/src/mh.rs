@@ -216,7 +216,7 @@ where
     R: Rng,
 {
     use crate::rv::dist::Uniform;
-    use crate::rv::traits::Rv;
+    use crate::rv::traits::Sampleable;
 
     let ln_fx = score_fn(x_start);
     let ln_u = rng.gen::<f64>().ln() + ln_fx;
@@ -292,7 +292,7 @@ where
     R: Rng,
 {
     use crate::rv::dist::Gaussian;
-    use crate::rv::traits::Rv;
+    use crate::rv::traits::Sampleable;
 
     // FIXME: initialize this properly
     let gamma_init = 0.9;
@@ -358,7 +358,7 @@ where
 {
     use crate::rv::dist::MvGaussian;
     use crate::rv::nalgebra::{DMatrix, DVector};
-    use crate::rv::traits::Rv;
+    use crate::rv::traits::Sampleable;
 
     // TODO: initialize this properly
     // let gamma = (n_steps as f64).recip();
@@ -423,7 +423,7 @@ mod tests {
     use super::*;
     use crate::rv::dist::{Bernoulli, Beta, Gaussian};
     use crate::rv::misc::ks_test;
-    use crate::rv::traits::{Cdf, Rv};
+    use crate::rv::traits::{Cdf, HasDensity, Sampleable};
     use rand_distr::Normal;
 
     const KS_PVAL: f64 = 0.2;

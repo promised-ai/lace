@@ -23,8 +23,8 @@ use super::error::IndexError;
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
 
-pub(crate) fn u8_to_category(
-    x: u8,
+pub(crate) fn u32_to_category(
+    x: u32,
     col_ix: usize,
     codebook: &Codebook,
 ) -> Option<Category> {
@@ -58,7 +58,7 @@ pub(crate) fn pre_process_datum(
 
         value_map
             .ix(&cat)
-            .map(|u| Datum::Categorical(Category::U8(u as u8)))
+            .map(|u| Datum::Categorical(Category::UInt(u as u32)))
             .ok_or(IndexError::CategoryIndexNotFound { col_ix, cat })
     } else {
         Ok(x)
@@ -83,10 +83,10 @@ pub(crate) fn post_process_datum(
     col_ix: usize,
     codebook: &Codebook,
 ) -> Datum {
-    if let Datum::Categorical(Category::U8(x_u8)) = x {
+    if let Datum::Categorical(Category::UInt(x_u32)) = x {
         codebook
             .value_map(col_ix)
-            .map(|map| map.category(x_u8 as usize))
+            .map(|map| map.category(x_u32 as usize))
             .map(Datum::Categorical)
             .unwrap_or(x)
     } else {
@@ -715,7 +715,7 @@ pub fn categorical_impute(
     states: &[&State],
     row_ix: usize,
     col_ix: usize,
-) -> u8 {
+) -> u32 {
     let cpnts: Vec<Categorical> = states
         .iter()
         .map(|state| {
@@ -734,7 +734,7 @@ pub fn categorical_impute(
             logsumexp(&logfs)
         })
         .collect();
-    argmax(&fs) as u8
+    argmax(&fs) as u32
 }
 
 pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
@@ -889,14 +889,14 @@ pub fn categorical_gaussian_entropy_dual(
         dep_ind_col_mixtures!(states, col_cat, col_gauss, Categorical);
 
     // Get the number of values the categorical column support. Can never exceed
-    // u8::MAX (255).
+    // u32::MAX.
     let cat_k = match states[0].feature(col_cat) {
-        ColModel::Categorical(cm) => u8::try_from(cm.prior.k())
-            .expect("Categorical k exceeded u8 max value"),
+        ColModel::Categorical(cm) => u32::try_from(cm.prior.k())
+            .expect("Categorical k exceeded u32 max value"),
         ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
             if let ColModel::Categorical(cm) = &**fx {
-                u8::try_from(cm.prior.k())
-                    .expect("Categorical k exceeded u8 max value")
+                u32::try_from(cm.prior.k())
+                    .expect("Categorical k exceeded u32 max value")
             } else {
                 panic!("Expected MissingNotAtRandom Categorical")
             }
@@ -1099,7 +1099,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
                 .component(0, ix)
                 .try_into()
                 .expect("Unexpected column type");
-            cpnt.k() as u8
+            cpnt.k() as u32
         })
         .collect();
 
@@ -1107,7 +1107,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
         .map(|mut xs| {
             let vals: Vec<_> = xs
                 .drain(..)
-                .map(|x| Datum::Categorical(Category::U8(x)))
+                .map(|x| Datum::Categorical(Category::UInt(x)))
                 .collect();
             vals
         })
@@ -1171,8 +1171,8 @@ pub fn categorical_entropy_dual(
     for i in 0..k_a {
         for j in 0..k_b {
             vals.push(vec![
-                Datum::Categorical(Category::U8(i as u8)),
-                Datum::Categorical(Category::U8(j as u8)),
+                Datum::Categorical(Category::UInt(i as u32)),
+                Datum::Categorical(Category::UInt(j as u32)),
             ]);
         }
     }
@@ -1412,15 +1412,15 @@ pub fn categorical_predict(
     states: &[&State],
     col_ix: usize,
     given: &Given<usize>,
-) -> u8 {
+) -> u32 {
     use crate::cc::feature::MissingNotAtRandom;
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let state_weights = state_weights(states, &col_ixs, given);
 
-    let f = |x: u8| {
+    let f = |x: u32| {
         let y: Vec<Vec<Datum>> =
-            vec![vec![Datum::Categorical(Category::U8(x))]];
+            vec![vec![Datum::Categorical(Category::UInt(x))]];
         let scores: Vec<f64> = states
             .iter()
             .zip(state_weights.iter())
@@ -1438,11 +1438,11 @@ pub fn categorical_predict(
         logsumexp(&scores)
     };
 
-    let k: u8 = match states[0].feature(col_ix) {
-        ColModel::Categorical(ftr) => ftr.prior.k() as u8,
+    let k: u32 = match states[0].feature(col_ix) {
+        ColModel::Categorical(ftr) => ftr.prior.k() as u32,
         ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
             if let ColModel::Categorical(ref ftr) = **fx {
-                ftr.prior.k() as u8
+                ftr.prior.k() as u32
             } else {
                 panic!("FType mismatch for categorical MNAR prediction")
             }
@@ -1451,7 +1451,7 @@ pub fn categorical_predict(
     };
 
     let fs: Vec<f64> = (0..k).map(f).collect();
-    argmax(&fs) as u8
+    argmax(&fs) as u32
 }
 
 pub fn count_predict(
@@ -1723,7 +1723,7 @@ mod tests {
 
         let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k);
         for i in 0..k {
-            vals.push(vec![Datum::Categorical((i as u8).into())]);
+            vals.push(vec![Datum::Categorical((i as u32).into())]);
         }
 
         let logps: Vec<Vec<f64>> = states
@@ -2189,21 +2189,21 @@ mod tests {
     #[test]
     fn single_state_categorical_impute_1() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_impute(&[&state], 0, 0);
+        let x: u32 = categorical_impute(&[&state], 0, 0);
         assert_eq!(x, 2);
     }
 
     #[test]
     fn single_state_categorical_impute_2() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_impute(&[&state], 2, 0);
+        let x: u32 = categorical_impute(&[&state], 2, 0);
         assert_eq!(x, 0);
     }
 
     #[test]
     fn single_state_categorical_predict_1() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_predict(&[&state], 0, &Given::Nothing);
+        let x: u32 = categorical_predict(&[&state], 0, &Given::Nothing);
         assert_eq!(x, 2);
     }
 

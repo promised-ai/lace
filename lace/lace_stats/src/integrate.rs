@@ -1,9 +1,9 @@
-use lace_consts::rv::misc::logsumexp;
+use lace_consts::rv::misc::LogSumExp;
 use rand::Rng;
 
 /// Monte Carlo integration
 ///
-/// # Aguments
+/// # Arguments
 ///
 /// - ln_f: the log of the function to integrate with the draw term adjusted
 ///   for. For example, if you were estimating the marginal likelihood, `ln_f`
@@ -25,14 +25,14 @@ where
     // NOTE: computing the max value for logsumexp in the map saves a
     // statistically insignificant amount of time and makes the code a lot
     // longer.
-    let loglikes: Vec<f64> = (0..n_iters).map(|_| ln_f(&draw(rng))).collect();
+    let logsumexp = (0..n_iters).map(|_| ln_f(&draw(rng))).logsumexp();
 
-    logsumexp(&loglikes) - (n_iters as f64).ln()
+    logsumexp - (n_iters as f64).ln()
 }
 
 /// Importance Sampling integration
 ///
-/// # Aguments
+/// # Arguments
 ///
 /// - ln_f: the log of the function to integrate.
 /// - q_draw: A function that draws samples from the importance distribution
@@ -52,14 +52,14 @@ where
     Fq: Fn(&X) -> f64,
     R: Rng,
 {
-    let loglikes: Vec<f64> = (0..n_iters)
+    let logsumexp = (0..n_iters)
         .map(|_| {
             let x: X = q_draw(rng);
             ln_f(&x) - q_ln_f(&x)
         })
-        .collect();
+        .logsumexp();
 
-    logsumexp(&loglikes) - (n_iters as f64).ln()
+    logsumexp - (n_iters as f64).ln()
 }
 
 #[cfg(test)]
@@ -67,7 +67,7 @@ mod tests {
     use super::*;
     use crate::rv::data::DataOrSuffStat;
     use crate::rv::dist::{Bernoulli, Beta};
-    use crate::rv::traits::{ConjugatePrior, Rv};
+    use crate::rv::traits::{ConjugatePrior, HasDensity, Sampleable};
 
     fn relerr(x: f64, x_est: f64) -> f64 {
         (x_est / x - 1.0).abs()

@@ -52,7 +52,7 @@ where
 #[serde(rename_all = "snake_case")]
 pub enum ValueMap {
     String(CategoryMap<String>),
-    U8(usize),
+    UInt(usize),
     Bool,
 }
 
@@ -92,7 +92,7 @@ impl ValueMap {
     pub fn len(&self) -> usize {
         match self {
             Self::String(inner) => inner.len(),
-            Self::U8(k) => *k,
+            Self::UInt(k) => *k,
             Self::Bool => 2,
         }
     }
@@ -100,7 +100,7 @@ impl ValueMap {
     pub fn is_empty(&self) -> bool {
         match self {
             Self::String(inner) => inner.is_empty(),
-            Self::U8(k) => *k == 0,
+            Self::UInt(k) => *k == 0,
             Self::Bool => false,
         }
     }
@@ -129,7 +129,7 @@ impl ValueMap {
     pub fn ix(&self, cat: &Category) -> Option<usize> {
         match (self, cat) {
             (Self::String(map), Category::String(ref x)) => map.ix(x),
-            (Self::U8(k), Category::U8(ref x)) => {
+            (Self::UInt(k), Category::UInt(ref x)) => {
                 if (*x as usize) < *k {
                     Some(*x as usize)
                 } else {
@@ -164,12 +164,12 @@ impl ValueMap {
     pub fn category(&self, ix: usize) -> Category {
         match self {
             Self::String(inner) => Category::String(inner.category(ix)),
-            Self::U8(k) => {
+            Self::UInt(k) => {
                 if ix < *k {
-                    Category::U8(ix as u8)
+                    Category::UInt(ix as u32)
                 } else {
                     panic!(
-                        "index {ix} is too large for U8 map with length {k}"
+                        "index {ix} is too large for U32 map with length {k}"
                     );
                 }
             }
@@ -184,7 +184,7 @@ impl ValueMap {
     pub fn contains_cat(&self, cat: &Category) -> bool {
         match (self, cat) {
             (Self::String(map), Category::String(x)) => map.contains_cat(x),
-            (Self::U8(k), Category::U8(x)) => (*x as usize) < *k,
+            (Self::UInt(k), Category::UInt(x)) => (*x as usize) < *k,
             (Self::Bool, Category::Bool(_)) => true,
             _ => false,
         }
@@ -226,9 +226,9 @@ impl ValueMap {
     ///
     /// ```
     /// # use lace_codebook::ValueMap;
-    /// let value_map_1 = ValueMap::U8(2);
-    /// let value_map_2 = ValueMap::U8(3);
-    /// let value_map_3 = ValueMap::U8(4);
+    /// let value_map_1 = ValueMap::UInt(2);
+    /// let value_map_2 = ValueMap::UInt(3);
+    /// let value_map_3 = ValueMap::UInt(4);
     ///
     /// assert!(value_map_1.is_extended(&value_map_1));
     /// assert!(value_map_1.is_extended(&value_map_2));
@@ -261,7 +261,7 @@ impl ValueMap {
                     .zip(b.to_cat.iter())
                     .all(|(ai, bi)| ai == bi)
             }
-            (Self::U8(k_a), Self::U8(k_b)) => k_b >= k_a,
+            (Self::UInt(k_a), Self::UInt(k_b)) => k_b >= k_a,
             (Self::Bool, Self::Bool) => true,
             _ => false,
         }
@@ -278,8 +278,8 @@ impl ValueMap {
                 Ok(())
             }
             (
-                ValueMap::U8(ref mut cur_max),
-                ValueMapExtension::U8 { new_max },
+                ValueMap::UInt(ref mut cur_max),
+                ValueMapExtension::UInt { new_max },
             ) => {
                 if new_max > *cur_max {
                     *cur_max = new_max;
@@ -289,14 +289,14 @@ impl ValueMap {
             (vm, cat) => {
                 let value_map_type = match vm {
                     ValueMap::String(_) => "string",
-                    ValueMap::U8(_) => "u8",
+                    ValueMap::UInt(_) => "u32",
                     ValueMap::Bool => "bool",
                 }
                 .to_string();
 
                 let extension_type = match cat {
                     ValueMapExtension::String(_) => "string",
-                    ValueMapExtension::U8 { .. } => "u8",
+                    ValueMapExtension::UInt { .. } => "u32",
                 }
                 .to_string();
                 Err(ValueMapExtensionError::ExtensionOfDifferingType(
@@ -420,7 +420,7 @@ where
 #[serde(rename_all = "snake_case")]
 pub enum ValueMapExtension {
     String(HashSet<String>),
-    U8 { new_max: usize },
+    UInt { new_max: usize },
 }
 
 impl ValueMapExtension {
@@ -428,8 +428,8 @@ impl ValueMapExtension {
         Self::String(HashSet::new())
     }
 
-    pub fn new_u8() -> Self {
-        Self::U8 { new_max: 0 }
+    pub fn new_uint() -> Self {
+        Self::UInt { new_max: 0 }
     }
 
     pub fn extend(
@@ -441,7 +441,7 @@ impl ValueMapExtension {
                 set.insert(x);
                 Ok(())
             }
-            (ValueMapExtension::U8 { new_max }, Category::U8(x)) => {
+            (ValueMapExtension::UInt { new_max }, Category::UInt(x)) => {
                 let x = x as usize;
                 if x >= *new_max {
                     *new_max = x + 1;
@@ -451,12 +451,12 @@ impl ValueMapExtension {
             (vm, cat) => {
                 let value_map_type = match vm {
                     ValueMapExtension::String(_) => "string",
-                    ValueMapExtension::U8 { .. } => "u8",
+                    ValueMapExtension::UInt { .. } => "u32",
                 }
                 .to_string();
                 let extension_type = match cat {
                     Category::Bool(_) => "bool",
-                    Category::U8(_) => "u8",
+                    Category::UInt(_) => "u32",
                     Category::String(_) => "string",
                 }
                 .to_string();
@@ -474,10 +474,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn expected_valuemap_u8_iterator() {
-        let vm = ValueMap::U8(2);
+    fn expected_valuemap_u32_iterator() {
+        let vm = ValueMap::UInt(2);
         let cats: Vec<Category> = vm.iter().collect();
-        assert_eq!(cats, &[Category::U8(0), Category::U8(1)]);
+        assert_eq!(cats, &[Category::UInt(0), Category::UInt(1)]);
     }
 
     #[test]

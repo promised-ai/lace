@@ -23,3 +23,5 @@ pub use feature::{FeatureData, SummaryStatistics};
 pub use sparse::SparseContainer;
 pub use traits::AccumScore;
 pub use traits::Container;
+pub use traits::TranslateContainer;
+pub use traits::TranslateDatum;

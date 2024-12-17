@@ -2,6 +2,8 @@ use std::mem;
 use std::vec::Drain;
 
 use enum_dispatch::enum_dispatch;
+use lace_data::TranslateContainer;
+use lace_data::TranslateDatum;
 use lace_data::{Category, FeatureData};
 use lace_data::{Container, SparseContainer};
 use lace_stats::assignment::Assignment;
@@ -13,7 +15,9 @@ use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
     NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
-use lace_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
+use lace_stats::rv::traits::{
+    ConjugatePrior, HasDensity, Mean, QuadBounds, Sampleable, SuffStat,
+};
 use lace_stats::{MixtureType, QmcEntropy};
 use lace_utils::MinMax;
 use rand::Rng;
@@ -22,16 +26,16 @@ use std::sync::OnceLock;
 
 use super::{Component, MissingNotAtRandom};
 use crate::component::ConjugateComponent;
-use crate::feature::traits::{Feature, FeatureHelper, TranslateDatum};
+use crate::feature::traits::{Feature, FeatureHelper};
 use crate::feature::FType;
 use crate::traits::{
     AccumScore, LaceDatum, LaceLikelihood, LacePrior, LaceStat,
 };
 use lace_data::Datum;
 
+/// A partitioned columns of data
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
-/// A partitioned columns of data
 pub struct Column<X, Fx, Pr, H>
 where
     X: LaceDatum,
@@ -40,8 +44,8 @@ where
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub id: usize,
     pub data: SparseContainer<X>,
@@ -51,14 +55,14 @@ where
     #[serde(default)]
     pub ignore_hyper: bool,
     #[serde(skip)]
-    pub ln_m_cache: OnceLock<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
+    pub ln_m_cache: OnceLock<<Pr as ConjugatePrior<X, Fx>>::MCache>,
 }
 
 #[enum_dispatch]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInvChiSquared, NixHyper>),
-    Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
+    Categorical(Column<u32, Categorical, SymmetricDirichlet, CsdHyper>),
     Count(Column<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(super::mnar::MissingNotAtRandom),
 }
@@ -115,8 +119,8 @@ where
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub fn new(
         id: usize,
@@ -136,7 +140,7 @@ where
     }
 
     #[inline]
-    pub fn ln_m_cache(&self) -> &Pr::LnMCache {
+    pub fn ln_m_cache(&self) -> &Pr::MCache {
         self.ln_m_cache.get_or_init(|| self.prior.ln_m_cache())
     }
 
@@ -159,77 +163,6 @@ where
     }
 }
 
-macro_rules! impl_translate_datum {
-    ($x:ty, $fx:ty, $pr:ty, $h:ty, $datum_variant:ident) => {
-        impl_translate_datum!($x, $fx, $pr, $h, $datum_variant, $datum_variant);
-    };
-    ($x:ty, $fx:ty, $pr:ty, $h:ty, $datum_variant:ident, $fdata_variant:ident) => {
-        impl TranslateDatum<$x> for Column<$x, $fx, $pr, $h> {
-            fn translate_datum(datum: Datum) -> $x {
-                match datum {
-                    Datum::$datum_variant(x) => x,
-                    _ => panic!("Invalid Datum variant for conversion"),
-                }
-            }
-
-            fn translate_value(x: $x) -> Datum {
-                Datum::$datum_variant(x)
-            }
-
-            fn translate_feature_data(
-                data: FeatureData,
-            ) -> SparseContainer<$x> {
-                match data {
-                    FeatureData::$fdata_variant(xs) => xs,
-                    _ => panic!("Invalid FeatureData variant for conversion"),
-                }
-            }
-
-            fn translate_container(xs: SparseContainer<$x>) -> FeatureData {
-                FeatureData::$fdata_variant(xs)
-            }
-
-            fn ftype() -> FType {
-                FType::$fdata_variant
-            }
-        }
-    };
-}
-
-impl TranslateDatum<u8>
-    for Column<u8, Categorical, SymmetricDirichlet, CsdHyper>
-{
-    fn translate_datum(datum: Datum) -> u8 {
-        match datum {
-            Datum::Categorical(x) => x.as_u8_or_panic(),
-            _ => panic!("Invalid Datum variant for conversion"),
-        }
-    }
-
-    fn translate_value(x: u8) -> Datum {
-        Datum::Categorical(Category::U8(x))
-    }
-
-    fn translate_feature_data(data: FeatureData) -> SparseContainer<u8> {
-        match data {
-            FeatureData::Categorical(xs) => xs,
-            _ => panic!("Invalid FeatureData variant for conversion"),
-        }
-    }
-
-    fn translate_container(xs: SparseContainer<u8>) -> FeatureData {
-        FeatureData::Categorical(xs)
-    }
-
-    fn ftype() -> FType {
-        FType::Categorical
-    }
-}
-
-impl_translate_datum!(bool, Bernoulli, Beta, (), Binary);
-impl_translate_datum!(f64, Gaussian, NormalInvChiSquared, NixHyper, Continuous);
-impl_translate_datum!(u32, Poisson, Gamma, PgHyper, Count);
-
 pub(crate) fn draw_cpnts<X, Fx, Pr, H>(
     prior: &Pr,
     k: usize,
@@ -240,7 +173,7 @@ where
     Fx: LaceLikelihood<X>,
     Pr: LacePrior<X, Fx, H>,
     Fx::Stat: LaceStat,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     (0..k)
         .map(|_| ConjugateComponent::new(prior.draw(&mut rng)))
@@ -255,10 +188,9 @@ where
     Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
-    Self: TranslateDatum<X>,
 {
     #[inline]
     fn id(&self) -> usize {
@@ -389,7 +321,7 @@ where
     }
 
     fn drop_component(&mut self, k: usize) {
-        // cpnt goes out of scope and is dropped
+        // Component goes out of scope and is dropped
         let _cpnt = self.components.remove(k);
     }
 
@@ -436,7 +368,7 @@ where
     fn take_datum(&mut self, row_ix: usize, k: usize) -> Option<Datum> {
         if let Some(x) = self.data.set_missing(row_ix) {
             self.components[k].forget(&x);
-            Some(Self::translate_value(x))
+            Some(Fx::pack(x))
         } else {
             None
         }
@@ -451,12 +383,12 @@ where
 
     #[inline]
     fn append_datum(&mut self, x: Datum) {
-        self.data.push_datum(x);
+        self.data.push_datum::<Fx>(x);
     }
 
     #[inline]
     fn insert_datum(&mut self, row_ix: usize, x: Datum) {
-        self.data.insert_datum(row_ix, x);
+        self.data.insert_datum::<Fx>(row_ix, x);
     }
 
     #[inline]
@@ -466,29 +398,26 @@ where
 
     #[inline]
     fn datum(&self, ix: usize) -> Datum {
-        self.data
-            .get(ix)
-            .map(Self::translate_value)
-            .unwrap_or(Datum::Missing)
+        self.data.get(ix).map(Fx::pack).unwrap_or(Datum::Missing)
     }
 
     fn take_data(&mut self) -> FeatureData {
         let mut data: SparseContainer<X> = SparseContainer::default();
         mem::swap(&mut data, &mut self.data);
-        Self::translate_container(data)
+        Fx::pack_container(data)
     }
 
     fn clone_data(&self) -> FeatureData {
-        Self::translate_container(self.data.clone())
+        Fx::pack_container(self.data.clone())
     }
 
     fn draw(&self, k: usize, mut rng: &mut impl Rng) -> Datum {
         let x: X = self.components[k].draw(&mut rng);
-        Self::translate_value(x)
+        Fx::pack(x)
     }
 
     fn repop_data(&mut self, data: FeatureData) {
-        let mut xs = Self::translate_feature_data(data);
+        let mut xs = Fx::extract_container(data);
         mem::swap(&mut xs, &mut self.data);
     }
 
@@ -506,7 +435,7 @@ where
             )
         }
 
-        let x: X = Self::translate_datum(datum.clone());
+        let x: X = Fx::extract(datum.clone());
 
         weights
             .iter_mut()
@@ -530,7 +459,7 @@ where
             )
         }
 
-        let x: X = Self::translate_datum(datum.clone());
+        let x: X = Fx::extract(datum.clone());
 
         weights
             .iter_mut()
@@ -543,19 +472,19 @@ where
 
     #[inline]
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
-        let x: X = Self::translate_datum(datum.clone());
+        let x: X = Fx::extract(datum.clone());
         self.components[k].ln_f(&x)
     }
 
     #[inline]
     fn cpnt_likelihood(&self, datum: &Datum, k: usize) -> f64 {
-        let x: X = Self::translate_datum(datum.clone());
+        let x: X = Fx::extract(datum.clone());
         self.components[k].f(&x)
     }
 
     #[inline]
     fn ftype(&self) -> FType {
-        <Self as TranslateDatum<X>>::ftype()
+        Fx::ftype()
     }
 
     #[inline]
@@ -623,10 +552,9 @@ where
     Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
-    Self: TranslateDatum<X>,
 {
     fn del_datum(&mut self, ix: usize) {
         self.data.extract(ix);
@@ -701,8 +629,8 @@ impl QmcEntropy for ColModel {
             }
             ColModel::Categorical(cm) => {
                 let k: f64 = cm.components()[0].fx.k() as f64;
-                let x = (us.next().unwrap() * k) as u8;
-                Datum::Categorical(Category::U8(x))
+                let x = (us.next().unwrap() * k) as u32;
+                Datum::Categorical(Category::UInt(x))
             }
         }
     }
@@ -738,7 +666,7 @@ mod tests {
         ColModel::Continuous(col)
     }
 
-    fn categorical_fixture_u8() -> ColModel {
+    fn categorical_fixture_u32() -> ColModel {
         let mut rng = rand::thread_rng();
         let asgn = Builder::new(5)
             .with_process(Process::Dirichlet(Dirichlet {
@@ -749,7 +677,7 @@ mod tests {
             .build()
             .unwrap()
             .asgn;
-        let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
+        let data_vec: Vec<u32> = vec![0, 1, 2, 0, 1];
         let data = SparseContainer::from(data_vec);
         let hyper = CsdHyper::vague(3);
         let prior = hyper.draw(3, &mut rng);
@@ -775,7 +703,7 @@ mod tests {
 
     #[test]
     fn take_categorical_data_should_leave_col_model_data_empty() {
-        let mut col_model = categorical_fixture_u8();
+        let mut col_model = categorical_fixture_u32();
         let data = col_model.take_data();
         match data {
             FeatureData::Categorical(d) => assert_eq!(d.len(), 5),
@@ -789,7 +717,7 @@ mod tests {
 
     #[test]
     fn repop_categorical_data_should_put_the_data_back_in() {
-        let mut col_model = categorical_fixture_u8();
+        let mut col_model = categorical_fixture_u32();
         let data = col_model.take_data();
         match col_model {
             ColModel::Categorical(ref f) => assert_eq!(f.data.len(), 0),
@@ -827,16 +755,16 @@ mod tests {
         let col = Column {
             id: 0,
             data: SparseContainer::from(vec![
-                (0_u8, true),
-                (1_u8, true),
-                (0_u8, true),
+                (0_u32, true),
+                (1_u32, true),
+                (0_u32, true),
             ]),
             components: vec![
                 ConjugateComponent {
                     fx: Categorical::new(&[0.1, 0.9]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
-                        stat.observe(&1_u8);
+                        stat.observe(&1_u32);
                         stat
                     },
                     ln_pp_cache: OnceLock::new(),
@@ -845,7 +773,7 @@ mod tests {
                     fx: Categorical::new(&[0.8, 0.2]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
-                        stat.observe(&0_u8);
+                        stat.observe(&0_u32);
                         stat
                     },
                     ln_pp_cache: OnceLock::new(),
@@ -854,7 +782,7 @@ mod tests {
                     fx: Categorical::new(&[0.3, 0.7]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
-                        stat.observe(&0_u8);
+                        stat.observe(&0_u32);
                         stat
                     },
                     ln_pp_cache: OnceLock::new(),

@@ -18,7 +18,7 @@ use rand::Rng;
 use std::sync::OnceLock;
 
 type GaussCol = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
-type CatU8 = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
+type Cat32 = Column<u32, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
@@ -31,8 +31,11 @@ fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
     col
 }
 
-fn categorical_fixture_u8<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> CatU8 {
-    let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
+fn categorical_fixture_u32<R: Rng>(
+    mut rng: &mut R,
+    asgn: &Assignment,
+) -> Cat32 {
+    let data_vec: Vec<u32> = vec![0, 1, 2, 0, 1];
     let data = SparseContainer::from(data_vec);
     let hyper = CsdHyper::vague(3);
     let prior = hyper.draw(3, &mut rng);
@@ -256,8 +259,8 @@ fn asgn_score_under_asgn_gaussian_magnitude() {
 // Categorical
 // -----------
 #[test]
-fn cat_u8_accum_scores_1_cat_no_missing() {
-    let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
+fn cat_u32_accum_scores_1_cat_no_missing() {
+    let data_vec: Vec<u32> = vec![0, 1, 2, 0, 1];
     let data = SparseContainer::from(data_vec);
 
     let log_weights = vec![
@@ -289,8 +292,8 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
 }
 
 #[test]
-fn cat_u8_accum_scores_2_cats_no_missing() {
-    let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
+fn cat_u32_accum_scores_2_cats_no_missing() {
+    let data_vec: Vec<u32> = vec![0, 1, 2, 0, 1];
     let data = SparseContainer::from(data_vec);
 
     let log_weights1 = vec![
@@ -334,7 +337,7 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
 }
 
 #[test]
-fn asgn_score_under_asgn_cat_u8_magnitude() {
+fn asgn_score_under_asgn_cat_u32_magnitude() {
     let mut rng = rand::thread_rng();
     let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let asgn_b = Assignment {
@@ -343,7 +346,7 @@ fn asgn_score_under_asgn_cat_u8_magnitude() {
         n_cats: 2,
     };
 
-    let col = categorical_fixture_u8(&mut rng, &asgn_a);
+    let col = categorical_fixture_u32(&mut rng, &asgn_a);
 
     let logp_a = col.asgn_score(&asgn_a);
     let logp_b = col.asgn_score(&asgn_b);

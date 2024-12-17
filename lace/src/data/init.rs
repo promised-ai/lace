@@ -146,7 +146,7 @@ fn categorical_col_model<R: rand::Rng>(
                 .map(|val| val.as_ref().map(|s| map.ix(s).unwrap() as u8))
                 .collect()
         }
-        (ValueMap::U8(_), dt) if is_categorical_int_dtype(dt) => {
+        (ValueMap::UInt(_), dt) if is_categorical_int_dtype(dt) => {
             crate::codebook::data::series_to_opt_vec!(srs, u8)
         }
         (ValueMap::Bool, DataType::Boolean) => srs

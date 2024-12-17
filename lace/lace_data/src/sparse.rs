@@ -269,7 +269,7 @@ impl<T: Clone> SparseContainer<T> {
     }
 }
 
-impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
+impl<T: Clone> Container<T> for SparseContainer<T> {
     fn get_slices(&self) -> Vec<(usize, &[T])> {
         self.data
             .iter()
