@@ -281,7 +281,7 @@ pub(crate) fn vec_to_srs(
             let repr = CategoricalRepr::from_codebook(col_ix, codebook);
             match repr {
                 CategoricalRepr::Int => {
-                    Ok(cat_srs_from_vec!(values, name, u8, U8))
+                    Ok(cat_srs_from_vec!(values, name, u32, UInt))
                 }
                 CategoricalRepr::String => {
                     Ok(cat_srs_from_vec!(values, name, String, String))
@@ -347,7 +347,7 @@ pub(crate) fn simulate_to_df(
                 let repr = CategoricalRepr::from_codebook(*col_ix, codebook);
                 match repr {
                     CategoricalRepr::Int => {
-                        Ok(cat_srs_from_simulate!(values, i, name, u8, U8))
+                        Ok(cat_srs_from_simulate!(values, i, name, u32, UInt))
                     }
                     CategoricalRepr::String => Ok(cat_srs_from_simulate!(
                         values, i, name, String, String
@@ -486,7 +486,7 @@ impl CategoricalRepr {
         if let Some(value_map) = codebook.value_map(col_ix) {
             match value_map {
                 ValueMap::String(_) => CategoricalRepr::String,
-                ValueMap::U8(_) => CategoricalRepr::Int,
+                ValueMap::UInt(_) => CategoricalRepr::Int,
                 ValueMap::Bool => CategoricalRepr::Bool,
             }
         } else {
@@ -500,7 +500,7 @@ pub(crate) fn datum_to_value(datum: Datum) -> PyResult<Py<PyAny>> {
     Python::with_gil(|py| match datum {
         Datum::Continuous(x) => Ok(x.to_object(py)),
         Datum::Count(x) => Ok(x.to_object(py)),
-        Datum::Categorical(Category::U8(x)) => Ok(x.to_object(py)),
+        Datum::Categorical(Category::UInt(x)) => Ok(x.to_object(py)),
         Datum::Categorical(Category::Bool(x)) => Ok(x.to_object(py)),
         Datum::Categorical(Category::String(x)) => Ok(x.to_object(py)),
         Datum::Missing => Ok(NONE.to_object(py)),
@@ -518,8 +518,8 @@ fn pyany_to_category(val: &Bound<PyAny>) -> PyResult<lace::Category> {
 
     match name.as_ref() {
         "int" => {
-            let x = val.downcast::<PyInt>()?.extract::<u8>()?;
-            Ok(Category::U8(x))
+            let x = val.downcast::<PyInt>()?.extract::<u32>()?;
+            Ok(Category::UInt(x))
         }
         "bool" => {
             let x = val.downcast::<PyBool>()?.extract::<bool>()?;
@@ -530,8 +530,8 @@ fn pyany_to_category(val: &Bound<PyAny>) -> PyResult<lace::Category> {
             Ok(Category::String(x))
         }
         "numpy.int64" | "numpy.int32" | "numpy.int16" | "numpy.int8" => {
-            let x = val.call_method("__int__", (), None)?.extract::<u8>()?;
-            Ok(Category::U8(x))
+            let x = val.call_method("__int__", (), None)?.extract::<u32>()?;
+            Ok(Category::UInt(x))
         }
         _ => Err(PyErr::new::<PyValueError, _>(format!(
             "Cannot convert {name} into Category"

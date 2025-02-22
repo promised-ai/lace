@@ -1381,7 +1381,7 @@ impl CoreEngine {
                     PyIndexError::new_err(msg)
                 })
                 .map(|vm| match vm {
-                    Vm::U8(k) => (0..*k as u64)
+                    Vm::UInt(k) => (0..*k as u64)
                         .map(|ix| ix.into_py(py))
                         .collect::<Vec<_>>(),
                     Vm::Bool => vec![false.into_py(py), true.into_py(py)],
@@ -1429,7 +1429,7 @@ impl CoreEngine {
 #[pyfunction]
 pub fn infer_srs_metadata(
     srs: PySeries,
-    cat_cutoff: u8,
+    cat_cutoff: u32,
     no_hypers: bool,
 ) -> PyResult<metadata::ColumnMetadata> {
     lace::codebook::data::series_to_colmd(&srs.0, Some(cat_cutoff), no_hypers)
