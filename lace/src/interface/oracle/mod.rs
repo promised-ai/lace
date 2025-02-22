@@ -211,7 +211,7 @@ mod tests {
     use lace_cc::feature::{FType, Feature};
     use lace_codebook::{ColMetadata, ColType};
     use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
-    use lace_stats::rv::traits::Rv;
+    use lace_stats::rv::traits::{HasDensity, Sampleable};
     use lace_stats::MixtureType;
     use rand::Rng;
     use std::collections::BTreeMap;
@@ -416,7 +416,7 @@ mod tests {
         };
 
         for x in 0..4 {
-            let y = Datum::Categorical((x as u8).into());
+            let y = Datum::Categorical((x as u32).into());
             let logp_mm = mm.ln_f(&(x as usize));
             let logp_or = oracle
                 .logp(&[2], &[vec![y]], &Given::<usize>::Nothing, None)
@@ -489,7 +489,7 @@ mod tests {
                     };
                     for val in 0..2 {
                         let logp_mm = mm.ln_f(&(val as usize));
-                        let datum = Datum::Categorical((val as u8).into());
+                        let datum = Datum::Categorical((val as u32).into());
                         let logp_or = oracle
                             .logp(
                                 &[col_ix],

@@ -253,7 +253,7 @@ mod test {
     fn mnar_col() -> (MissingNotAtRandom, Assignment) {
         let n: usize = 100;
         let mut data = SparseContainer::from(
-            (0..4_u8).cycle().take(n).collect::<Vec<u8>>(),
+            (0..4_u32).cycle().take(n).collect::<Vec<u32>>(),
         );
         let _ = data.set_missing(50);
         let _ = data.set_missing(51);
@@ -289,6 +289,7 @@ mod test {
 
     #[test]
     fn cpnt_logp_present() {
+        use lace_consts::rv::misc::LogSumExp;
         let (col, _) = mnar_col();
 
         let f0 = col.cpnt_logp(&Datum::Categorical(Category::UInt(0)), 0);
@@ -299,7 +300,7 @@ mod test {
         println!("{:?}", [f0, f1, f2, f3]);
 
         assert_relative_eq!(
-            lace_consts::rv::misc::logsumexp(&[f0, f1, f2, f3]).exp(),
+            [f0, f1, f2, f3].iter().logsumexp().exp(),
             1.0,
             epsilon = 1e-10
         )
@@ -318,10 +319,10 @@ mod test {
     fn cpnt_likelihood_present() {
         let (col, _) = mnar_col();
 
-        let f0 = col.cpnt_likelihood(&Datum::Categorical(0_u8.into()), 0);
-        let f1 = col.cpnt_likelihood(&Datum::Categorical(1_u8.into()), 0);
-        let f2 = col.cpnt_likelihood(&Datum::Categorical(2_u8.into()), 0);
-        let f3 = col.cpnt_likelihood(&Datum::Categorical(3_u8.into()), 0);
+        let f0 = col.cpnt_likelihood(&Datum::Categorical(0_u32.into()), 0);
+        let f1 = col.cpnt_likelihood(&Datum::Categorical(1_u32.into()), 0);
+        let f2 = col.cpnt_likelihood(&Datum::Categorical(2_u32.into()), 0);
+        let f3 = col.cpnt_likelihood(&Datum::Categorical(3_u32.into()), 0);
 
         assert_relative_eq!(f0 + f1 + f2 + f3, 1.0, epsilon = 1e-10)
     }
@@ -370,12 +371,12 @@ mod test {
 
         let ix = 1;
 
-        assert_eq!(col.fx.datum(ix), Datum::Categorical(1_u8.into()));
+        assert_eq!(col.fx.datum(ix), Datum::Categorical(1_u32.into()));
         assert_eq!(col.present.data.get(ix), Some(true));
 
-        col.insert_datum(ix, Datum::Categorical(0_u8.into()));
+        col.insert_datum(ix, Datum::Categorical(0_u32.into()));
 
-        assert_eq!(col.fx.datum(ix), Datum::Categorical(0_u8.into()));
+        assert_eq!(col.fx.datum(ix), Datum::Categorical(0_u32.into()));
         assert_eq!(col.present.data.get(ix), Some(true));
     }
 
@@ -385,7 +386,7 @@ mod test {
 
         let ix = 1;
 
-        assert_eq!(col.fx.datum(ix), Datum::Categorical(1_u8.into()));
+        assert_eq!(col.fx.datum(ix), Datum::Categorical(1_u32.into()));
         assert_eq!(col.present.data.get(ix), Some(true));
 
         col.insert_datum(ix, Datum::Missing);
@@ -403,9 +404,9 @@ mod test {
         assert_eq!(col.fx.datum(ix), Datum::Missing);
         assert_eq!(col.present.data.get(ix), Some(false));
 
-        col.insert_datum(ix, Datum::Categorical(0_u8.into()));
+        col.insert_datum(ix, Datum::Categorical(0_u32.into()));
 
-        assert_eq!(col.fx.datum(ix), Datum::Categorical(0_u8.into()));
+        assert_eq!(col.fx.datum(ix), Datum::Categorical(0_u32.into()));
         assert_eq!(col.present.data.get(ix), Some(true));
     }
 

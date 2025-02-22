@@ -210,7 +210,7 @@ pub struct DatalessView {
 #[serde(deny_unknown_fields)]
 pub enum DatalessColModel {
     Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NixHyper>),
-    Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
+    Categorical(DatalessColumn<u32, Categorical, SymmetricDirichlet, CsdHyper>),
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(DatalessMissingNotAtRandom),
 }
@@ -274,8 +274,8 @@ where
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: LaceStat,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub id: usize,
     #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
@@ -307,7 +307,7 @@ macro_rules! col2dataless {
 }
 
 col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
-col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+col2dataless!(u32, Categorical, SymmetricDirichlet, CsdHyper);
 col2dataless!(u32, Poisson, Gamma, PgHyper);
 col2dataless!(bool, Bernoulli, Beta, ());
 
@@ -318,8 +318,8 @@ where
     Fx::Stat: LaceStat,
     Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    Pr::MCache: Clone + std::fmt::Debug,
+    Pr::PpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>;
 
 macro_rules! dataless2col {
@@ -345,7 +345,7 @@ macro_rules! dataless2col {
 }
 
 dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
-dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+dataless2col!(u32, Categorical, SymmetricDirichlet, CsdHyper);
 dataless2col!(u32, Poisson, Gamma, PgHyper);
 dataless2col!(bool, Bernoulli, Beta, ());
 

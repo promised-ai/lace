@@ -13,9 +13,11 @@ use crate::codebook::Codebook;
 use crate::stats::rv::dist::{
     Bernoulli, Categorical, Gaussian, Mixture, Poisson,
 };
-use crate::stats::rv::traits::{Entropy, Mode, QuadBounds, Rv, Variance};
+use crate::stats::rv::traits::{
+    Entropy, HasDensity, Mode, QuadBounds, Sampleable, Variance,
+};
 use crate::stats::MixtureType;
-use lace_consts::rv::misc::logsumexp;
+use lace_consts::rv::misc::LogSumExp;
 use lace_data::{Category, Datum};
 use lace_utils::{argmax, transpose};
 
@@ -283,7 +285,7 @@ where
                 );
                 self.state_logps[i] = logp;
             });
-        let logp = logsumexp(&self.state_logps) - ln_n;
+        let logp = self.state_logps.iter().logsumexp() - ln_n;
         if self.scaled {
             // Geometric mean
             Some(logp / self.col_ixs.len() as f64)
@@ -474,7 +476,7 @@ fn single_view_weights(
                     );
                 }
             }
-            let z = logsumexp(&weights);
+            let z = weights.iter().logsumexp();
             weights.iter_mut().for_each(|w| *w -= z);
         }
         Given::Nothing => (),
@@ -560,7 +562,7 @@ pub fn state_logp(
 
             // normalize view weights
             for weights in view_weights.values_mut() {
-                let logz = logsumexp(weights);
+                let logz = weights.iter().logsumexp();
                 weights.iter_mut().for_each(|w| *w -= logz);
             }
             vals.iter()
@@ -598,7 +600,10 @@ fn single_val_logp(
             );
         });
 
-    view_weights.values().map(|logps| logsumexp(logps)).sum()
+    view_weights
+        .values()
+        .map(|logps| logps.iter().logsumexp())
+        .sum()
 }
 pub fn state_likelihood(
     state: &State,
@@ -697,11 +702,7 @@ pub fn continuous_impute(
     if cpnts.len() == 1 {
         cpnts[0].mu()
     } else {
-        let f = |x: f64| {
-            let logfs: Vec<f64> =
-                cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).collect();
-            -logsumexp(&logfs)
-        };
+        let f = |x: f64| -cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).logsumexp();
 
         let bounds = impute_bounds(states, col_ix);
         let n_grid = 100;
@@ -728,11 +729,7 @@ pub fn categorical_impute(
 
     let k = cpnts[0].k();
     let fs: Vec<f64> = (0..k)
-        .map(|x| {
-            let logfs: Vec<f64> =
-                cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).collect();
-            logsumexp(&logfs)
-        })
+        .map(|x| cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).logsumexp())
         .collect();
     argmax(&fs) as u32
 }
@@ -991,13 +988,11 @@ pub fn categorical_gaussian_entropy_dual(
                     });
                     // This does manually what state_logp does, but this is
                     // faster because it's less general
-                    let cpnts: Vec<f64> = dep_cat_fs
+                    let ln_f = dep_cat_fs
                         .iter()
                         .zip(ln_fys)
                         .map(|(w, g)| w + *g)
-                        .collect();
-
-                    let ln_f = logsumexp(&cpnts);
+                        .logsumexp();
 
                     // If we do not have independent components, we do not have
                     // to compute the weighted sum of the two scenarios, so we
@@ -1037,10 +1032,12 @@ pub fn categorical_gaussian_entropy_dual(
 
                 // add the weighted sums of the independent-columns mixture and
                 // the dependent-columns mixture
-                let ln_f = logsumexp(&[
+                let ln_f = [
                     dep_weight.ln() + dep_cpnt,
                     (1.0 - dep_weight).ln() + ind_cpnt,
-                ]);
+                ]
+                .iter()
+                .logsumexp();
 
                 ln_f * ln_f.exp()
             };
@@ -1125,7 +1122,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(lps) - ln_n_states)
+        .map(|lps| lps.iter().logsumexp() - ln_n_states)
         .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
 }
 
@@ -1302,7 +1299,7 @@ pub fn count_entropy_dual(col_a: usize, col_b: usize, states: &[State]) -> f64 {
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(lps) - ln_n_states)
+        .map(|lps| lps.iter().logsumexp() - ln_n_states)
         .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
 }
 
@@ -1353,7 +1350,7 @@ pub fn continuous_predict(
                     .map(|(&w1, &w2)| w1 + w2)
                     .collect();
 
-                let z: f64 = logsumexp(&mm_weights);
+                let z: f64 = mm_weights.iter().logsumexp();
                 mm_weights.iter_mut().for_each(|w| *w = (*w - z).exp());
 
                 match state.views[view_ix].ftrs[&col_ix].to_mixture(mm_weights)
@@ -1421,7 +1418,7 @@ pub fn categorical_predict(
     let f = |x: u32| {
         let y: Vec<Vec<Datum>> =
             vec![vec![Datum::Categorical(Category::UInt(x))]];
-        let scores: Vec<f64> = states
+        states
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
@@ -1434,8 +1431,7 @@ pub fn categorical_predict(
                     false,
                 )[0]
             })
-            .collect();
-        logsumexp(&scores)
+            .logsumexp()
     };
 
     let k: u32 = match states[0].feature(col_ix) {
@@ -1465,7 +1461,7 @@ pub fn count_predict(
 
     let ln_fx = |x: u32| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Count(x)]];
-        let scores: Vec<f64> = states
+        states
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
@@ -1478,8 +1474,7 @@ pub fn count_predict(
                     false,
                 )[0]
             })
-            .collect();
-        logsumexp(&scores)
+            .logsumexp()
     };
 
     let (lower, upper) = {
@@ -1513,7 +1508,7 @@ macro_rules! predunc_arm {
                 let mut mixture: Mixture<$cpnt_type> =
                     state.feature_as_mixture($col_ix).into();
 
-                let z = logsumexp(&weights);
+                let z = weights.iter().logsumexp();
 
                 let new_weights =
                     weights.iter().map(|w| (w - z).exp()).collect();
@@ -1569,7 +1564,7 @@ pub(crate) fn mnar_uncertainty(
                     let mut weights =
                         single_view_weights(state, view_ix, given);
                     // exp and normalize the weights so they sum to 1
-                    let z = logsumexp(&weights);
+                    let z = weights.iter().logsumexp();
                     weights
                         .drain(..)
                         .map(|ln_w| (ln_w - z).exp())
@@ -1744,7 +1739,7 @@ mod tests {
 
         transpose(&logps)
             .iter()
-            .map(|lps| logsumexp(lps) - ln_n_states)
+            .map(|lps| lps.iter().logsumexp() - ln_n_states)
             .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
     }
 
@@ -1767,7 +1762,7 @@ mod tests {
         let target = {
             let mut unnormed_targets =
                 vec![-2.857_054_917_013_031_5, -16.598_938_533_204_67];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             unnormed_targets.iter_mut().for_each(|w| *w -= z);
             unnormed_targets
         };
@@ -1857,7 +1852,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-3.158_958_368_120_129, -1.926_578_447_516_985];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights_0[0], targets[0], epsilon = TOL);
@@ -1867,7 +1862,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-4.095_863_302_766_923, -0.417_781_136_933_142_9];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights_1[0], targets[0], epsilon = TOL);
@@ -1913,7 +1908,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-5.669_175_767_690_254, -9.304_554_786_193_446];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights_0[0], targets[0], epsilon = TOL);
@@ -1941,7 +1936,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-5.669_175_767_690_254, -9.304_554_786_193_446];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights[&0][0], targets[0], epsilon = TOL);
@@ -1951,7 +1946,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-4.095_863_302_766_923, -0.417_781_136_933_142_9];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights[&1][0], targets[0], epsilon = TOL);

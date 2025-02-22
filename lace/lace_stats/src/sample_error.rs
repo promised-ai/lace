@@ -143,9 +143,9 @@ where
     }
 }
 
-impl SampleError<u8> for Mixture<Categorical> {
+impl SampleError<u32> for Mixture<Categorical> {
     // Compute the error between the empirical and true CDF
-    fn sample_error(&self, xs: &[u8]) -> (f64, f64) {
+    fn sample_error(&self, xs: &[u32]) -> (f64, f64) {
         let k = self.components()[0].k();
 
         let cdf = {
@@ -161,7 +161,7 @@ impl SampleError<u8> for Mixture<Categorical> {
 
         let (error, centroid) =
             cdf.iter().enumerate().fold((0.0, 0.0), |acc, (ix, f)| {
-                let x = ix as u8;
+                let x = ix as u32;
                 let cdf_true = self.cdf(&x);
                 let err = (f - cdf_true).abs();
                 (acc.0 + err, err.mul_add(cdf_true, acc.1))
@@ -175,6 +175,7 @@ impl SampleError<u8> for Mixture<Categorical> {
 mod tests {
     use super::*;
     use crate::rv::dist::{Categorical, Gaussian};
+    use crate::rv::traits::Sampleable;
     use approx::*;
 
     const N_TRIES: usize = 5;
@@ -201,8 +202,8 @@ mod tests {
     }
 
     #[test]
-    fn empirical_u8_binary() {
-        let xs: Vec<u8> = vec![0, 0, 1, 1, 1];
+    fn empirical_u32_binary() {
+        let xs: Vec<u32> = vec![0, 0, 1, 1, 1];
         let empirical = EmpiricalDist::new(xs);
 
         assert_eq!(empirical.xs, vec![0, 1]);
@@ -270,7 +271,7 @@ mod tests {
 
         // CDFs = [0.25, 1.0]
         // EmpiricalF = [0.4, 1.0]
-        let xs: Vec<u8> = vec![0, 0, 1, 1, 1];
+        let xs: Vec<u32> = vec![0, 0, 1, 1, 1];
         let (error, centroid) = mixture.sample_error(&xs);
 
         // Computed these manually
@@ -285,7 +286,7 @@ mod tests {
         let mixture = Mixture::new(vec![1.0], vec![c_gen.clone()]).unwrap();
 
         let passed = (0..N_TRIES).any(|_| {
-            let xs: Vec<u8> = c_gen.sample(100, &mut rng);
+            let xs: Vec<u32> = c_gen.sample(100, &mut rng);
             let (error, _centroid) = mixture.sample_error(&xs);
 
             error < 0.05

@@ -3,6 +3,7 @@
 use lace::{Given, Row};
 use lace_codebook::{ColMetadata, ColMetadataList};
 use lace_metadata::SerializedType;
+use lace_stats::rv::traits::{HasDensity, Sampleable};
 
 use std::convert::TryInto;
 
@@ -25,7 +26,6 @@ fn empty_engine() -> lace::Engine {
 fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
     use lace_data::Datum;
     use lace_stats::rv::dist::Gaussian;
-    use lace_stats::rv::traits::Rv;
 
     let g = Gaussian::default();
     let mut values = g
@@ -35,7 +35,7 @@ fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
         .map(|(ix, x)| (ix.to_string(), Datum::Continuous(x)))
         .collect::<Vec<(String, Datum)>>();
 
-    let label = (ix % 3) as u8;
+    let label = (ix % 3) as u32;
 
     values.push((String::from("label"), Datum::Categorical(label.into())));
 
@@ -66,7 +66,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
                 k: 5,
                 hyper: Some(CsdHyper::new(2.0, 3.0)),
                 prior: None,
-                value_map: lace_codebook::ValueMap::U8(5),
+                value_map: lace_codebook::ValueMap::UInt(5),
             },
             notes: None,
             missing_not_at_random: false,

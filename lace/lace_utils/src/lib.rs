@@ -25,13 +25,13 @@ pub use unique::*;
 
 /// Iterates over a set of categorical ranges
 pub struct CategoricalCartProd {
-    ranges: Vec<u8>,
-    item: Vec<u8>,
+    ranges: Vec<u32>,
+    item: Vec<u32>,
     start: bool,
 }
 
 impl CategoricalCartProd {
-    pub fn new(ranges: Vec<u8>) -> Self {
+    pub fn new(ranges: Vec<u32>) -> Self {
         CategoricalCartProd {
             item: vec![0; ranges.len()],
             ranges,
@@ -41,7 +41,7 @@ impl CategoricalCartProd {
 }
 
 impl Iterator for CategoricalCartProd {
-    type Item = Vec<u8>;
+    type Item = Vec<u32>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.start {

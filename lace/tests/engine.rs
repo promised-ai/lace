@@ -263,15 +263,15 @@ mod insert_data {
             values: vec![
                 Value {
                     col_ix: "flys".into(),
-                    value: Datum::Categorical(1_u8.into()),
+                    value: Datum::Categorical(1_u32.into()),
                 },
                 Value {
                     col_ix: "hooves".into(),
-                    value: Datum::Categorical(1_u8.into()),
+                    value: Datum::Categorical(1_u32.into()),
                 },
                 Value {
                     col_ix: "swims".into(),
-                    value: Datum::Categorical(0_u8.into()),
+                    value: Datum::Categorical(0_u32.into()),
                 },
             ],
         }];
@@ -302,11 +302,11 @@ mod insert_data {
             let datum = engine.datum(row_ix, col_ix).unwrap();
             match col_ix {
                 // hooves
-                20 => assert_eq!(datum, Datum::Categorical(1_u8.into())),
+                20 => assert_eq!(datum, Datum::Categorical(1_u32.into())),
                 // flys
-                34 => assert_eq!(datum, Datum::Categorical(1_u8.into())),
+                34 => assert_eq!(datum, Datum::Categorical(1_u32.into())),
                 // swims
-                36 => assert_eq!(datum, Datum::Categorical(0_u8.into())),
+                36 => assert_eq!(datum, Datum::Categorical(0_u32.into())),
                 _ => assert_eq!(datum, Datum::Missing),
             }
         }
@@ -327,7 +327,7 @@ mod insert_data {
                 row_ix: "pegasus".into(),
                 values: vec![Value {
                     col_ix: "flys".into(),
-                    value: Datum::Categorical(1_u8.into()),
+                    value: Datum::Categorical(1_u32.into()),
                 }],
             }];
 
@@ -361,7 +361,7 @@ mod insert_data {
                 row_ix: "yoshi".into(),
                 values: vec![Value {
                     col_ix: "flys".into(),
-                    value: Datum::Categorical(0_u8.into()),
+                    value: Datum::Categorical(0_u32.into()),
                 }],
             }];
 
@@ -401,7 +401,7 @@ mod insert_data {
                 row_ix: "pegasus".into(),
                 values: vec![Value {
                     col_ix: "flys".into(),
-                    value: Datum::Categorical(1_u8.into()),
+                    value: Datum::Categorical(1_u32.into()),
                 }],
             }];
 
@@ -430,7 +430,7 @@ mod insert_data {
                 row_ix: "pegasus".into(),
                 values: vec![Value {
                     col_ix: "swims".into(),
-                    value: Datum::Categorical(0_u8.into()),
+                    value: Datum::Categorical(0_u32.into()),
                 }],
             }];
 
@@ -464,13 +464,13 @@ mod insert_data {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "flys".into(),
-                value: Datum::Categorical(0_u8.into()),
+                value: Datum::Categorical(0_u32.into()),
             }],
         }];
 
         assert_eq!(
             engine.datum(29, 34).unwrap(),
-            Datum::Categorical(1_u8.into())
+            Datum::Categorical(1_u32.into())
         );
 
         let actions = engine
@@ -494,7 +494,7 @@ mod insert_data {
 
         assert_eq!(
             engine.datum(29, 34).unwrap(),
-            Datum::Categorical(0_u8.into())
+            Datum::Categorical(0_u32.into())
         );
     }
 
@@ -514,7 +514,7 @@ mod insert_data {
 
         assert_eq!(
             engine.datum(29, 34).unwrap(),
-            Datum::Categorical(1_u8.into())
+            Datum::Categorical(1_u32.into())
         );
 
         let actions = engine
@@ -548,7 +548,7 @@ mod insert_data {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
-                value: Datum::Categorical(1_u8.into()),
+                value: Datum::Categorical(1_u32.into()),
             }],
         }];
 
@@ -557,7 +557,7 @@ mod insert_data {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: Some(CsdHyper::default()),
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
                 prior: None,
             },
             notes: None,
@@ -590,7 +590,7 @@ mod insert_data {
         for row_ix in 0..engine.n_rows() {
             let datum = engine.datum(row_ix, 85).unwrap();
             if row_ix == 29 {
-                assert_eq!(datum, Datum::Categorical(1_u8.into()));
+                assert_eq!(datum, Datum::Categorical(1_u32.into()));
             } else {
                 assert_eq!(datum, Datum::Missing);
             }
@@ -606,7 +606,7 @@ mod insert_data {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
-                value: Datum::Categorical(1_u8.into()),
+                value: Datum::Categorical(1_u32.into()),
             }],
         }];
 
@@ -616,7 +616,7 @@ mod insert_data {
                 k: 2,
                 // do not define hyper
                 hyper: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
                 // but do define prior
                 prior: Some(
                     lace_stats::rv::dist::SymmetricDirichlet::new(0.5, 2)
@@ -660,7 +660,7 @@ mod insert_data {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
-                value: Datum::Categorical(1_u8.into()),
+                value: Datum::Categorical(1_u32.into()),
             }],
         }];
 
@@ -670,7 +670,7 @@ mod insert_data {
                 k: 2,
                 // do not define hyper
                 hyper: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
                 // and do define prior
                 prior: None,
             },
@@ -713,7 +713,7 @@ mod insert_data {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
                 prior: None,
             },
             notes: None,
@@ -762,7 +762,7 @@ mod insert_data {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
-                value: Datum::Categorical(1_u8.into()),
+                value: Datum::Categorical(1_u32.into()),
             }],
         }];
 
@@ -772,7 +772,7 @@ mod insert_data {
                 k: 2,
                 hyper: Some(CsdHyper::default()),
                 prior: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
             },
             notes: None,
             missing_not_at_random: false,
@@ -803,7 +803,7 @@ mod insert_data {
         for row_ix in 0..engine.n_rows() {
             let datum = engine.datum(row_ix, 85).unwrap();
             if row_ix == 50 {
-                assert_eq!(datum, Datum::Categorical(1_u8.into()));
+                assert_eq!(datum, Datum::Categorical(1_u32.into()));
             } else {
                 assert_eq!(datum, Datum::Missing);
             }
@@ -812,7 +812,7 @@ mod insert_data {
         for col_ix in 0..engine.n_cols() {
             let datum = engine.datum(50, col_ix).unwrap();
             if col_ix == 85 {
-                assert_eq!(datum, Datum::Categorical(1_u8.into()));
+                assert_eq!(datum, Datum::Categorical(1_u32.into()));
             } else {
                 assert_eq!(datum, Datum::Missing);
             }
@@ -827,13 +827,13 @@ mod insert_data {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "flys".into(),
-                value: Datum::Categorical(0_u8.into()),
+                value: Datum::Categorical(0_u32.into()),
             }],
         }];
 
         assert_eq!(
             engine.datum(29, 34).unwrap(),
-            Datum::Categorical(1_u8.into())
+            Datum::Categorical(1_u32.into())
         );
 
         let result = engine.insert_data(
@@ -859,13 +859,13 @@ mod insert_data {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "flys".into(),
-                value: Datum::Categorical(0_u8.into()),
+                value: Datum::Categorical(0_u32.into()),
             }],
         }];
 
         assert_eq!(
             engine.datum(29, 34).unwrap(),
-            Datum::Categorical(1_u8.into())
+            Datum::Categorical(1_u32.into())
         );
 
         let result = engine.insert_data(
@@ -891,7 +891,7 @@ mod insert_data {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
-                value: Datum::Categorical(1_u8.into()),
+                value: Datum::Categorical(1_u32.into()),
             }],
         }];
 
@@ -900,7 +900,7 @@ mod insert_data {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
                 prior: None,
             },
             notes: None,
@@ -931,7 +931,7 @@ mod insert_data {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
-                value: Datum::Categorical(1_u8.into()),
+                value: Datum::Categorical(1_u32.into()),
             }],
         }];
 
@@ -941,7 +941,7 @@ mod insert_data {
                 k: 2,
                 hyper: None,
                 prior: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
             },
             notes: None,
             missing_not_at_random: false,
@@ -998,7 +998,7 @@ mod insert_data {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
-                value: Datum::Categorical(1_u8.into()),
+                value: Datum::Categorical(1_u32.into()),
             }],
         }];
 
@@ -1008,7 +1008,7 @@ mod insert_data {
                 k: 2,
                 hyper: Some(CsdHyper::default()),
                 prior: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
             },
             notes: None,
             missing_not_at_random: false,
@@ -1110,8 +1110,8 @@ mod insert_data {
         let new_row: Row<&str, &str> = (
             "tribble",
             vec![
-                ("hunter", Datum::Categorical(0_u8.into())),
-                ("fierce", Datum::Categorical(1_u8.into())),
+                ("hunter", Datum::Categorical(0_u32.into())),
+                ("fierce", Datum::Categorical(1_u32.into())),
             ],
         )
             .into();
@@ -1137,11 +1137,11 @@ mod insert_data {
         assert_eq!(engine.n_cols(), 85);
         assert_eq!(
             engine.datum(50, 58).unwrap(),
-            Datum::Categorical(0_u8.into())
+            Datum::Categorical(0_u32.into())
         );
         assert_eq!(
             engine.datum(50, 78).unwrap(),
-            Datum::Categorical(1_u8.into())
+            Datum::Categorical(1_u32.into())
         );
         assert_eq!(engine.datum(50, 11).unwrap(), Datum::Missing);
 
@@ -1161,8 +1161,8 @@ mod insert_data {
         assert_eq!(engine.n_cols(), 85);
 
         let new_col: Vec<Row<&str, &str>> = vec![
-            ("pig", vec![("cuddly", Datum::Categorical(1_u8.into()))]).into(),
-            ("wolf", vec![("cuddly", Datum::Categorical(0_u8.into()))]).into(),
+            ("pig", vec![("cuddly", Datum::Categorical(1_u32.into()))]).into(),
+            ("wolf", vec![("cuddly", Datum::Categorical(0_u32.into()))]).into(),
         ];
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
@@ -1171,7 +1171,7 @@ mod insert_data {
                 k: 2,
                 hyper: Some(CsdHyper::default()),
                 prior: None,
-                value_map: ValueMap::U8(2),
+                value_map: ValueMap::UInt(2),
             },
             notes: None,
             missing_not_at_random: false,
@@ -1199,11 +1199,11 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 50);
         assert_eq!(
             engine.datum(41, 85).unwrap(),
-            Datum::Categorical(1_u8.into())
+            Datum::Categorical(1_u32.into())
         );
         assert_eq!(
             engine.datum(31, 85).unwrap(),
-            Datum::Categorical(0_u8.into())
+            Datum::Categorical(0_u32.into())
         );
         assert_eq!(engine.datum(32, 85).unwrap(), Datum::Missing);
         assert!(engine.codebook.col_metadata.contains_key("cuddly"));
@@ -1232,8 +1232,8 @@ mod insert_data {
         let new_row: Row<&str, &str> = (
             "tribble",
             vec![
-                ("hunter", Datum::Categorical(0_u8.into())),
-                ("fierce", Datum::Categorical(1_u8.into())),
+                ("hunter", Datum::Categorical(0_u32.into())),
+                ("fierce", Datum::Categorical(1_u32.into())),
             ],
         )
             .into();
@@ -1245,7 +1245,7 @@ mod insert_data {
                     k: 2,
                     hyper: Some(CsdHyper::default()),
                     prior: None,
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::UInt(2),
                 },
                 notes: None,
                 missing_not_at_random: false,
@@ -1256,7 +1256,7 @@ mod insert_data {
                     k: 2,
                     hyper: Some(CsdHyper::default()),
                     prior: None,
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::UInt(2),
                 },
                 notes: None,
                 missing_not_at_random: false,
@@ -1285,11 +1285,11 @@ mod insert_data {
         assert_eq!(engine.n_cols(), 2);
         assert_eq!(
             engine.datum(0, 0).unwrap(),
-            Datum::Categorical(0_u8.into())
+            Datum::Categorical(0_u32.into())
         );
         assert_eq!(
             engine.datum(0, 1).unwrap(),
-            Datum::Categorical(1_u8.into())
+            Datum::Categorical(1_u32.into())
         );
 
         assert_eq!(engine.codebook.row_names[0], String::from("tribble"));
@@ -1481,7 +1481,7 @@ mod insert_data {
                 row_ix: "vampire".into(),
                 values: vec![Value {
                     col_ix: "fast".into(),
-                    value: Datum::Categorical(1_u8.into()),
+                    value: Datum::Categorical(1_u32.into()),
                 }],
             },
             Row {
@@ -1544,7 +1544,7 @@ mod insert_data {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
-                value: Datum::Categorical(2_u8.into()),
+                value: Datum::Categorical(2_u32.into()),
             }],
         }];
 
@@ -1563,7 +1563,7 @@ mod insert_data {
 
         let x = engine.datum("pig", "fierce").unwrap();
 
-        assert_eq!(x, Datum::Categorical(2_u8.into()));
+        assert_eq!(x, Datum::Categorical(2_u32.into()));
         assert!(actions.new_rows().is_none());
         assert!(actions.new_cols().is_none());
 
@@ -1579,7 +1579,7 @@ mod insert_data {
                 assert_eq!(col_name.clone(), String::from("fierce"));
                 assert_eq!(
                     *value_map_extension,
-                    ValueMapExtension::U8 { new_max: 3 }
+                    ValueMapExtension::UInt { new_max: 3 }
                 );
             } else {
                 panic!("Wrong kind of support extension");
@@ -1597,7 +1597,7 @@ mod insert_data {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
-                value: Datum::Categorical(2_u8.into()),
+                value: Datum::Categorical(2_u32.into()),
             }],
         }];
 
@@ -1627,7 +1627,7 @@ mod insert_data {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
-                value: Datum::Categorical(2_u8.into()),
+                value: Datum::Categorical(2_u32.into()),
             }],
         }];
 
@@ -1663,7 +1663,7 @@ mod insert_data {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
-                value: Datum::Categorical(2_u8.into()),
+                value: Datum::Categorical(2_u32.into()),
             }],
         }];
 
@@ -1690,7 +1690,7 @@ mod insert_data {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
-                value: Datum::Categorical(2_u8.into()),
+                value: Datum::Categorical(2_u32.into()),
             }],
         }];
 
@@ -1733,7 +1733,7 @@ mod insert_data {
                     row_ix: "pig".into(),
                     values: vec![Value {
                         col_ix: "fierce".into(),
-                        value: Datum::Categorical(2_u8.into()),
+                        value: Datum::Categorical(2_u32.into()),
                     }],
                 }];
 
@@ -2055,8 +2055,8 @@ mod insert_data {
         let fishy = Row::from((
             String::from("fishy"),
             vec![
-                (String::from("swims"), Datum::Categorical(1_u8.into())),
-                (String::from("flippers"), Datum::Categorical(1_u8.into())),
+                (String::from("swims"), Datum::Categorical(1_u32.into())),
+                (String::from("flippers"), Datum::Categorical(1_u32.into())),
             ],
         ));
 
@@ -2077,16 +2077,16 @@ mod insert_data {
         let fishy = Row::from((
             String::from("fishy"),
             vec![
-                (String::from("swims"), Datum::Categorical(1_u8.into())),
-                (String::from("flippers"), Datum::Categorical(1_u8.into())),
+                (String::from("swims"), Datum::Categorical(1_u32.into())),
+                (String::from("flippers"), Datum::Categorical(1_u32.into())),
             ],
         ));
 
         let rock = Row::from((
             String::from("rock"),
             vec![
-                (String::from("swims"), Datum::Categorical(0_u8.into())),
-                (String::from("flippers"), Datum::Categorical(0_u8.into())),
+                (String::from("swims"), Datum::Categorical(0_u32.into())),
+                (String::from("flippers"), Datum::Categorical(0_u32.into())),
             ],
         ));
 
@@ -2111,11 +2111,11 @@ mod insert_data {
                     vec![
                         (
                             String::from("swims"),
-                            Datum::Categorical(1_u8.into()),
+                            Datum::Categorical(1_u32.into()),
                         ),
                         (
                             String::from("flippers"),
-                            Datum::Categorical(1_u8.into()),
+                            Datum::Categorical(1_u32.into()),
                         ),
                     ],
                 ));
@@ -2125,11 +2125,11 @@ mod insert_data {
                     vec![
                         (
                             String::from("swims"),
-                            Datum::Categorical(0_u8.into()),
+                            Datum::Categorical(0_u32.into()),
                         ),
                         (
                             String::from("flippers"),
-                            Datum::Categorical(0_u8.into()),
+                            Datum::Categorical(0_u32.into()),
                         ),
                     ],
                 ));
@@ -2282,20 +2282,20 @@ mod del_rows {
         let mut engine = Example::Animals.engine().unwrap();
         let starting_rows = engine.n_rows();
 
-        let first_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
+        let first_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(0, ix).to_u32_opt().unwrap())
             .collect();
 
-        let second_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(1, ix).to_u8_opt().unwrap())
+        let second_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(1, ix).to_u32_opt().unwrap())
             .collect();
 
         assert!(first_row.iter().zip(second_row.iter()).any(|(x, y)| x != y));
 
         engine.del_rows_at(0, 1);
 
-        let new_first_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
+        let new_first_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(0, ix).to_u32_opt().unwrap())
             .collect();
 
         assert_eq!(engine.n_rows(), starting_rows - 1);
@@ -2310,20 +2310,20 @@ mod del_rows {
         let mut engine = Example::Animals.engine().unwrap();
         let starting_rows = engine.n_rows();
 
-        let first_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
+        let first_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(0, ix).to_u32_opt().unwrap())
             .collect();
 
-        let third_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(2, ix).to_u8_opt().unwrap())
+        let third_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(2, ix).to_u32_opt().unwrap())
             .collect();
 
         assert!(first_row.iter().zip(third_row.iter()).any(|(x, y)| x != y));
 
         engine.del_rows_at(0, 2);
 
-        let new_first_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
+        let new_first_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(0, ix).to_u32_opt().unwrap())
             .collect();
 
         assert_eq!(engine.n_rows(), starting_rows - 2);
@@ -2338,12 +2338,12 @@ mod del_rows {
         let mut engine = Example::Animals.engine().unwrap();
         let n_rows = engine.n_rows();
 
-        let last_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(n_rows - 1, ix).to_u8_opt().unwrap())
+        let last_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(n_rows - 1, ix).to_u32_opt().unwrap())
             .collect();
 
-        let penultimate_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(n_rows - 2, ix).to_u8_opt().unwrap())
+        let penultimate_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(n_rows - 2, ix).to_u32_opt().unwrap())
             .collect();
 
         assert!(last_row
@@ -2353,8 +2353,8 @@ mod del_rows {
 
         engine.del_rows_at(n_rows - 1, 1);
 
-        let new_last_row: Vec<u8> = (0..engine.n_cols())
-            .map(|ix| engine.cell(n_rows - 2, ix).to_u8_opt().unwrap())
+        let new_last_row: Vec<u32> = (0..engine.n_cols())
+            .map(|ix| engine.cell(n_rows - 2, ix).to_u32_opt().unwrap())
             .collect();
 
         assert_eq!(engine.n_rows(), n_rows - 1);

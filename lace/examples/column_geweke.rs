@@ -8,7 +8,7 @@ use lace_stats::rv::dist::{
 use lace_cc::feature::geweke::ColumnGewekeSettings;
 
 type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
-type CategoricalColumn = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
+type CategoricalColumn = Column<u32, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn main() {
     let mut rng = rand::thread_rng();

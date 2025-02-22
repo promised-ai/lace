@@ -18,7 +18,7 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
 
     for _ in 0..n {
         weights.push(alpha);
-        let k = pflip(&weights, 1, rng)[0];
+        let k = pflip(&weights, Some(1.0), rng);
         asgn.push(k);
 
         if k == n_cats {

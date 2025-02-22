@@ -1,7 +1,7 @@
 //! Enumeration tests
 use lace_cc::feature::{ColModel, Column, FType};
 use lace_data::SparseContainer;
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::{HasDensity, Sampleable};
 
 /// Convert a partition with to an integer index by converting a k-length
 /// partition into a k-length base-k integer from left to right.
@@ -78,7 +78,7 @@ pub fn gen_feature_ctor<R: rand::Rng>(
                 let cat = Categorical::uniform(4);
                 let hyper = CsdHyper::default();
                 let prior = SymmetricDirichlet::new_unchecked(1.0, 4);
-                let xs: Vec<u8> = cat.sample(n_rows, &mut rng);
+                let xs: Vec<u32> = cat.sample(n_rows, &mut rng);
                 let data = SparseContainer::from(xs);
                 ColModel::Categorical(Column::new(id, data, prior, hyper))
             }

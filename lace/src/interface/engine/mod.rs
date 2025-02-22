@@ -305,7 +305,7 @@ impl Engine {
     ) -> Result<(), InsertDataError> {
         // Handle the case when we have to convert the datum to a value that can
         // be understood by the state. States currently only hold categorical
-        // data as u8, so we have to convert from String or Bool.
+        // data as u32, so we have to convert from String or Bool.
         let datum = if let Datum::Categorical(ref cat) = datum {
             let ix: usize = self
                 .codebook
@@ -324,7 +324,7 @@ impl Engine {
                         InsertDataError::CategoryNotInValueMap(cat.clone())
                     })
                 })?;
-            Datum::Categorical(Category::UInt(ix as u8))
+            Datum::Categorical(Category::UInt(ix as u32))
         } else {
             datum
         };
@@ -377,15 +377,15 @@ impl Engine {
     ///         values: vec![
     ///             Value {
     ///                 col_ix: "flys".into(),
-    ///                 value: Datum::Categorical(1_u8.into()),
+    ///                 value: Datum::Categorical(1_u32.into()),
     ///             },
     ///             Value {
     ///                 col_ix: "hooves".into(),
-    ///                 value: Datum::Categorical(1_u8.into()),
+    ///                 value: Datum::Categorical(1_u32.into()),
     ///             },
     ///             Value {
     ///                 col_ix: "swims".into(),
-    ///                 value: Datum::Categorical(0_u8.into()),
+    ///                 value: Datum::Categorical(0_u32.into()),
     ///             },
     ///         ]
     ///     }
@@ -417,8 +417,8 @@ impl Engine {
     /// use lace_stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
-    ///     ("bat", vec![("drinks+blood", Datum::Categorical(1_u8.into()))]).into(),
-    ///     ("beaver", vec![("drinks+blood", Datum::Categorical(0_u8.into()))]).into(),
+    ///     ("bat", vec![("drinks+blood", Datum::Categorical(1_u32.into()))]).into(),
+    ///     ("beaver", vec![("drinks+blood", Datum::Categorical(0_u32.into()))]).into(),
     /// ];
     ///
     /// // The partial codebook is required to define the data type and
@@ -431,7 +431,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: ValueMap::U8(2),
+    ///                 value_map: ValueMap::U32(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -466,11 +466,11 @@ impl Engine {
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![
-    ///             ("drinks+blood", Datum::Categorical(1_u8.into())),
+    ///             ("drinks+blood", Datum::Categorical(1_u32.into())),
     ///     ]).into(),
     ///     ("wolf", vec![
-    ///             ("drinks+blood", Datum::Categorical(1_u8.into())),
-    ///             ("howls+at+the+moon", Datum::Categorical(1_u8.into())),
+    ///             ("drinks+blood", Datum::Categorical(1_u32.into())),
+    ///             ("howls+at+the+moon", Datum::Categorical(1_u32.into())),
     ///     ]).into(),
     /// ];
     ///
@@ -485,7 +485,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: ValueMap::U8(2),
+    ///                 value_map: ValueMap::U32(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -496,7 +496,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: ValueMap::U8(2),
+    ///                 value_map: ValueMap::U32(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -534,11 +534,11 @@ impl Engine {
     /// let x_before = engine.datum("pig", "fierce").unwrap();
     ///
     /// // Turns out pigs are fierce.
-    /// assert_eq!(x_before, Datum::Categorical(1_u8.into()));
+    /// assert_eq!(x_before, Datum::Categorical(1_u32.into()));
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     // Inserting a 2 into a binary column
-    ///     ("pig", vec![("fierce", Datum::Categorical(2_u8.into()))]).into(),
+    ///     ("pig", vec![("fierce", Datum::Categorical(2_u32.into()))]).into(),
     /// ];
     ///
     /// let result = engine.insert_data(
@@ -552,7 +552,7 @@ impl Engine {
     /// // Make sure that the 2 exists in the table
     /// let x_after = engine.datum("pig", "fierce").unwrap();
     ///
-    /// assert_eq!(x_after, Datum::Categorical(2_u8.into()));
+    /// assert_eq!(x_after, Datum::Categorical(2_u32.into()));
     /// ```
     ///
     /// To add a category to a column with value_map
@@ -689,7 +689,7 @@ impl Engine {
     ///
     /// assert_eq!(
     ///     engine.datum("horse", "flys").unwrap(),
-    ///     Datum::Categorical(0_u8.into()),
+    ///     Datum::Categorical(0_u32.into()),
     /// );
     ///
     /// // Row and Column implement Into<TableIndex>

@@ -139,21 +139,21 @@ fn categorical_col_model<R: rand::Rng>(
     mut rng: &mut R,
 ) -> Result<ColModel, CodebookError> {
     use polars::datatypes::DataType;
-    let xs: Vec<Option<u8>> = match (value_map, srs.dtype()) {
+    let xs: Vec<Option<u32>> = match (value_map, srs.dtype()) {
         (ValueMap::String(map), DataType::String) => {
             crate::codebook::data::series_to_opt_strings!(srs)
                 .iter()
-                .map(|val| val.as_ref().map(|s| map.ix(s).unwrap() as u8))
+                .map(|val| val.as_ref().map(|s| map.ix(s).unwrap() as u32))
                 .collect()
         }
         (ValueMap::UInt(_), dt) if is_categorical_int_dtype(dt) => {
-            crate::codebook::data::series_to_opt_vec!(srs, u8)
+            crate::codebook::data::series_to_opt_vec!(srs, u32)
         }
         (ValueMap::Bool, DataType::Boolean) => srs
             .bool()?
             .into_iter()
             .map(|maybe_bool| {
-                maybe_bool.map(|b| ValueMap::Bool.ix(&b.into()).unwrap() as u8)
+                maybe_bool.map(|b| ValueMap::Bool.ix(&b.into()).unwrap() as u32)
             })
             .collect(),
         _ => {
@@ -425,7 +425,7 @@ mod tests {
                       pr_alpha:
                         shape: 1.2
                         scale: 3.4
-                    value_map: !u8 2
+                    value_map: !u32 2
                 missing_not_at_random: false
             row_names:
               - 0

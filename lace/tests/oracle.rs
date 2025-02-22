@@ -12,7 +12,7 @@ use lace::stats::prior::nix::NixHyper;
 use lace::{Given, Oracle, OracleT};
 use lace_data::{DataStore, SparseContainer};
 use lace_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
-use lace_stats::rv::traits::{Cdf, Rv};
+use lace_stats::rv::traits::{Cdf, HasDensity, Sampleable};
 use rand::Rng;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
@@ -81,7 +81,7 @@ fn dummy_codebook_from_state(state: &State) -> Codebook {
                         FType::Categorical => ColType::Categorical {
                             k: 2,
                             hyper: None,
-                            value_map: lace_codebook::ValueMap::U8(2),
+                            value_map: lace_codebook::ValueMap::UInt(2),
                             prior: None,
                         },
                         FType::Count => ColType::Count {
@@ -888,7 +888,7 @@ macro_rules! oracle_test {
                     &[1],
                     &Given::Conditions(vec![(
                         2,
-                        Datum::Categorical(1_u8.into()),
+                        Datum::Categorical(1_u32.into()),
                     )]),
                     14,
                     None,
@@ -916,7 +916,7 @@ macro_rules! oracle_test {
                     &[1],
                     &Given::Conditions(vec![(
                         4,
-                        Datum::Categorical(1_u8.into()),
+                        Datum::Categorical(1_u32.into()),
                     )]),
                     14,
                     None,
@@ -1446,7 +1446,7 @@ macro_rules! oracle_test {
 
                 assert_eq!(
                     oracle.surprisal(
-                        &Datum::Categorical(1_u8.into()),
+                        &Datum::Categorical(1_u32.into()),
                         1,
                         0,
                         None
@@ -1653,7 +1653,7 @@ macro_rules! oracle_test {
                         1,
                         &Given::Conditions(vec![(
                             0,
-                            Datum::Categorical(1_u8.into())
+                            Datum::Categorical(1_u32.into())
                         )]),
                         false,
                         None,
@@ -1861,7 +1861,7 @@ macro_rules! oracle_test {
                         vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
                         vec![
                             Datum::Continuous(4.3),
-                            Datum::Categorical(1_u8.into()),
+                            Datum::Categorical(1_u32.into()),
                         ],
                     ],
                     &Given::<usize>::Nothing,
@@ -1937,7 +1937,7 @@ macro_rules! oracle_test {
                     ],
                     &Given::Conditions(vec![(
                         2,
-                        Datum::Categorical(1_u8.into()),
+                        Datum::Categorical(1_u32.into()),
                     )]),
                     None,
                 );

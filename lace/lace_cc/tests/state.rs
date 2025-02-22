@@ -6,7 +6,7 @@ use lace_data::{FeatureData, SparseContainer};
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior_process::{Dirichlet, Process};
 use lace_stats::rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::{HasDensity, Sampleable};
 use rand::Rng;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {

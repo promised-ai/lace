@@ -29,26 +29,26 @@ impl DataStore {
         DataStore(data)
     }
 
-    // /// Get the datum at [row_ix, col_ix] as a `Datum`
-    // pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
-    //     // TODO: SparseContainer index get (xs[i]) should return an option
-    //     match self.0[&col_ix] {
-    //         FeatureData::Binary(ref xs) => {
-    //             xs.get(row_ix).map(Datum::Binary).unwrap_or(Datum::Missing)
-    //         }
-    //         FeatureData::Continuous(ref xs) => xs
-    //             .get(row_ix)
-    //             .map(Datum::Continuous)
-    //             .unwrap_or(Datum::Missing),
-    //         FeatureData::Categorical(ref xs) => xs
-    //             .get(row_ix)
-    //             .map(|x| Datum::Categorical(Category::UInt(x)))
-    //             .unwrap_or(Datum::Missing),
-    //         FeatureData::Count(ref xs) => {
-    //             xs.get(row_ix).map(Datum::Count).unwrap_or(Datum::Missing)
-    //         }
-    //     }
-    // }
+    /// Get the datum at [row_ix, col_ix] as a `Datum`
+    pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
+        // TODO: SparseContainer index get (xs[i]) should return an option
+        match self.0[&col_ix] {
+            FeatureData::Binary(ref xs) => {
+                xs.get(row_ix).map(Datum::Binary).unwrap_or(Datum::Missing)
+            }
+            FeatureData::Continuous(ref xs) => xs
+                .get(row_ix)
+                .map(Datum::Continuous)
+                .unwrap_or(Datum::Missing),
+            FeatureData::Categorical(ref xs) => xs
+                .get(row_ix)
+                .map(|x| Datum::Categorical(Category::UInt(x)))
+                .unwrap_or(Datum::Missing),
+            FeatureData::Count(ref xs) => {
+                xs.get(row_ix).map(Datum::Count).unwrap_or(Datum::Missing)
+            }
+        }
+    }
 }
 
 #[cfg(test)]

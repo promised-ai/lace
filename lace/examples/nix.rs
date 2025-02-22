@@ -1,5 +1,5 @@
 use lace_stats::rv::dist::{Gamma, Gaussian, InvGamma, ScaledInvChiSquared};
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::{HasDensity, Sampleable};
 use lace_utils::mean_var;
 
 use plotly::layout::{Axis, GridPattern, Layout, LayoutGrid};

@@ -11,7 +11,7 @@ mod enum_test;
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use lace_stats::rv::misc::logsumexp;
+use lace_stats::rv::misc::LogSumExp;
 use rand::Rng;
 
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
@@ -206,10 +206,7 @@ fn calc_state_ln_posterior<R: Rng>(
             }
             ln_posterior.insert(part.get_index(), score);
         });
-    let norm = {
-        let scores: Vec<f64> = ln_posterior.values().copied().collect();
-        logsumexp(&scores)
-    };
+    let norm = ln_posterior.values().logsumexp();
 
     ln_posterior
         .values_mut()

@@ -17,7 +17,7 @@ use lace_cc::view::{Builder, View};
 use lace_stats::prior_process::Builder as PriorProcessBuilder;
 use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
 use lace_stats::rv::dist::{Beta, Gamma};
-use lace_stats::rv::misc::logsumexp;
+use lace_stats::rv::misc::LogSumExp;
 
 const N_TRIES: u32 = 5;
 
@@ -86,7 +86,7 @@ fn calc_partition_ln_posterior<R: Rng>(
 /// Normalize and exp the posterior computed in calc_partition_ln_posterior
 fn norm_posterior(ln_posterior: &BTreeMap<u64, f64>) -> BTreeMap<u64, f64> {
     let logps: Vec<f64> = ln_posterior.values().copied().collect();
-    let z = logsumexp(&logps);
+    let z = logps.iter().logsumexp();
     let mut normed: BTreeMap<u64, f64> = BTreeMap::new();
     for (key, lp) in ln_posterior {
         normed.insert(*key, (lp - z).exp());

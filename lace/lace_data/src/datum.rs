@@ -1,6 +1,6 @@
 use crate::Category;
 use serde::{Deserialize, Serialize};
-use std::convert::{From, TryFrom};
+use std::convert::From;
 use std::hash::Hash;
 use thiserror::Error;
 
@@ -219,67 +219,12 @@ impl Datum {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::convert::TryInto;
-
-    // TODO macro this away
-    #[test]
-    fn continuous_datum_try_into_f64() {
-        let datum = Datum::Continuous(1.1);
-        let _res: f64 = datum.try_into().unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn continuous_datum_try_into_u32_panics() {
-        let datum = Datum::Continuous(1.1);
-        let _res: u32 = datum.try_into().unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn missing_datum_try_into_u32_panics() {
-        let datum = Datum::Missing;
-        let _res: u32 = datum.try_into().unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn missing_datum_try_into_f64_panics() {
-        let datum = Datum::Missing;
-        let _res: f64 = datum.try_into().unwrap();
-    }
-
-    #[test]
-    fn categorical_datum_try_into_u32() {
-        let datum = Datum::Categorical(Category::UInt(7));
-        let _res: u32 = datum.try_into().unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn categorical_datum_try_into_f64_panics() {
-        let datum = Datum::Categorical(Category::UInt(7));
-        let _res: f64 = datum.try_into().unwrap();
-    }
 
     #[test]
     fn count_data_into_f64() {
         let datum = Datum::Count(12);
         let x = datum.to_f64_opt();
         assert_eq!(x, Some(12.0));
-    }
-
-    #[test]
-    fn count_data_try_into_u32() {
-        let datum = Datum::Count(12);
-        let _x: u32 = datum.try_into().unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn count_data_try_into_u32_fails() {
-        let datum = Datum::Count(12);
-        let _x: u32 = datum.try_into().unwrap();
     }
 
     #[test]

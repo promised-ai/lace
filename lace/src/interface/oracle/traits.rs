@@ -9,10 +9,10 @@ use crate::interface::oracle::{ConditionalEntropyType, MiComponents, MiType};
 use crate::interface::{CanOracle, Given};
 use lace_cc::feature::{FType, Feature};
 use lace_cc::state::{State, StateDiagnostics};
-use lace_consts::rv::misc::logsumexp;
+use lace_consts::rv::misc::LogSumExp;
 use lace_data::{Datum, SummaryStatistics};
 use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
-use lace_stats::rv::traits::Rv;
+use lace_stats::rv::traits::{HasDensity, Sampleable};
 use lace_stats::SampleError;
 use rand::Rng;
 use rayon::prelude::*;
@@ -1181,7 +1181,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let present = Datum::Categorical(1_u8.into());
+    /// let present = Datum::Categorical(1_u32.into());
     ///
     /// let s_pig = oracle.surprisal(
     ///     &present,
@@ -1290,7 +1290,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let x = oracle.datum("pig", "fierce").unwrap();
     ///
-    /// assert_eq!(x, Datum::Categorical(1_u8.into()));
+    /// assert_eq!(x, Datum::Categorical(1_u32.into()));
     /// ```
     ///
     /// Getting data from the satellites dataset
@@ -1361,7 +1361,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let logp_swims = oracle.logp(
     ///     &["swims"],
-    ///     &[vec![Datum::Categorical(0_u8.into())], vec![Datum::Categorical(1_u8.into())]],
+    ///     &[vec![Datum::Categorical(0_u32.into())], vec![Datum::Categorical(1_u32.into())]],
     ///     &Given::<usize>::Nothing,
     ///     None,
     /// ).unwrap();
@@ -1369,11 +1369,11 @@ pub trait OracleT: CanOracle {
     /// let logp_swims_given_flippers = oracle.logp(
     ///     &["swims"],
     ///     &[
-    ///         vec![Datum::Categorical(0_u8.into())],
-    ///         vec![Datum::Categorical(1_u8.into())]
+    ///         vec![Datum::Categorical(0_u32.into())],
+    ///         vec![Datum::Categorical(1_u32.into())]
     ///     ],
     ///     &Given::Conditions(
-    ///         vec![("flippers", Datum::Categorical(1_u8.into()))]
+    ///         vec![("flippers", Datum::Categorical(1_u32.into()))]
     ///     ),
     ///     None,
     /// ).unwrap();
@@ -1541,7 +1541,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let logp_scaled = oracle.logp_scaled(
     ///     &["swims"],
-    ///     &[vec![Datum::Categorical(0_u8.into())]],
+    ///     &[vec![Datum::Categorical(0_u32.into())]],
     ///     &Given::<usize>::Nothing,
     ///     None,
     /// ).unwrap()[0];
@@ -1679,8 +1679,8 @@ pub trait OracleT: CanOracle {
     ///
     /// let given = Given::Conditions(
     ///     vec![
-    ///         ("fierce", Datum::Categorical(1_u8.into())),
-    ///         ("fast", Datum::Categorical(1_u8.into())),
+    ///         ("fierce", Datum::Categorical(1_u32.into())),
+    ///         ("fast", Datum::Categorical(1_u32.into())),
     ///     ]
     /// );
     ///
@@ -1784,8 +1784,8 @@ pub trait OracleT: CanOracle {
     ///     true,
     /// ).unwrap();
     ///
-    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1_u8.into()));
-    /// assert_eq!(bear_swims.0, Datum::Categorical(1_u8.into()));
+    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1_u32.into()));
+    /// assert_eq!(bear_swims.0, Datum::Categorical(1_u32.into()));
     ///
     /// let dolphin_swims_unc = dolphin_swims.1.unwrap();
     /// let bear_swims_unc = bear_swims.1.unwrap();
@@ -1842,7 +1842,7 @@ pub trait OracleT: CanOracle {
             FType::Categorical => {
                 let x = utils::categorical_impute(&states, row_ix, col_ix);
                 let cat =
-                    utils::u8_to_category(x, col_ix, self.codebook()).unwrap();
+                    utils::u32_to_category(x, col_ix, self.codebook()).unwrap();
                 Datum::Categorical(cat)
             }
             FType::Count => {
@@ -2040,8 +2040,9 @@ pub trait OracleT: CanOracle {
                 }
                 FType::Categorical => {
                     let x = utils::categorical_predict(&states, col_ix, &given);
-                    let cat = utils::u8_to_category(x, col_ix, self.codebook())
-                        .unwrap();
+                    let cat =
+                        utils::u32_to_category(x, col_ix, self.codebook())
+                            .unwrap();
                     Datum::Categorical(cat)
                 }
                 FType::Count => {
@@ -2114,7 +2115,7 @@ pub trait OracleT: CanOracle {
                     .map(|(&w1, &w2)| w1 + w2)
                     .collect();
 
-                let z: f64 = logsumexp(&mm_weights);
+                let z: f64 = mm_weights.iter().logsumexp();
                 mm_weights.iter_mut().for_each(|w| *w = (*w - z).exp());
 
                 state.views[view_ix].ftrs[&col_ix].to_mixture(mm_weights)
@@ -2221,9 +2222,13 @@ pub trait OracleT: CanOracle {
                 .cell(row_ix, col_ix)
                 .to_f64_opt())
         } else if ftype.is_categorical() {
-            feature_err_arm!(self, col_ix, Categorical, u8, |row_ix, col_ix| {
-                self.cell(row_ix, col_ix).to_u8_opt()
-            })
+            feature_err_arm!(
+                self,
+                col_ix,
+                Categorical,
+                u32,
+                |row_ix, col_ix| { self.cell(row_ix, col_ix).to_u32_opt() }
+            )
         } else {
             panic!("Unsupported feature type");
         };
@@ -2316,7 +2321,7 @@ pub trait OracleT: CanOracle {
 
         let n_states = state_ixs.len();
 
-        let logps: Vec<f64> = state_ixs
+        let logp = state_ixs
             .iter()
             .map(|&ix| {
                 let state = &self.states()[ix];
@@ -2324,8 +2329,8 @@ pub trait OracleT: CanOracle {
                 let k = state.views[view_ix].asgn().asgn[row_ix];
                 state.views[view_ix].ftrs[&col_ix].cpnt_logp(&x, k)
             })
-            .collect();
-        let s = -logsumexp(&logps) + (n_states as f64).ln();
+            .logsumexp();
+        let s = -logp + (n_states as f64).ln();
         Some(s)
     }
 
