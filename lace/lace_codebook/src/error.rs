@@ -55,8 +55,10 @@ pub enum CodebookError {
     #[error("Unsupported Arrow dtype `{dtype}` for column `{col_name}`")]
     UnsupportedDataType { col_name: String, dtype: DataType },
     /// Too many distinct values for categorical column. A category is
-    /// represented by a u8, so there can only be 256 distinct values.
-    #[error("column '{col_name}' contains more than 256 categorical classes")]
+    /// represented by a u32, so there can only be u32::Max distinct values.
+    #[error(
+        "column '{col_name}' contains more than u32::MAX categorical classes"
+    )]
     CategoricalOverflow { col_name: String },
     /// The column with name appears more than once
     #[error("Column metadata error")]
