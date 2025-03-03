@@ -106,7 +106,8 @@ macro_rules! loaders {
                 let path = path.as_ref();
                 let state_ids = get_state_ids(path)?;
                 let states: Result<Vec<_>, Error> = state_ids
-                    .par_iter()
+                    // .par_iter()
+                    .iter()
                     .map(|&id| load_state(path, id, file_config))
                     .collect();
 
