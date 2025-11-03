@@ -7,14 +7,13 @@ use std::path::Path;
 use lace::cc::feature::{ColModel, Column, FType};
 use lace::cc::state::State;
 use lace::codebook::Codebook;
+use lace::data::{DataStore, SparseContainer};
 use lace::error::IndexError;
 use lace::stats::prior::nix::NixHyper;
 use lace::{Given, Oracle, OracleT};
-use lace_data::{DataStore, SparseContainer};
-use lace_stats::rand;
-use lace_stats::rand::Rng;
-use lace_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
-use lace_stats::rv::traits::{Cdf, Sampleable};
+use rand::Rng;
+use rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
+use rv::traits::{Cdf, Sampleable};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
@@ -36,8 +35,8 @@ fn gen_all_gauss_state<R: Rng>(
     for i in 0..n_cols {
         ftrs.push(gen_col(i, n_rows, &mut rng));
     }
-    let process = lace_stats::prior_process::Process::Dirichlet(
-        lace_stats::prior_process::Dirichlet::from_prior(
+    let process = lace::stats::prior_process::Process::Dirichlet(
+        lace::stats::prior_process::Dirichlet::from_prior(
             Gamma::default(),
             &mut rng,
         ),
@@ -82,7 +81,7 @@ fn dummy_codebook_from_state(state: &State) -> Codebook {
                         FType::Categorical => ColType::Categorical {
                             k: 2,
                             hyper: None,
-                            value_map: lace_codebook::ValueMap::UInt(2),
+                            value_map: lace::codebook::ValueMap::UInt(2),
                             prior: None,
                         },
                         FType::Count => ColType::Count {
@@ -672,8 +671,8 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod simulate {
             use super::*;
+            use lace::data::Datum;
             use lace::error::{GivenError, IndexError, SimulateError};
-            use lace_data::Datum;
 
             #[test]
             fn simulate_single_col_without_given_size_check() {
@@ -728,9 +727,7 @@ macro_rules! oracle_test {
                         let target = Mixture::uniform(vec![g1, g2]).unwrap();
 
                         let (_, ks_p) =
-                            lace_stats::rv::misc::ks_test(&xs, |x| {
-                                target.cdf(&x)
-                            });
+                            rv::misc::ks_test(&xs, |x| target.cdf(&x));
 
                         ks_p
                     })
@@ -1408,8 +1405,8 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod surprisal {
             use super::*;
+            use lace::data::Datum;
             use lace::error::{IndexError, SurprisalError};
-            use lace_data::Datum;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1606,9 +1603,9 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod predict {
             use super::*;
+            use lace::data::Datum;
             use lace::error::{GivenError, IndexError, PredictError};
             use lace::Given;
-            use lace_data::Datum;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1690,9 +1687,9 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod logp {
             use super::*;
+            use lace::data::Datum;
             use lace::error::{GivenError, IndexError, LogpError};
             use lace::Given;
-            use lace_data::Datum;
 
             #[test]
             fn oob_target_index_causes_error() {

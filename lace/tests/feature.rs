@@ -2,21 +2,20 @@
 extern crate approx;
 
 use std::f64::consts::LN_2;
+use std::sync::OnceLock;
 
-use lace_cc::component::ConjugateComponent;
-use lace_cc::feature::{Column, Feature};
-use lace_data::SparseContainer;
-use lace_stats::assignment::Assignment;
-use lace_stats::prior::csd::CsdHyper;
-use lace_stats::prior::nix::NixHyper;
-use lace_stats::prior_process::Builder as AssignmentBuilder;
-use lace_stats::rand;
-use lace_stats::rand::Rng;
-use lace_stats::rv::dist::{
+use lace::cc::component::ConjugateComponent;
+use lace::cc::feature::{Column, Feature};
+use lace::data::SparseContainer;
+use lace::stats::assignment::Assignment;
+use lace::stats::prior::csd::CsdHyper;
+use lace::stats::prior::nix::NixHyper;
+use lace::stats::prior_process::Builder as AssignmentBuilder;
+use rand::Rng;
+use rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
-use lace_stats::rv::traits::Sampleable;
-use std::sync::OnceLock;
+use rv::traits::Sampleable;
 
 type GaussCol = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type Cat32 = Column<u32, Categorical, SymmetricDirichlet, CsdHyper>;

@@ -57,7 +57,7 @@ impl<T: Send + Sync> Matrix<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use lace_utils::Matrix;
+    /// # use lace::utils::Matrix;
     /// let vecs: Vec<Vec<u8>> = vec![
     ///     vec![0, 1, 2],
     ///     vec![3, 4, 5],
@@ -89,7 +89,7 @@ impl<T: Send + Sync> Matrix<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use lace_utils::Matrix;
+    /// # use lace::utils::Matrix;
     /// let vecs: Vec<Vec<u8>> = vec![
     ///     vec![0, 1, 2],
     ///     vec![3, 4, 5],
@@ -126,8 +126,8 @@ impl<T: Send + Sync> Matrix<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use lace_utils::Matrix;
-    /// use lace_utils::Shape;
+    /// # use lace::utils::Matrix;
+    /// use lace::utils::Shape;
     ///
     /// let vecs: Vec<Vec<u32>> = vec![
     ///     vec![0, 1, 2],
@@ -166,7 +166,7 @@ impl<T: Send + Sync + Clone> Matrix<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use lace_utils::Matrix;
+    /// # use lace::utils::Matrix;
     /// let col: Vec<u32> = vec![0, 1, 2];
     ///
     /// let mat = Matrix::vtile(col, 12);

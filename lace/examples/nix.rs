@@ -1,7 +1,6 @@
-use lace_stats::rand;
-use lace_stats::rv::dist::{Gamma, Gaussian, InvGamma, ScaledInvChiSquared};
-use lace_stats::rv::traits::Sampleable;
-use lace_utils::mean_var;
+use lace::utils::mean_var;
+use rv::dist::{Gamma, Gaussian, InvGamma, ScaledInvChiSquared};
+use rv::traits::Sampleable;
 
 use plotly::layout::{Axis, GridPattern, Layout, LayoutGrid};
 use plotly::{Histogram, Plot};

@@ -1,13 +1,12 @@
 use std::convert::TryInto;
 
+use lace::cc::state::Builder;
+use lace::codebook::{Codebook, ColMetadata, ColType};
+use lace::data::Datum;
+use lace::stats::prior::nix::NixHyper;
 use lace::{AppendStrategy, Engine, HasData, HasStates, WriteMode};
-use lace_cc::state::Builder;
-use lace_codebook::{Codebook, ColMetadata, ColType};
-use lace_data::Datum;
-use lace_stats::prior::nix::NixHyper;
 
-use lace_stats::rand;
-use lace_stats::rand::{Rng, SeedableRng};
+use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
 fn assert_rows_eq(row_a: &[Datum], row_b: &[Datum]) {

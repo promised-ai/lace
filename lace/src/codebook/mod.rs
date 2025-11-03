@@ -11,7 +11,7 @@
 //! An Example codebook for a two-column dataset.
 //!
 //! ```
-//! # use lace_codebook::Codebook;
+//! # use lace::codebook::Codebook;
 //! use indoc::indoc;
 //!
 //! let codebook_str = indoc!("

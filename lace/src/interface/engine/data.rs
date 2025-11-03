@@ -168,7 +168,7 @@ impl<C: ColumnIndex> From<(C, Datum)> for Value<C> {
 /// ```
 /// # use lace::Row;
 /// use lace::Value;
-/// use lace_data::Datum;
+/// use lace::data::Datum;
 ///
 /// let row = Row::<&str, &str> {
 ///     row_ix: "vampire",
@@ -191,7 +191,7 @@ impl<C: ColumnIndex> From<(C, Datum)> for Value<C> {
 ///
 /// ```
 /// # use lace::Row;
-/// # use lace_data::Datum;
+/// # use lace::data::Datum;
 /// let row: Row<&str, &str>  = (
 ///     "vampire",
 ///     vec![

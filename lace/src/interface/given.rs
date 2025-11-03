@@ -26,7 +26,7 @@ impl<Ix: ColumnIndex> Given<Ix> {
     /// # Example
     ///
     /// ```
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::Given;
     /// let nothing_given = Given::<usize>::Nothing;
     ///
@@ -47,7 +47,7 @@ impl<Ix: ColumnIndex> Given<Ix> {
     /// # Example
     ///
     /// ```
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::Given;
     /// let nothing_given = Given::<usize>::Nothing;
     ///
@@ -105,7 +105,7 @@ impl<Ix: ColumnIndex> Default for Given<Ix> {
 /// # use lace::Given;
 /// # use lace::error::IntoGivenError;
 /// use std::convert::TryInto;
-/// use lace_data::Datum;
+/// use lace::Datum;
 ///
 /// let conditions_good = vec![
 ///     (0_usize, Datum::Categorical(0_u32.into())),

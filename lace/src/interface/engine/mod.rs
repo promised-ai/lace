@@ -367,7 +367,7 @@ impl Engine {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::{OracleT, HasStates};
-    /// use crate::data::Datum;
+    /// use lace::data::Datum;
     /// use lace::{Row, Value, WriteMode};
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
@@ -410,13 +410,13 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use crate::data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use crate::codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
-    /// use crate::stats::prior::csd::CsdHyper;
+    /// use lace::codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
+    /// use lace::stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![("drinks+blood", Datum::Categorical(1_u32.into()))]).into(),
@@ -458,13 +458,13 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use crate::data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use crate::codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
-    /// use crate::stats::prior::csd::CsdHyper;
+    /// use lace::codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
+    /// use lace::stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![
@@ -526,7 +526,7 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use crate::data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
@@ -561,11 +561,11 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use crate::data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::OracleT;
     /// let mut engine = Example::Satellites.engine().unwrap();
-    /// use crate::codebook::{ColMetadata, ColType, ValueMap};
+    /// use lace::codebook::{ColMetadata, ColType, ValueMap};
     /// use std::collections::HashMap;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![(
@@ -685,7 +685,7 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// use lace::{TableIndex, OracleT};
-    /// use crate::data::Datum;
+    /// use lace::data::Datum;
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
@@ -705,7 +705,7 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// # use lace::{TableIndex, OracleT, HasStates};
-    /// # use crate::data::Datum;
+    /// # use lace::data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
@@ -725,7 +725,7 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// # use lace::{TableIndex, OracleT, HasStates};
-    /// # use crate::data::Datum;
+    /// # use lace::data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);

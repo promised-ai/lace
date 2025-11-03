@@ -153,7 +153,7 @@ mod tests {
     use crate::codebook::Codebook;
     use crate::data::DataStore;
     use crate::error::IndexError;
-    use crate::interface::utils::load_states;
+    use crate::interface::oracle::utils::load_states;
     use crate::interface::{HasStates, Oracle};
     use std::path::Path;
 

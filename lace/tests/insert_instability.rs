@@ -1,16 +1,15 @@
 // This test reproduces behavior whereby inserting data into an engine without
 // running an Engine update leaves the metadata in an invalid state.
+use lace::codebook::{ColMetadata, ColMetadataList};
+use lace::metadata::SerializedType;
 use lace::{Given, Row};
-use lace_codebook::{ColMetadata, ColMetadataList};
-use lace_metadata::SerializedType;
-use lace_stats::rand;
-use lace_stats::rv::traits::Sampleable;
+use rv::traits::Sampleable;
 
 use std::convert::TryInto;
 
 fn empty_engine() -> lace::Engine {
+    use lace::codebook::Codebook;
     use lace::data::DataSource;
-    use lace_codebook::Codebook;
     use rand::SeedableRng;
     use rand_xoshiro::Xoshiro256Plus;
 
@@ -25,8 +24,8 @@ fn empty_engine() -> lace::Engine {
 }
 
 fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
-    use lace_data::Datum;
-    use lace_stats::rv::dist::Gaussian;
+    use lace::data::Datum;
+    use rv::dist::Gaussian;
 
     let g = Gaussian::default();
     let mut values = g
@@ -44,9 +43,9 @@ fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
 }
 
 fn gen_col_metadata(col_name: &str) -> ColMetadata {
-    use lace_codebook::ColType;
-    use lace_stats::prior::csd::CsdHyper;
-    use lace_stats::prior::nix::NixHyper;
+    use lace::codebook::ColType;
+    use lace::stats::prior::csd::CsdHyper;
+    use lace::stats::prior::nix::NixHyper;
 
     if col_name != "label" {
         // temporal variables
@@ -67,7 +66,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
                 k: 5,
                 hyper: Some(CsdHyper::new(2.0, 3.0)),
                 prior: None,
-                value_map: lace_codebook::ValueMap::UInt(5),
+                value_map: lace::codebook::ValueMap::UInt(5),
             },
             notes: None,
             missing_not_at_random: false,

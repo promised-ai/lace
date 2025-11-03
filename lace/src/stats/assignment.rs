@@ -299,7 +299,7 @@ impl Assignment {
     /// # Example
     ///
     /// ```
-    /// # use lace_stats::prior_process::Builder;
+    /// # use lace::stats::prior_process::Builder;
     ///
     /// let mut assignment = Builder::from_vec(vec![0, 0, 1])
     ///     .build()
@@ -360,10 +360,10 @@ pub fn lpyp(cts: &[usize], alpha: f64, d: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prior_process::Builder as AssignmentBuilder;
-    use crate::prior_process::{Dirichlet, Process};
-    use crate::rv::dist::Gamma;
+    use crate::stats::prior_process::Builder as AssignmentBuilder;
+    use crate::stats::prior_process::{Dirichlet, Process};
     use approx::*;
+    use rv::dist::Gamma;
 
     #[test]
     fn zero_count_fails_validation() {

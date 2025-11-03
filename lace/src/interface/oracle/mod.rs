@@ -209,13 +209,12 @@ mod tests {
     use super::*;
     use crate::cc::feature::{FType, Feature};
     use crate::codebook::{ColMetadata, ColType};
-    use crate::stats::rand;
-    use crate::stats::rand::Rng;
-    use crate::stats::rv::dist::{Categorical, Gaussian, Mixture};
     use crate::stats::MixtureType;
     use crate::Given;
     use crate::{Oracle, OracleT};
     use approx::*;
+    use rand::Rng;
+    use rv::dist::{Categorical, Gaussian, Mixture};
     use rv::traits::{HasDensity, Sampleable};
     use std::collections::BTreeMap;
     use std::path::Path;
@@ -239,7 +238,7 @@ mod tests {
                             FType::Categorical => ColType::Categorical {
                                 k: 4,
                                 hyper: None,
-                                value_map: lace_codebook::ValueMap::UInt(4),
+                                value_map: crate::codebook::ValueMap::UInt(4),
                                 prior: None,
                             },
                             FType::Count => ColType::Count {

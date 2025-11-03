@@ -144,7 +144,7 @@ impl Datum {
     /// # Example
     ///
     /// ```
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_f64_opt(), Some(1.2));
     /// assert_eq!(Datum::Categorical(true.into()).to_f64_opt(), Some(1.0));
     /// assert_eq!(Datum::Categorical(8_u32.into()).to_f64_opt(), Some(8.0));
@@ -171,7 +171,7 @@ impl Datum {
     /// # Example
     ///
     /// ```
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_u32_opt(), None);
     /// assert_eq!(Datum::Categorical(8_u32.into()).to_u32_opt(), Some(8));
     /// assert_eq!(Datum::Categorical(true.into()).to_u32_opt(), Some(1));

@@ -78,7 +78,7 @@ pub fn sign(x: f64) -> f64 {
 /// # Example
 ///
 /// ```rust
-/// # use lace_utils::bincount;
+/// # use lace::utils::bincount;
 /// let xs: Vec<usize> = vec![0, 0, 1, 2, 2, 2, 3];
 ///
 /// assert_eq!(bincount(&xs, 4), vec![2, 1, 3, 1]);
@@ -174,7 +174,7 @@ pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
 /// Is equivalent to `logsumexp(&vec![x, y])
 ///
 /// ```
-/// # use lace_utils::logaddexp;
+/// # use lace::utils::logaddexp;
 /// let x = -0.00231_f64;
 /// let y = -0.08484_f64;
 ///

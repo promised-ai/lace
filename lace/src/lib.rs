@@ -81,7 +81,6 @@
 //! ```rust
 //! # use lace::prelude::*;
 //! # use lace::examples::Example;
-//! # use lace_stats::rand;
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! let mut rng = rand::rng();
 //!

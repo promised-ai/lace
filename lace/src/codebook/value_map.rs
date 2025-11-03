@@ -110,9 +110,9 @@ impl ValueMap {
     /// # Examples
     ///
     /// ```
-    /// # use lace_data::Category;
+    /// # use lace::data::Category;
     /// # use std::collections::BTreeSet;
-    /// # use lace_codebook::ValueMap;
+    /// # use lace::codebook::ValueMap;
     /// let mut cats: BTreeSet<String> = BTreeSet::new();
     ///
     /// cats.insert("B".into());
@@ -146,9 +146,9 @@ impl ValueMap {
     /// # Examples
     ///
     /// ```
-    /// # use lace_data::Category;
+    /// # use lace::data::Category;
     /// # use std::collections::BTreeSet;
-    /// # use lace_codebook::ValueMap;
+    /// # use lace::codebook::ValueMap;
     /// let mut cats: BTreeSet<String> = BTreeSet::new();
     ///
     /// cats.insert("B".into());
@@ -199,9 +199,9 @@ impl ValueMap {
     /// # Examples
     ///
     /// ```
-    /// # use lace_codebook::ValueMap;
+    /// # use lace::codebook::ValueMap;
     /// use std::collections::BTreeSet;
-    /// use lace_data::Category;
+    /// use lace::data::Category;
     ///
     /// let mut cats: BTreeSet<String> = BTreeSet::new();
     ///
@@ -225,7 +225,7 @@ impl ValueMap {
     /// Integer valuemap
     ///
     /// ```
-    /// # use lace_codebook::ValueMap;
+    /// # use lace::codebook::ValueMap;
     /// let value_map_1 = ValueMap::UInt(2);
     /// let value_map_2 = ValueMap::UInt(3);
     /// let value_map_3 = ValueMap::UInt(4);
@@ -244,7 +244,7 @@ impl ValueMap {
     /// ```
     ///
     /// ```
-    /// # use lace_codebook::ValueMap;
+    /// # use lace::codebook::ValueMap;
     /// let value_map = ValueMap::Bool;
     ///
     /// assert!(value_map.is_extended(&value_map));

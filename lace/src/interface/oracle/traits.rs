@@ -98,7 +98,7 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_cc::feature::FType;
+    /// # use lace::cc::feature::FType;
     /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -141,7 +141,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::SummaryStatistics;
+    /// use lace::data::SummaryStatistics;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -780,7 +780,7 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_cc::feature::FType;
+    /// # use lace::cc::feature::FType;
     /// use lace::examples::animals::Column;
     /// use lace::OracleT;
     ///
@@ -1176,7 +1176,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::Datum;
+    /// use lace::data::Datum;
     /// use lace::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1284,7 +1284,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::Datum;
+    /// use lace::data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1298,7 +1298,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
     /// let x = oracle.datum(
@@ -1354,7 +1354,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::Datum;
+    /// use lace::data::Datum;
     /// use lace::Given;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1402,7 +1402,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::Given;
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
@@ -1426,7 +1426,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::Given;
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
@@ -1604,7 +1604,6 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_stats::rand;
     /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1670,10 +1669,9 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_stats::rand;
     /// use lace::OracleT;
     /// use lace::Given;
-    /// use lace_data::Datum;
+    /// use lace::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1770,7 +1768,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::Datum;
+    /// use lace::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1802,7 +1800,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::{Datum, Category};
+    /// # use lace::data::{Datum, Category};
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
     /// let (imp, _) = oracle.impute(
@@ -1817,7 +1815,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::{Datum, Category};
+    /// # use lace::data::{Datum, Category};
     /// # let oracle = Example::Satellites.oracle().unwrap();
     /// let (imp, unc): (Datum, Option<f64>) = oracle.impute(
     ///     "X-Sat",
