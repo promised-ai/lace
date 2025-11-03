@@ -210,10 +210,11 @@ mod tests {
     use approx::*;
     use lace_cc::feature::{FType, Feature};
     use lace_codebook::{ColMetadata, ColType};
+    use lace_stats::rand;
+    use lace_stats::rand::Rng;
     use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
     use lace_stats::rv::traits::{HasDensity, Sampleable};
     use lace_stats::MixtureType;
-    use rand::Rng;
     use std::collections::BTreeMap;
     use std::path::Path;
 
@@ -428,7 +429,7 @@ mod tests {
     #[test]
     fn mixture_and_oracle_logp_equivalence_gaussian() {
         let oracle = get_oracle_from_yaml();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let mm: Mixture<Gaussian> = {
             let mixtures: Vec<_> = oracle
@@ -612,7 +613,7 @@ mod tests {
             given: &Given<usize>,
             n: usize,
             states_ixs_opt: Option<Vec<usize>>,
-            mut rng: &mut impl Rng,
+            rng: &mut impl Rng,
         ) -> Vec<Vec<Datum>> {
             let state_ixs: Vec<usize> = match states_ixs_opt {
                 Some(state_ixs) => state_ixs,
@@ -627,7 +628,7 @@ mod tests {
             (0..n)
                 .map(|_| {
                     // choose a random state
-                    let draw_ix: usize = state_ixer.draw(&mut rng);
+                    let draw_ix: usize = state_ixer.draw(rng);
                     let state = states[draw_ix];
 
                     // for each view
@@ -639,7 +640,7 @@ mod tests {
                         let component_ixer =
                             Categorical::from_ln_weights(view_weights.clone())
                                 .unwrap();
-                        let k = component_ixer.draw(&mut rng);
+                        let k = component_ixer.draw(rng);
                         cpnt_ixs.insert(*view_ix, k);
                     }
 
@@ -649,8 +650,7 @@ mod tests {
                     col_ixs.iter().for_each(|col_ix| {
                         let view_ix = state.asgn().asgn[*col_ix];
                         let k = cpnt_ixs[&view_ix];
-                        let x =
-                            state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
+                        let x = state.views[view_ix].ftrs[col_ix].draw(k, rng);
                         xs.push(x);
                     });
                     utils::post_process_row(xs, col_ixs, oracle.codebook())

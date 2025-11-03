@@ -6,12 +6,12 @@ use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::rand::Rng;
 use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
 use lace_stats::MixtureType;
-use rand::Rng;
 
 use super::Component;
 use crate::feature::{ColModel, Column, FType};
@@ -148,13 +148,12 @@ mod tests {
     use lace_data::SparseContainer;
     use lace_stats::prior_process::Builder as PriorProcessBuilder;
     use lace_stats::rv::dist::Gaussian;
-    use lace_stats::rv::traits::HasDensity;
     use lace_stats::rv::traits::Sampleable;
 
     #[test]
     fn score_and_asgn_score_equivalency() {
         let n_rows = 100;
-        let mut rng = rand::thread_rng();
+        let mut rng = lace_stats::rand::rng();
         let g = Gaussian::standard();
         let hyper = NixHyper::default();
         let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);

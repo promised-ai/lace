@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use lace_data::TranslateContainer;
+use lace_stats::rv::data::GaussianData;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -262,11 +263,14 @@ impl LacePrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
         stats: I,
     ) -> f64 {
         use lace_stats::rv::data::DataOrSuffStat;
-        let cache = self.ln_m_cache();
+        let cache =
+            <NormalInvChiSquared as ConjugatePrior<f64, Gaussian>>::ln_m_cache(
+                self,
+            );
         stats
             .map(|stat| {
                 let x = DataOrSuffStat::SuffStat(&stat);
-                self.ln_m_with_cache(&cache, &x)
+                <NormalInvChiSquared as ConjugatePrior<f64, Gaussian>>::ln_m_with_cache(self, &cache, &x)
             })
             .sum::<f64>()
     }

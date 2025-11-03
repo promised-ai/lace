@@ -1,9 +1,9 @@
 use super::{ColModel, Column, Component, FType, Feature, FeatureHelper};
 use lace_data::{Datum, FeatureData, SparseContainer};
 use lace_stats::assignment::Assignment;
+use lace_stats::rand::Rng;
 use lace_stats::rv::dist::{Bernoulli, Beta};
 use lace_stats::MixtureType;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 /// Missing-not-at-random column type
@@ -277,7 +277,7 @@ mod test {
             fx: Box::new(fx),
             present,
         };
-        let mut rng = rand::thread_rng();
+        let mut rng = lace_stats::rand::rng();
         let asgn = lace_stats::prior_process::Builder::new(n)
             .seed_from_rng(&mut rng)
             .build()

@@ -571,7 +571,7 @@ impl Builder {
 
         let mut rng = self
             .seed
-            .map_or_else(StdRng::from_entropy, StdRng::seed_from_u64);
+            .map_or_else(StdRng::from_os_rng, StdRng::seed_from_u64);
 
         let process = self.process.unwrap_or_else(|| {
             Process::Dirichlet(Dirichlet::from_prior(
@@ -620,7 +620,7 @@ mod tests {
 
         #[test]
         fn should_return_input_weights_if_alpha_is_zero() {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let weights_in: Vec<f64> = vec![0.8, 0.2, 0.0];
             let weights_out =
                 sb_slice_extend(weights_in.clone(), 1.0, 0.0, 0.2, &mut rng)
@@ -634,7 +634,7 @@ mod tests {
 
         #[test]
         fn smoke() {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let weights_in: Vec<f64> = vec![0.8, 0.2];
             let u_star = 0.1;
             let res = sb_slice_extend(weights_in, 1.0, 0.0, u_star, &mut rng);

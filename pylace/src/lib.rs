@@ -13,7 +13,10 @@ use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
 use lace::prelude::ColMetadataList;
-use lace::{Datum, EngineUpdateConfig, FType, HasStates, OracleT, TableIndex};
+use lace::{
+    Datum, EngineUpdateConfig, FType, HasStates, OracleT, StateDiagnostics,
+    TableIndex,
+};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::create_exception;
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
@@ -140,6 +143,15 @@ impl CoreEngine {
     /// Seed the random number generator
     fn seed(&mut self, rng_seed: u64) {
         self.rng = Xoshiro256Plus::seed_from_u64(rng_seed);
+    }
+
+    /// Drops the data and diagnostics
+    fn low_mem_mode(&mut self) {
+        self.engine.states.iter_mut().for_each(|state| {
+            state.take_data();
+            let mut diag = StateDiagnostics::default();
+            std::mem::swap(&mut state.diagnostics, &mut diag);
+        });
     }
 
     /// Return a copy of the engine

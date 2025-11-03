@@ -669,13 +669,23 @@ mod tests {
     #[test]
     fn manual_seed_control_works() {
         let n = 100;
+        // You'll really want to crank up the alpha on this, because alpha=1.0,
+        // which is the default, results in a lot of all-zero assignments for
+        // smallish N. This causes the final `asgn_1 != asgn_3` test to fail
+        // a lot.
+        let process = Process::Dirichlet(Dirichlet {
+            alpha: 5.0,
+            alpha_prior: Gamma::default(),
+        });
         let asgn_1 = AssignmentBuilder::new(n)
+            .with_process(process.clone())
             .with_seed(17_834_795)
             .build()
             .unwrap()
             .asgn;
 
         let asgn_2 = AssignmentBuilder::new(n)
+            .with_process(process)
             .with_seed(17_834_795)
             .build()
             .unwrap()

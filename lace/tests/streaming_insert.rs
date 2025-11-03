@@ -6,7 +6,8 @@ use lace_codebook::{Codebook, ColMetadata, ColType};
 use lace_data::Datum;
 use lace_stats::prior::nix::NixHyper;
 
-use rand::{Rng, SeedableRng};
+use lace_stats::rand;
+use lace_stats::rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
 fn assert_rows_eq(row_a: &[Datum], row_b: &[Datum]) {
@@ -88,7 +89,7 @@ fn gen_engine() -> Engine {
     Engine {
         states,
         state_ids: vec![0, 1, 2, 3],
-        rng: Xoshiro256Plus::from_entropy(),
+        rng: Xoshiro256Plus::from_os_rng(),
         codebook,
     }
 }
@@ -97,7 +98,7 @@ fn gen_engine() -> Engine {
 fn stream_insert_all_data() {
     let mut engine = gen_engine();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mode = WriteMode {
         append_strategy: AppendStrategy::Window,
@@ -125,7 +126,7 @@ fn stream_insert_all_data() {
 fn trench_insert_all_data() {
     let mut engine = gen_engine();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mode = WriteMode {
         append_strategy: AppendStrategy::Trench {

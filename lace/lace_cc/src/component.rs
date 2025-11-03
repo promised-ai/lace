@@ -1,8 +1,8 @@
 //! Conjugate component data structure
 use lace_data::SparseContainer;
+use lace_stats::rand::Rng;
 use lace_stats::rv::data::DataOrSuffStat;
 use lace_stats::rv::traits::*;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
@@ -164,6 +164,10 @@ where
     fn forget(&mut self, x: &X) {
         self.reset_ln_pp_cache();
         self.stat.forget(x);
+    }
+
+    fn merge(&mut self, other: Self) {
+        self.stat.merge(other.stat);
     }
 }
 

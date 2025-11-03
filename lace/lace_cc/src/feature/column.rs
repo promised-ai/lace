@@ -10,17 +10,17 @@ use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::rand::Rng;
 use lace_stats::rv::data::DataOrSuffStat;
 use lace_stats::rv::dist::{
-    Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
-    NormalInvChiSquared, Poisson, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
 };
 use lace_stats::rv::traits::{
     ConjugatePrior, HasDensity, Mean, QuadBounds, Sampleable, SuffStat,
 };
 use lace_stats::{MixtureType, QmcEntropy};
 use lace_utils::MinMax;
-use rand::Rng;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::sync::OnceLock;
 
@@ -643,10 +643,11 @@ mod tests {
     use crate::feature::{Column, Feature};
     use lace_data::{FeatureData, SparseContainer};
     use lace_stats::prior_process::{Builder, Dirichlet, Process};
+    use lace_stats::rand;
 
     use lace_stats::prior::nix::NixHyper;
     fn gauss_fixture() -> ColModel {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let asgn = Builder::new(5)
             .with_process(Process::Dirichlet(Dirichlet {
                 alpha: 1.0,
@@ -667,7 +668,7 @@ mod tests {
     }
 
     fn categorical_fixture_u32() -> ColModel {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let asgn = Builder::new(5)
             .with_process(Process::Dirichlet(Dirichlet {
                 alpha: 1.0,

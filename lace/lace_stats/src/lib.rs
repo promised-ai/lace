@@ -40,6 +40,8 @@ use itertools::iproduct;
 use rand::Rng;
 use rv::traits::{KlDivergence, Rv};
 
+pub use rand;
+
 pub mod test {
     use super::{chi_square, ks, perm};
 

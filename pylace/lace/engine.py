@@ -229,6 +229,9 @@ class Engine:
         """
         self.engine.seed(rng_seed)
 
+    def _low_mem_mode(self):
+        self.engine.low_mem_mode()
+
     @property
     def shape(self):
         """

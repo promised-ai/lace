@@ -17,7 +17,8 @@ use lace_cc::state::State;
 use lace_codebook::{Codebook, ColMetadataList};
 use lace_data::{Category, Datum, SummaryStatistics};
 use lace_metadata::latest::Metadata;
-use rand::SeedableRng;
+use lace_stats::rand;
+use lace_stats::rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -54,7 +55,7 @@ impl From<Oracle> for Engine {
             state_ids: (0..oracle.states.len()).collect(),
             states: oracle.states,
             codebook: oracle.codebook,
-            rng: Xoshiro256Plus::from_entropy(),
+            rng: Xoshiro256Plus::from_os_rng(),
         }
     }
 }
@@ -876,7 +877,7 @@ impl Engine {
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
-            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng))
             .collect();
 
         // rayon has a hard time doing self.states.par_iter().zip(..), so we
@@ -962,7 +963,7 @@ impl Engine {
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
-            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng))
             .collect();
 
         let state_config = config.state_config();
@@ -1065,7 +1066,7 @@ impl Engine {
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
-            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng))
             .collect();
 
         self.states

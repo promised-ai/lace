@@ -14,4 +14,3 @@ lace_utils = { path = "../lace_utils", version = "0.3.0" }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9.4"
 indicatif = "0.17"
-rand = { version="0.8", features=["serde1"] }

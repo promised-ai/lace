@@ -5,9 +5,10 @@ use lace_cc::state::State;
 use lace_data::{FeatureData, SparseContainer};
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior_process::{Dirichlet, Process};
+use lace_stats::rand;
+use lace_stats::rand::Rng;
 use lace_stats::rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
-use lace_stats::rv::traits::{HasDensity, Sampleable};
-use rand::Rng;
+use lace_stats::rv::traits::Sampleable;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let hyper = NixHyper::default();
@@ -47,7 +48,7 @@ fn gen_all_gauss_state<R: Rng>(
 
 #[test]
 fn smoke() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut state = gen_all_gauss_state(10, 2, &mut rng);
 
     assert_eq!(state.n_rows(), 10);
@@ -64,7 +65,7 @@ fn smoke() {
 fn drop_data_should_remove_data_from_all_fatures() {
     let n_rows = 10;
     let n_cols = 5;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
     for id in 0..n_cols {
@@ -90,7 +91,7 @@ fn drop_data_should_remove_data_from_all_fatures() {
 fn take_data_should_remove_data_from_all_fatures() {
     let n_rows = 10;
     let n_cols = 5;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
     for id in 0..n_cols {
@@ -127,7 +128,7 @@ fn take_data_should_remove_data_from_all_fatures() {
 fn repop_data_should_return_the_data_to_all_fatures() {
     let n_rows = 10;
     let n_cols = 5;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
     for id in 0..n_cols {
@@ -168,7 +169,7 @@ fn repop_data_should_return_the_data_to_all_fatures() {
 fn insert_new_features_should_work() {
     let n_rows = 10;
     let n_cols = 5;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
     let ftrs: Vec<ColModel> = (0..3)
@@ -220,7 +221,7 @@ fn two_part_runner(
 
 #[test]
 fn run_slice_row_after_finite() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     two_part_runner(
         (RowAssignAlg::FiniteCpu, ColAssignAlg::FiniteCpu),
         (RowAssignAlg::Slice, ColAssignAlg::FiniteCpu),
@@ -230,7 +231,7 @@ fn run_slice_row_after_finite() {
 
 #[test]
 fn run_slice_col_after_gibbs() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     two_part_runner(
         (RowAssignAlg::FiniteCpu, ColAssignAlg::Gibbs),
         (RowAssignAlg::FiniteCpu, ColAssignAlg::Slice),
@@ -243,7 +244,7 @@ fn run_slice_row_after_gibbs() {
     // 2018-12-20 This used to cause subtract w/ overflow or out of bounds error
     // because the Slice sampler wasn't cleaning up the weights that the Gibbs
     // sampler was neglecting.
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     two_part_runner(
         (RowAssignAlg::Gibbs, ColAssignAlg::FiniteCpu),
         (RowAssignAlg::Slice, ColAssignAlg::FiniteCpu),
@@ -253,7 +254,7 @@ fn run_slice_row_after_gibbs() {
 
 #[test]
 fn del_col_front() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut state = gen_all_gauss_state(10, 5, &mut rng);
 
     assert_eq!(state.n_cols(), 5);
@@ -273,7 +274,7 @@ fn del_col_front() {
 
 #[test]
 fn del_col_mid() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut state = gen_all_gauss_state(10, 5, &mut rng);
 
     assert_eq!(state.n_cols(), 5);

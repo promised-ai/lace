@@ -10,6 +10,7 @@ use lace_codebook::{Codebook, ValueMap};
 use lace_codebook::{ColMetadataList, ValueMapExtensionError};
 use lace_data::SparseContainer;
 use lace_data::{Category, Datum};
+use lace_stats::rand;
 use lace_stats::rv::data::CategoricalSuffStat;
 use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};

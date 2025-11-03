@@ -11,9 +11,10 @@ use lace::error::IndexError;
 use lace::stats::prior::nix::NixHyper;
 use lace::{Given, Oracle, OracleT};
 use lace_data::{DataStore, SparseContainer};
+use lace_stats::rand;
+use lace_stats::rand::Rng;
 use lace_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
 use lace_stats::rv::traits::{Cdf, HasDensity, Sampleable};
-use rand::Rng;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
@@ -123,7 +124,7 @@ fn get_oracle_from_yaml() -> Oracle {
 fn gen_oracle(n_states: usize) -> Oracle {
     let n_rows = 20;
     let n_cols = 10;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let states: Vec<State> = (0..n_states)
         .map(|_| gen_all_gauss_state(n_rows, n_cols, &mut rng))
         .collect();
@@ -677,7 +678,7 @@ macro_rules! oracle_test {
             #[test]
             fn simulate_single_col_without_given_size_check() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let xs = oracle
                     .simulate(
@@ -696,7 +697,7 @@ macro_rules! oracle_test {
             #[test]
             fn simulate_single_col_without_given_single_state_ks() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 // flaky test. try 5 times.
                 let ks_pass = (0..5)
@@ -741,7 +742,7 @@ macro_rules! oracle_test {
             #[test]
             fn simulate_multi_col_without_given_size_check() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let xs = oracle
                     .simulate(
@@ -760,7 +761,7 @@ macro_rules! oracle_test {
             #[test]
             fn no_targets_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let targets: &[usize] = &[];
                 let result = oracle.simulate(
@@ -777,7 +778,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_targets_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[3_usize],
@@ -801,7 +802,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_state_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[2_usize],
@@ -823,7 +824,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_state_indices_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[2],
@@ -845,7 +846,7 @@ macro_rules! oracle_test {
             #[test]
             fn no_state_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[2],
@@ -861,7 +862,7 @@ macro_rules! oracle_test {
             #[test]
             fn same_col_in_target_and_given_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[2],
@@ -882,7 +883,7 @@ macro_rules! oracle_test {
             #[test]
             fn wrong_datum_type_for_col_in_given_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[1],
@@ -910,7 +911,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_condition_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[1],
@@ -937,7 +938,7 @@ macro_rules! oracle_test {
             #[test]
             fn simulate_n_zero_returns_empty_vec() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let xs = oracle
                     .simulate(&[1], &Given::<usize>::Nothing, 0, None, &mut rng)
@@ -1536,7 +1537,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_row_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 assert_eq!(
                     oracle.draw(4, 1, 10, &mut rng),
@@ -1550,7 +1551,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_col_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 assert_eq!(
                     oracle.draw(1, 3, 10, &mut rng),
@@ -1564,7 +1565,7 @@ macro_rules! oracle_test {
             #[test]
             fn no_samples_returns_empty_vec() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 assert!(oracle.draw(1, 2, 0, &mut rng).unwrap().is_empty());
             }

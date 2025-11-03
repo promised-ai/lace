@@ -1,8 +1,9 @@
 use lace_data::SparseContainer;
 use lace_stats::prior::nix::NixHyper;
+use lace_stats::rand;
+use lace_stats::rand::Rng;
 use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
-use lace_stats::rv::traits::{HasDensity, Sampleable};
-use rand::Rng;
+use lace_stats::rv::traits::Sampleable;
 
 use lace_cc::alg::RowAssignAlg;
 use lace_cc::feature::{ColModel, Column, Feature};
@@ -35,7 +36,7 @@ fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
 
 #[test]
 fn create_view_smoke() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let view = gen_gauss_view(10, &mut rng);
 
     assert_eq!(view.n_rows(), 10);
@@ -44,7 +45,7 @@ fn create_view_smoke() {
 
 #[test]
 fn finite_reassign_direct_call() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
     view.reassign_rows_finite_cpu(&mut rng);
@@ -53,7 +54,7 @@ fn finite_reassign_direct_call() {
 
 #[test]
 fn finite_reassign_from_reassign() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
     view.reassign(RowAssignAlg::FiniteCpu, &mut rng);
@@ -62,7 +63,7 @@ fn finite_reassign_from_reassign() {
 
 #[test]
 fn insert_feature() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
     assert_eq!(view.n_cols(), 4);
@@ -77,7 +78,7 @@ fn insert_feature() {
 #[test]
 #[should_panic]
 fn insert_feature_with_existing_id_panics() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
     assert_eq!(view.n_cols(), 4);
@@ -89,7 +90,7 @@ fn insert_feature_with_existing_id_panics() {
 
 #[test]
 fn remove_feature() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
     assert_eq!(view.n_cols(), 4);
@@ -103,7 +104,7 @@ fn remove_feature() {
 
 #[test]
 fn remove_non_existent_feature_returns_none() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
     assert_eq!(view.n_cols(), 4);

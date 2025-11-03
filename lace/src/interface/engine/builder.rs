@@ -1,5 +1,5 @@
 use lace_codebook::Codebook;
-use rand::SeedableRng;
+use lace_stats::rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
@@ -83,7 +83,7 @@ impl EngineBuilder {
         let id_offset = self.id_offset.unwrap_or(DEFAULT_ID_OFFSET);
         let rng = match self.seed {
             Some(s) => Xoshiro256Plus::seed_from_u64(s),
-            None => Xoshiro256Plus::from_entropy(),
+            None => Xoshiro256Plus::from_os_rng(),
         };
 
         let codebook = match self.codebook {

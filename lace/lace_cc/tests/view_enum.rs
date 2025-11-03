@@ -5,7 +5,7 @@ mod enum_test;
 
 use std::collections::BTreeMap;
 
-use rand::Rng;
+use lace_stats::rand::Rng;
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
@@ -105,7 +105,7 @@ pub fn view_enum_test(
     row_alg: RowAssignAlg,
     proc_type: ProcessType,
 ) -> f64 {
-    let mut rng = rand::thread_rng();
+    let mut rng = lace_stats::rand::rng();
     let features = build_features(n_rows, n_cols, ftype, &mut rng);
     let ln_posterior =
         calc_partition_ln_posterior(&features, proc_type, &mut rng);

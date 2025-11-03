@@ -18,7 +18,7 @@ impl<T> PermTestData<T> {
     fn repartition<R: rand::Rng>(&mut self, rng: &mut R) {
         let mut gate = self.border;
         (self.border..self.data.len()).for_each(|i| {
-            let u: f64 = rng.gen();
+            let u: f64 = rng.random();
             if u < 0.5 {
                 self.data.swap(gate, i);
                 gate += 1;
@@ -26,7 +26,7 @@ impl<T> PermTestData<T> {
         });
 
         (0..self.border).for_each(|i| {
-            let u: f64 = rng.gen();
+            let u: f64 = rng.random();
             if u < 0.5 {
                 gate -= 1;
                 self.data.swap(gate, i);
@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn uv_gauss_perm_test_should_be_one_if_xs_is_ys() {
         let xs = vec![0.1, 1.2, 3.2, 1.8, 0.1, 2.0];
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let f = gauss_perm_test(xs.clone(), xs, 1000, &mut rng);
         // won't be exactly one because the original permutation will show up
         // every now and again because the permutations are random
@@ -224,7 +224,7 @@ mod tests {
     fn uv_gauss_perm_test_should_be_zero_if_xs_very_different_from_ys() {
         let xs = vec![0.0; 5];
         let ys = vec![1.0; 5];
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let f = gauss_perm_test(xs, ys, 1000, &mut rng);
         assert_relative_eq!(f, 0.0, epsilon = TOL);
     }
@@ -234,7 +234,7 @@ mod tests {
         let xs = vec![0_u8; 10];
         let ys = vec![1_u8; 10];
         let mut perm_data = PermTestData::new(xs, ys);
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..1000 {
             perm_data.repartition(&mut rng);
             let _xs_i = perm_data.xs();

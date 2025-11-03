@@ -10,11 +10,12 @@ use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior_process::Builder as AssignmentBuilder;
+use lace_stats::rand;
+use lace_stats::rand::Rng;
 use lace_stats::rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
 use lace_stats::rv::traits::Sampleable;
-use rand::Rng;
 use std::sync::OnceLock;
 
 type GaussCol = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
@@ -70,7 +71,7 @@ fn three_component_column() -> GaussCol {
 // ==============
 #[test]
 fn feature_with_flat_assign_should_have_one_component() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let asgn = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
 
     let col = gauss_fixture(&mut rng, &asgn);
@@ -80,7 +81,7 @@ fn feature_with_flat_assign_should_have_one_component() {
 
 #[test]
 fn feature_with_random_assign_should_have_k_component() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     for _ in 0..50 {
         let asgn = AssignmentBuilder::new(5).build().unwrap().asgn;
         let col = gauss_fixture(&mut rng, &asgn);
@@ -93,7 +94,7 @@ fn feature_with_random_assign_should_have_k_component() {
 // =======================
 #[test]
 fn append_empty_component_appends_one() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let asgn = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let mut col = gauss_fixture(&mut rng, &asgn);
 
@@ -106,7 +107,7 @@ fn append_empty_component_appends_one() {
 
 #[test]
 fn reassign_to_more_components() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let asgn_b = Assignment {
         asgn: vec![0, 0, 0, 1, 1],
@@ -238,7 +239,7 @@ fn gauss_accum_scores_2_cats_no_missing() {
 
 #[test]
 fn asgn_score_under_asgn_gaussian_magnitude() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let asgn_b = Assignment {
         asgn: vec![0, 0, 0, 1, 1],
@@ -338,7 +339,7 @@ fn cat_u32_accum_scores_2_cats_no_missing() {
 
 #[test]
 fn asgn_score_under_asgn_cat_u32_magnitude() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let asgn_b = Assignment {
         asgn: vec![0, 1, 1, 0, 1],
@@ -363,7 +364,7 @@ fn asgn_score_under_asgn_cat_u32_magnitude() {
 // --------
 #[test]
 fn update_component_params_should_draw_different_values_for_gaussian() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let asgn = AssignmentBuilder::new(5).flat().build().unwrap().asgn;
     let mut col = gauss_fixture(&mut rng, &asgn);
 
@@ -378,7 +379,7 @@ fn update_component_params_should_draw_different_values_for_gaussian() {
 #[test]
 fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
     let n = 100;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let g = Gaussian::standard();
     let hyper = NixHyper::default();
     for _ in 0..100 {

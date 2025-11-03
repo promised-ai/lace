@@ -11,8 +11,8 @@ mod enum_test;
 use std::collections::HashMap;
 
 use itertools::Itertools;
+use lace_stats::rand::Rng;
 use lace_stats::rv::misc::LogSumExp;
-use rand::Rng;
 
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
 use lace_cc::config::StateUpdateConfig;
@@ -296,6 +296,7 @@ pub fn state_enum_test<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lace_stats::rand;
     use lace_utils::numbers::ccnum;
 
     const N_TRIES: u32 = 10;
@@ -321,7 +322,7 @@ mod tests {
                 #[test]
                 fn dirichlet() {
                     fn test_fn() -> bool {
-                        let mut rng = rand::thread_rng();
+                        let mut rng = rand::rng();
                         let err = state_enum_test(
                             3,
                             3,
@@ -342,7 +343,7 @@ mod tests {
                 #[test]
                 fn pitman_yor() {
                     fn test_fn() -> bool {
-                        let mut rng = rand::thread_rng();
+                        let mut rng = rand::rng();
                         let err = state_enum_test(
                             3,
                             3,
@@ -381,7 +382,7 @@ mod tests {
     #[test]
     fn ln_posterior_length() {
         let process = emit_process(PriorProcessType::Dirichlet);
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let ftrs = build_features(3, 3, FType::Continuous, &mut rng);
         let posterior =
             calc_state_ln_posterior(ftrs, &process, &process, &mut rng);

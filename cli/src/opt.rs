@@ -269,7 +269,7 @@ pub struct CodebookArgs {
     pub output: PathBuf,
     /// Maximum distinct values for a categorical variable
     #[clap(short = 'c', long = "category-cutoff", default_value = "20")]
-    pub category_cutoff: u8,
+    pub category_cutoff: u32,
     /// Skip running sanity checks on input data such as proportion of missing
     /// values
     #[clap(long)]

@@ -1,6 +1,7 @@
 use lace::prelude::*;
 use lace_geweke::*;
 use lace_stats::prior_process::Builder as AssignmentBuilder;
+use lace_stats::rand;
 use lace_stats::rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
@@ -11,7 +12,7 @@ type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CategoricalColumn = Column<u32, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn main() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // The column model uses an assignment as its setting. We'll draw a
     // 50-length assignment from the prior.

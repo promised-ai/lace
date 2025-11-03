@@ -99,7 +99,7 @@ impl Example {
         timeout: Option<u64>,
     ) -> Result<(), Error> {
         use crate::config::EngineUpdateConfig;
-        use rand::SeedableRng;
+        use lace_stats::rand::SeedableRng;
         use rand_xoshiro::Xoshiro256Plus;
 
         let n_states = 16;

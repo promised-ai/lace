@@ -1,6 +1,6 @@
 //! Misc, generally useful helper functions
+use lace_stats::rand::Rng;
 use lace_stats::rv::misc::pflip;
-use rand::Rng;
 use std::iter::Iterator;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]

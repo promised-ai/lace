@@ -12,7 +12,8 @@ use lace::{
 };
 use lace_codebook::{Codebook, ValueMap};
 use lace_metadata::SerializedType;
-use rand::SeedableRng;
+use lace_stats::rand;
+use lace_stats::rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 fn animals_data_path() -> PathBuf {
@@ -67,7 +68,7 @@ fn zero_states_to_new_causes_error() {
         file.read_to_string(&mut data).unwrap();
         serde_yaml::from_slice(data.as_bytes()).unwrap()
     };
-    let rng = Xoshiro256Plus::from_entropy();
+    let rng = Xoshiro256Plus::from_os_rng();
     let df = lace_codebook::data::read_csv(animals_data_path()).unwrap();
     match Engine::new(0, codebook, DataSource::Polars(df), 0, rng) {
         Err(lace::error::NewEngineError::ZeroStatesRequested) => (),
@@ -1652,6 +1653,7 @@ mod insert_data {
         // new categorical weights are assigned to log(0) by default.
         // Weights are updated when inference is run. This becomes Inf when run
         // through logsumexp.
+        println!("Surp: {surp}");
         assert!(surp.is_infinite());
     }
 
@@ -2743,7 +2745,7 @@ mod prior_in_codebook {
 
     fn run_test(n_rows: usize, codebook: Codebook) {
         let mut csvfile = tempfile::NamedTempFile::new().unwrap();
-        let mut rng = Xoshiro256Plus::from_entropy();
+        let mut rng = Xoshiro256Plus::from_os_rng();
         let gauss = lace_stats::rv::dist::Gaussian::standard();
 
         writeln!(csvfile, "id,x,y").unwrap();

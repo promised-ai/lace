@@ -19,6 +19,7 @@ use crate::stats::rv::traits::{
 use crate::stats::MixtureType;
 use lace_consts::rv::misc::LogSumExp;
 use lace_data::{Category, Datum};
+use lace_stats::rand;
 use lace_utils::{argmax, transpose};
 
 use super::error::IndexError;

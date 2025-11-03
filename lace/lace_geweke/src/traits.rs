@@ -1,4 +1,4 @@
-use rand::Rng;
+use lace_stats::rand::Rng;
 
 /// The trait that allows samplers to be tested by `GewekeTester`.
 pub trait GewekeModel: GewekeResampleData + GewekeSummarize {

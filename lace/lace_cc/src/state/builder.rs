@@ -5,11 +5,12 @@ use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::prior_process::Process;
+use lace_stats::rand::Rng;
+use lace_stats::rand::SeedableRng;
 use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
 };
 use lace_stats::rv::traits::*;
-use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
@@ -96,7 +97,7 @@ impl Builder {
 
     /// Seed from an RNG
     #[must_use]
-    pub fn seed_from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
+    pub fn seed_from_rng<R: Rng>(mut self, rng: &mut R) -> Self {
         self.seed = Some(rng.next_u64());
         self
     }
@@ -118,7 +119,7 @@ impl Builder {
     pub fn build(self) -> Result<State, BuildStateError> {
         let mut rng = match self.seed {
             Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
-            None => Xoshiro256Plus::from_entropy(),
+            None => Xoshiro256Plus::from_os_rng(),
         };
 
         // TODO: this is gross and indicates a lot of issues that should be
@@ -212,7 +213,7 @@ impl Builder {
     }
 }
 
-fn gen_feature<R: rand::Rng>(
+fn gen_feature<R: Rng>(
     id: usize,
     col_config: ColType,
     n_rows: usize,
@@ -278,7 +279,7 @@ mod tests {
 
     #[test]
     fn built_state_should_update() {
-        let mut rng = Xoshiro256Plus::from_entropy();
+        let mut rng = Xoshiro256Plus::from_os_rng();
         let mut state = Builder::new()
             .column_configs(
                 10,

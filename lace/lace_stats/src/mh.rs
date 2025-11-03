@@ -47,7 +47,7 @@ where
 
             assert!(fy.is_finite(), "Non finite proposal likelihood");
 
-            let r: f64 = rng.gen::<f64>();
+            let r: f64 = rng.random::<f64>();
             if r.ln() < fy - fx {
                 (y, fy)
             } else {
@@ -91,7 +91,7 @@ where
 
             assert!(fy.is_finite(), "Non finite proposal likelihood");
 
-            let r: f64 = rng.gen::<f64>();
+            let r: f64 = rng.random::<f64>();
             if r.ln() < fy - fx {
                 (y, fy)
             } else {
@@ -131,7 +131,7 @@ where
 
             assert!(fy.is_finite(), "Non finite proposal likelihood");
 
-            let r: f64 = rng.gen::<f64>();
+            let r: f64 = rng.random::<f64>();
             if r.ln() < fy - fx {
                 (y, fy)
             } else {
@@ -209,7 +209,7 @@ fn mh_slice_step<F, R>(
     step_size: f64,
     score_fn: &F,
     bounds: (f64, f64),
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<f64>
 where
     F: Fn(f64) -> f64,
@@ -219,20 +219,20 @@ where
     use crate::rv::traits::Sampleable;
 
     let ln_fx = score_fn(x_start);
-    let ln_u = rng.gen::<f64>().ln() + ln_fx;
+    let ln_u = rng.random::<f64>().ln() + ln_fx;
     let (mut x_left, mut x_right) = slice_stepping_out(
         ln_u,
         x_start,
         step_size,
         &score_fn,
-        rng.gen::<f64>(),
+        rng.random::<f64>(),
         bounds,
     );
 
     let step_limit = 50;
     let mut loop_counter = 0;
     loop {
-        let x: f64 = Uniform::new_unchecked(x_left, x_right).draw(&mut rng);
+        let x: f64 = Uniform::new_unchecked(x_left, x_right).draw(rng);
         let ln_fx = score_fn(x);
         // println!("{}: ({}, {}) - [{}, {}]", x, x_left, x_right, ln_u, ln_fx);
         if ln_fx > ln_u {
@@ -266,15 +266,15 @@ pub fn mh_slice<F, R>(
     n_iters: usize,
     score_fn: F,
     bounds: (f64, f64),
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<f64>
 where
     F: Fn(f64) -> f64,
     R: Rng,
 {
     (0..n_iters).fold(
-        mh_slice_step(x_start, step_size, &score_fn, bounds, &mut rng),
-        |acc, _| mh_slice_step(acc.x, step_size, &score_fn, bounds, &mut rng),
+        mh_slice_step(x_start, step_size, &score_fn, bounds, rng),
+        |acc, _| mh_slice_step(acc.x, step_size, &score_fn, bounds, rng),
     )
 }
 
@@ -285,7 +285,7 @@ pub fn mh_symrw_adaptive<F, R>(
     n_steps: usize,
     score_fn: F,
     bounds: (f64, f64),
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<f64>
 where
     F: Fn(f64) -> f64,
@@ -303,14 +303,14 @@ where
     let lambda: f64 = 2.38 * 2.38;
 
     for n in 0..n_steps {
-        let y: f64 = Gaussian::new_unchecked(x, (lambda * var_guess).sqrt())
-            .draw(&mut rng);
+        let y: f64 =
+            Gaussian::new_unchecked(x, (lambda * var_guess).sqrt()).draw(rng);
         if bounds.0 < x || x < bounds.1 {
             let fy = score_fn(y);
 
             assert!(fy.is_finite(), "Non finite proposal likelihood");
 
-            if rng.gen::<f64>().ln() < fy - fx {
+            if rng.random::<f64>().ln() < fy - fx {
                 x = y;
                 fx = fy;
             }
@@ -348,7 +348,7 @@ pub fn mh_symrw_adaptive_mv<F, R, M, S>(
     n_steps: usize,
     score_fn: F,
     bounds: &[(f64, f64)],
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<Vec<f64>>
 where
     F: Fn(&[f64]) -> f64,
@@ -377,7 +377,7 @@ where
         let mu = DVector::from_row_slice(x.values());
 
         let y: DVector<f64> =
-            MvGaussian::new_unchecked(mu, ln_lambda.exp() * cov).draw(&mut rng);
+            MvGaussian::new_unchecked(mu, ln_lambda.exp() * cov).draw(rng);
         let y = M::from_dvector(y);
 
         let in_bounds = y
@@ -392,7 +392,7 @@ where
             assert!(fy.is_finite(), "Non finite proposal likelihood");
 
             let ln_alpha = (fy - fx).min(0.0);
-            if rng.gen::<f64>().ln() < ln_alpha {
+            if rng.random::<f64>().ln() < ln_alpha {
                 x = y;
                 fx = fy;
             }
@@ -455,10 +455,10 @@ mod tests {
     fn test_mh_prior_uniform() {
         let loglike = |_x: &f64| 0.0;
         fn prior_draw<R: Rng>(r: &mut R) -> f64 {
-            r.gen()
+            r.random()
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
@@ -487,7 +487,7 @@ mod tests {
             r.sample(norm)
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
@@ -529,7 +529,7 @@ mod tests {
             q.ln_f(theta)
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
@@ -563,7 +563,7 @@ mod tests {
             r.sample(norm).rem_euclid(1.0)
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
@@ -593,7 +593,7 @@ mod tests {
             r.sample(norm)
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 1.0,
@@ -623,7 +623,7 @@ mod tests {
             }
         };
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
@@ -653,7 +653,7 @@ mod tests {
 
         let score_fn = |x: f64| gauss.ln_f(&x);
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 1.0,
@@ -691,7 +691,7 @@ mod tests {
 
         let score_fn = |x: f64| gauss.ln_f(&x);
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 1.0,
@@ -726,7 +726,7 @@ mod tests {
     fn test_mh_symrw_adaptive_normal_gamma() {
         use std::f64::{INFINITY, NEG_INFINITY};
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let sigma: f64 = 1.5;
         let m0: f64 = 0.0;
         let s0: f64 = 0.5;
@@ -783,7 +783,7 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_mv_normal_gamma_known_var() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let sigma: f64 = 1.5;
         let m0: f64 = 0.0;
         let s0: f64 = 0.5;
@@ -799,8 +799,8 @@ mod tests {
             fx + prior.ln_f(mu)
         };
 
-        fn walk_fn<R: Rng>(x: &f64, mut r: &mut R) -> f64 {
-            Gaussian::new_unchecked(*x, 0.2).draw(&mut r)
+        fn walk_fn<R: Rng>(x: &f64, r: &mut R) -> f64 {
+            Gaussian::new_unchecked(*x, 0.2).draw(r)
         }
 
         let posterior = {
@@ -841,7 +841,7 @@ mod tests {
         use crate::mat::Matrix1x1;
         use std::f64::{INFINITY, NEG_INFINITY};
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let sigma: f64 = 1.5;
         let m0: f64 = 0.0;
         let s0: f64 = 0.5;
@@ -911,7 +911,7 @@ mod tests {
         let n = 20;
         let n_samples = 250;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Prior parameters
         let m0: f64 = 0.0;

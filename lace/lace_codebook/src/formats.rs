@@ -52,7 +52,7 @@ macro_rules! codebook_from_fn {
     ($fn_name: ident, $reader: ident) => {
         pub fn $fn_name<P: AsRef<Path>>(
             path: P,
-            cat_cutoff: Option<u8>,
+            cat_cutoff: Option<u32>,
             state_prior_process: Option<$crate::codebook::PriorProcess>,
             view_prior_process: Option<$crate::codebook::PriorProcess>,
             no_hypers: bool,

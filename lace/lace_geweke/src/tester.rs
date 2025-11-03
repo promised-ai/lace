@@ -5,9 +5,9 @@ use std::io::prelude::Write;
 use std::path::Path;
 
 use indicatif::ProgressBar;
+use lace_stats::rand::Rng;
 use lace_stats::EmpiricalCdf;
 use lace_utils::transpose_mapvec;
-use rand::Rng;
 use serde::Serialize;
 
 use crate::traits::*;

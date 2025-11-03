@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use lace_cc::state::State;
 use lace_data::DataStore;
 use lace_metadata::latest;
-use rand::SeedableRng;
+use lace_stats::rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
@@ -89,7 +89,7 @@ impl TryFrom<latest::Metadata> for Engine {
             })
             .collect();
 
-        let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_entropy);
+        let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_os_rng);
 
         Ok(Self {
             state_ids: md.state_ids,

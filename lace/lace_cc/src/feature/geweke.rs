@@ -7,13 +7,13 @@ use lace_stats::assignment::Assignment;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::rand::Rng;
 use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
 use lace_stats::rv::traits::Sampleable;
 use lace_utils::{mean, std};
-use rand::Rng;
 
 use crate::feature::{ColModel, Column, FType, Feature};
 use crate::transition::ViewTransition;
@@ -259,7 +259,6 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
 // Categorical
 // -----------
 impl GewekeModel for Column<u32, Categorical, SymmetricDirichlet, CsdHyper> {
-    #[must_use]
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,

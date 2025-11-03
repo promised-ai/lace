@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use lace_stats::rand::SeedableRng;
 use plotly::common::Mode;
 use plotly::layout::Layout;
 use plotly::{Plot, Scatter};
-use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
@@ -45,7 +45,7 @@ struct Opt {
 
 fn main() {
     let opt = Opt::parse();
-    let mut rng = Xoshiro256Plus::from_entropy();
+    let mut rng = Xoshiro256Plus::from_os_rng();
 
     // Some of each column type that is supported by Geweke (Labeler cannot be
     // used in Geweke tests)

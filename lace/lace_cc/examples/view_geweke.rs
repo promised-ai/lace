@@ -1,5 +1,4 @@
 use clap::Parser;
-use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 use lace_cc::alg::RowAssignAlg;
@@ -7,6 +6,7 @@ use lace_cc::feature::FType;
 use lace_cc::transition::ViewTransition;
 use lace_cc::view::{View, ViewGewekeSettings};
 use lace_geweke::GewekeTester;
+use lace_stats::rand::SeedableRng;
 
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]
@@ -32,7 +32,7 @@ fn main() {
 
     println!("Running {} rows using {} algorithm", opt.nrows, opt.alg);
 
-    let mut rng = Xoshiro256Plus::from_entropy();
+    let mut rng = Xoshiro256Plus::from_os_rng();
     let ftypes = vec![FType::Continuous, FType::Count, FType::Categorical];
 
     // The views's Geweke test settings require the number of rows in the

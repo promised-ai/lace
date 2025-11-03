@@ -52,7 +52,7 @@
 //!         coltype:
 //!           !Categorical
 //!             k: 2
-//!             value_map: !u8 2
+//!             value_map: !u_int 2
 //!     comments: An example codebook
 //!     row_names:
 //!       - A

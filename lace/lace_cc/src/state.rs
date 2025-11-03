@@ -11,13 +11,13 @@ use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::prior_process::{
     PriorProcess, PriorProcessT, PriorProcessType, Process,
 };
+use lace_stats::rand::seq::SliceRandom as _;
+use lace_stats::rand::{Rng, SeedableRng};
 use lace_stats::rv::dist::Dirichlet;
 use lace_stats::rv::misc::ln_pflip;
 use lace_stats::rv::traits::*;
 use lace_stats::MixtureType;
 use lace_utils::{unused_components, Matrix};
-use rand::seq::SliceRandom as _;
-use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -239,7 +239,7 @@ impl State {
         mut rng: &mut R,
     ) {
         let mut rngs: Vec<Xoshiro256Plus> = (0..self.n_views())
-            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng))
             .collect();
 
         self.views
@@ -261,7 +261,7 @@ impl State {
     #[inline]
     fn update_feature_priors<R: Rng>(&mut self, mut rng: &mut R) -> f64 {
         let mut rngs: Vec<Xoshiro256Plus> = (0..self.n_views())
-            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng))
             .collect();
 
         self.views
@@ -274,7 +274,7 @@ impl State {
     #[inline]
     fn update_component_params<R: Rng>(&mut self, mut rng: &mut R) {
         let mut rngs: Vec<_> = (0..self.n_views())
-            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng))
             .collect();
 
         self.views
@@ -303,7 +303,7 @@ impl State {
     }
 
     // Reassign all columns to one view
-    pub fn flatten_cols<R: rand::Rng>(&mut self, mut rng: &mut R) {
+    pub fn flatten_cols<R: Rng>(&mut self, mut rng: &mut R) {
         let n_cols = self.n_cols();
         let new_asgn_vec = vec![0; n_cols];
         let n_cats = self.asgn().n_cats;
@@ -411,7 +411,7 @@ impl State {
         // assignment for a hypothetical singleton view
         let mut rng = Xoshiro256Plus::seed_from_u64(seed);
         let asgn_bldr =
-            AssignmentBuilder::new(self.n_rows()).with_seed(rng.gen());
+            AssignmentBuilder::new(self.n_rows()).with_seed(rng.random());
         // If we do not want to draw a view process params, take an
         // existing process from the first view. This covers the case
         // where we set the view process params and never transitions
@@ -484,7 +484,7 @@ impl State {
 
         // here we create the monte carlo estimate for the singleton view
         let mut tmp_asgns = {
-            let seeds: Vec<u64> = (0..m).map(|_| rng.gen()).collect();
+            let seeds: Vec<u64> = (0..m).map(|_| rng.random()).collect();
             self.create_tmp_assigns(n_views, update_process_params, &seeds)
         };
 
@@ -611,7 +611,7 @@ impl State {
 
             // Thread RNGs for parallelism
             let mut t_rngs: Vec<_> = (0..end_point)
-                .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+                .map(|_| Xoshiro256Plus::from_rng(&mut rng))
                 .collect();
 
             let mut pre_comps = col_ixs
@@ -633,7 +633,7 @@ impl State {
 
                     // Always propose new singletons
                     let tmp_asgn_seeds: Vec<u64> =
-                        (0..m).map(|_| t_rng.gen()).collect();
+                        (0..m).map(|_| t_rng.random()).collect();
 
                     let tmp_asgns = self.create_tmp_assigns(
                         self.n_views(),
@@ -717,7 +717,7 @@ impl State {
                             // if the view we're assigning to has a greater
                             // index than the one we destroyed, we have to
                             // decrement v_new to maintain order because the
-                            // desroyed singleton will be removed in
+                            // destroyed singleton will be removed in
                             // `extract_ftr`.
                             v_new -= 1;
                         }
@@ -823,7 +823,7 @@ impl State {
             .iter()
             .map(|&zi| {
                 let wi: f64 = weights[zi];
-                let u: f64 = rng.gen();
+                let u: f64 = rng.random();
                 u * wi
             })
             .collect();
@@ -855,7 +855,7 @@ impl State {
             self.append_empty_view(draw_alpha, rng);
         }
 
-        // initialize truncated log probabilities
+        // Initialize truncated log probabilities
         let logps = {
             let values: Vec<f64> = ftrs
                 .par_iter()
@@ -962,7 +962,7 @@ impl State {
     /// Remove the view, but do not adjust any other metadata
     #[inline]
     fn drop_view(&mut self, view_ix: usize) {
-        // view goes out of scope and is dropped
+        // View goes out of scope and is dropped
         let _view = self.views.remove(view_ix);
     }
 
@@ -972,7 +972,7 @@ impl State {
         rng: &mut R,
     ) {
         let asgn_bldr =
-            AssignmentBuilder::new(self.n_rows()).with_seed(rng.gen());
+            AssignmentBuilder::new(self.n_rows()).with_seed(rng.random());
 
         let mut process = self.views[0].prior_process.process.clone();
         if draw_process_params {
@@ -1417,6 +1417,7 @@ mod test {
 
     use crate::state::Builder;
     use lace_codebook::ColType;
+    use lace_stats::rand;
 
     #[test]
     fn extract_ftr_non_singleton() {
@@ -1479,7 +1480,7 @@ mod test {
 
     #[test]
     fn gibbs_col_transition_smoke() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut state = Builder::new()
             .n_rows(50)
             .column_configs(
@@ -1506,7 +1507,7 @@ mod test {
 
     #[test]
     fn gibbs_row_transition_smoke() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut state = Builder::new()
             .n_rows(10)
             .column_configs(
@@ -1598,7 +1599,7 @@ mod test {
             50,
             vec![FType::Continuous; 40],
         );
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let result = test_asgn_flatness(&settings, 10, &mut rng);
         assert!(!result.rows_always_flat);
         assert!(!result.cols_always_flat);
@@ -1621,7 +1622,7 @@ mod test {
             state_process_type: PriorProcessType::Dirichlet,
             view_process_type: PriorProcessType::Dirichlet,
         };
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let result = test_asgn_flatness(&settings, 100, &mut rng);
         assert!(result.rows_always_flat);
         assert!(!result.cols_always_flat);
@@ -1644,7 +1645,7 @@ mod test {
             state_process_type: PriorProcessType::Dirichlet,
             view_process_type: PriorProcessType::Dirichlet,
         };
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let result = test_asgn_flatness(&settings, 100, &mut rng);
         assert!(!result.rows_always_flat);
         assert!(result.cols_always_flat);
@@ -1666,7 +1667,7 @@ mod test {
             state_process_type: PriorProcessType::Dirichlet,
             view_process_type: PriorProcessType::Dirichlet,
         };
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let result = test_asgn_flatness(&settings, 100, &mut rng);
         assert!(result.rows_always_flat);
         assert!(result.cols_always_flat);
@@ -1688,7 +1689,7 @@ mod test {
             state_process_type: PriorProcessType::Dirichlet,
             view_process_type: PriorProcessType::Dirichlet,
         };
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let result = test_asgn_flatness(&settings, 100, &mut rng);
         assert!(!result.rows_always_flat);
         assert!(!result.cols_always_flat);
@@ -1698,7 +1699,7 @@ mod test {
 
     #[test]
     fn update_should_stop_at_max_iters() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let n_iters = 37;
         let config = StateUpdateConfig {
@@ -1723,7 +1724,7 @@ mod test {
 
     #[test]
     fn flatten_cols() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let colmd = ColType::Continuous {
             hyper: None,
             prior: None,

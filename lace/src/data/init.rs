@@ -51,6 +51,7 @@ use lace_data::{Container, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::rand;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;
@@ -371,7 +372,7 @@ mod tests {
 
         let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let file = str_to_tempfile(csv_data);
         let (_, col_models) = df_to_col_models(
@@ -425,7 +426,7 @@ mod tests {
                       pr_alpha:
                         shape: 1.2
                         scale: 3.4
-                    value_map: !u32 2
+                    value_map: !u_int 2
                 missing_not_at_random: false
             row_names:
               - 0
@@ -440,7 +441,7 @@ mod tests {
 
         let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let file = str_to_tempfile(csv_data);
         let (_, col_models) = df_to_col_models(

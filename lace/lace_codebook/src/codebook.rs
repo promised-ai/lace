@@ -139,8 +139,8 @@ impl RowNameList {
         .map(|row_name| self.row_names.push(row_name))
     }
 
-    pub fn iter(&self) -> std::iter::Enumerate<std::slice::Iter<String>> {
-        self.row_names.iter().enumerate()
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (usize, &'a str)> {
+        self.row_names.iter().map(|s| s.as_str()).enumerate()
     }
 
     pub fn remove(&mut self, row_name: &str) -> bool {
@@ -236,7 +236,7 @@ impl ColMetadataList {
     }
 
     /// Iterate through the column metadata
-    pub fn iter(&self) -> std::slice::Iter<ColMetadata> {
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a ColMetadata> {
         self.metadata.iter()
     }
 
@@ -796,12 +796,12 @@ mod tests {
                 coltype:
                   !Categorical
                     k: 2
-                    value_map: !u8 2
+                    value_map: !u_int 2
               - name: three
                 coltype:
                   !Categorical
                     k: 2
-                    value_map: !u8 2
+                    value_map: !u_int 2
             state_prior_process: ~
             view_prior_process: ~
             comments: ~
@@ -908,7 +908,7 @@ mod tests {
               coltype: !Categorical
                 k: 2
                 hyper: null
-                value_map: !u8 2
+                value_map: !u_int 2
                 prior: null
               notes: null
               missing_not_at_random: false
@@ -916,7 +916,7 @@ mod tests {
               coltype: !Categorical
                 k: 3
                 hyper: null
-                value_map: !u8 3
+                value_map: !u_int 3
                 prior: null
               notes: null
               missing_not_at_random: false

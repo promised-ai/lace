@@ -3,6 +3,7 @@
 use lace::{Given, Row};
 use lace_codebook::{ColMetadata, ColMetadataList};
 use lace_metadata::SerializedType;
+use lace_stats::rand;
 use lace_stats::rv::traits::{HasDensity, Sampleable};
 
 use std::convert::TryInto;
@@ -18,7 +19,7 @@ fn empty_engine() -> lace::Engine {
         Codebook::default(),
         DataSource::Empty,
         0,
-        Xoshiro256Plus::from_entropy(),
+        Xoshiro256Plus::from_os_rng(),
     )
     .unwrap()
 }
@@ -89,7 +90,7 @@ fn gen_new_metadata<R: lace::RowIndex>(
 fn otacon_on_empty_table() {
     use lace::{HasData, OracleT, WriteMode};
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut engine = empty_engine();
 
     let n_iters = 100;
@@ -125,7 +126,7 @@ fn otacon_on_empty_table() {
 fn otacon_insert_after_save_load() {
     use lace::{AppendStrategy, WriteMode};
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut engine = empty_engine();
 
     let n_iters = 100;

@@ -1,8 +1,8 @@
 use std::f64::NEG_INFINITY;
 use std::ops::Index;
 
+use lace_stats::rand::Rng;
 use lace_utils::Shape;
-use rand::Rng;
 use rayon::prelude::*;
 
 /// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
@@ -50,7 +50,7 @@ where
                 ps[j] = p;
             });
 
-            let r: f64 = rng.gen::<f64>() * ps[n_cols - 1];
+            let r: f64 = rng.random::<f64>() * ps[n_cols - 1];
 
             ps.iter().fold(0_u16, |acc, p| acc + (*p < r) as u16) as usize
         })
@@ -68,7 +68,8 @@ where
 
     let n_cols = logps.n_cols();
 
-    let rs: Vec<f64> = (0..logps.n_rows()).map(|_| rng.gen::<f64>()).collect();
+    let rs: Vec<f64> =
+        (0..logps.n_rows()).map(|_| rng.random::<f64>()).collect();
 
     rs.par_iter()
         .enumerate()
@@ -138,7 +139,7 @@ where
             });
 
             let scale: f64 = ps[n_cols - 1];
-            let r: f64 = rng.gen::<f64>() * scale;
+            let r: f64 = rng.random::<f64>() * scale;
 
             ps.iter()
                 .fold(0_usize, |acc, p| if *p < r { acc + 1 } else { acc })
@@ -154,7 +155,7 @@ where
     let n_rows = logps.n_rows();
     let n_cols = logps.n_cols();
 
-    let us: Vec<f64> = (0..n_rows).map(|_| rng.gen::<f64>()).collect();
+    let us: Vec<f64> = (0..n_rows).map(|_| rng.random::<f64>()).collect();
 
     us.par_iter()
         .enumerate()
@@ -196,8 +197,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lace_stats::rand::SeedableRng;
     use lace_utils::Matrix;
-    use rand::SeedableRng;
     use rand_xoshiro::Xoshiro256Plus;
 
     fn gen_weights(n_rows: usize, n_cols: usize) -> Vec<Vec<f64>> {
@@ -205,7 +206,7 @@ mod tests {
         let logps: Vec<Vec<f64>> = (0..n_rows)
             .map(|_| {
                 let mut ps: Vec<f64> =
-                    (0..n_cols).map(|_| rng.gen::<f64>()).collect();
+                    (0..n_cols).map(|_| rng.random::<f64>()).collect();
                 let sum: f64 = ps.iter().sum::<f64>();
                 ps.drain(..).map(|p| (p / sum).ln()).collect::<Vec<f64>>()
             })
@@ -236,7 +237,7 @@ mod tests {
 
                 ps.iter_mut().for_each(|p| *p /= z);
 
-                let u: f64 = rng.gen();
+                let u: f64 = rng.random();
                 ps.iter().enumerate().find(|(_, &p)| p > u).unwrap().0
             })
             .collect()

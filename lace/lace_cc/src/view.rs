@@ -8,11 +8,11 @@ use lace_stats::prior_process::Builder as AssignmentBuilder;
 use lace_stats::prior_process::{
     PriorProcess, PriorProcessT, PriorProcessType, Process,
 };
+use lace_stats::rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use lace_stats::rv::dist::Dirichlet;
 use lace_stats::rv::misc::ln_pflip;
 use lace_stats::rv::traits::Sampleable;
 use lace_utils::{logaddexp, unused_components, Matrix, Shape};
-use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 
@@ -118,7 +118,7 @@ impl Builder {
 
         let mut rng = match self.seed {
             Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
-            None => Xoshiro256Plus::from_entropy(),
+            None => Xoshiro256Plus::from_os_rng(),
         };
 
         let process = self.process.unwrap_or_else(|| {
@@ -418,7 +418,7 @@ impl View {
             .iter()
             .map(|&zi| {
                 let wi: f64 = weights[zi];
-                let u: f64 = rng.gen::<f64>();
+                let u: f64 = rng.random::<f64>();
                 u * wi
             })
             .collect();
@@ -487,7 +487,7 @@ impl View {
 
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
     pub fn reassign_rows_sams<R: Rng>(&mut self, rng: &mut R) {
-        use rand::seq::IteratorRandom;
+        use lace_stats::rand::seq::IteratorRandom;
 
         let (i, j, zi, zj) = {
             let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
@@ -863,7 +863,7 @@ impl View {
 
         self.drop_component(self.n_cats());
 
-        if rng.gen::<f64>().ln() < logp_mrg - logp_spt + logq_spt {
+        if rng.random::<f64>().ln() < logp_mrg - logp_spt + logq_spt {
             self.set_asgn(asgn, rng)
         }
     }
@@ -879,7 +879,7 @@ impl View {
 
         let asgn = asgn_opt.unwrap();
 
-        if rng.gen::<f64>().ln() < logp_spt - logp_mrg - logq_spt {
+        if rng.random::<f64>().ln() < logp_spt - logp_mrg - logq_spt {
             self.set_asgn(asgn, rng)
         }
     }
@@ -933,7 +933,7 @@ impl View {
                 let assign_to_zi = if calc_reverse {
                     self.asgn().asgn[ix] == zi
                 } else {
-                    rng.gen::<f64>().ln() < logp_zi - lognorm
+                    rng.random::<f64>().ln() < logp_zi - lognorm
                 };
 
                 if assign_to_zi {
@@ -1126,7 +1126,7 @@ fn view_geweke_asgn<R: Rng>(
 impl GewekeModel for View {
     fn geweke_from_prior(
         settings: &ViewGewekeSettings,
-        mut rng: &mut impl Rng,
+        rng: &mut impl Rng,
     ) -> View {
         let do_ftr_prior_transition = settings
             .transitions
@@ -1141,7 +1141,7 @@ impl GewekeModel for View {
             settings.process_type,
             rng,
         );
-        let asgn = asgn_builder.seed_from_rng(&mut rng).build().unwrap();
+        let asgn = asgn_builder.seed_from_rng(rng).build().unwrap();
 
         // this function sets up dummy features that we can properly populate with
         // Feature.geweke_init in the next loop
@@ -1149,14 +1149,14 @@ impl GewekeModel for View {
             &settings.cm_types,
             settings.n_rows,
             do_ftr_prior_transition,
-            &mut rng,
+            rng,
         );
 
         let ftrs: BTreeMap<_, _> = ftrs
             .drain(..)
             .enumerate()
             .map(|(id, mut ftr)| {
-                ftr.geweke_init(&asgn.asgn, &mut rng);
+                ftr.geweke_init(&asgn.asgn, rng);
                 (id, ftr)
             })
             .collect();
@@ -1279,11 +1279,12 @@ mod tests {
     use crate::feature::Column;
     use lace_data::SparseContainer;
     use lace_stats::prior::nix::NixHyper;
+    use lace_stats::rand;
     use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
 
-    fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
+    fn gen_col<R: Rng>(id: usize, n: usize, rng: &mut R) -> ColModel {
         let gauss = Gaussian::new(0.0, 1.0).unwrap();
-        let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
+        let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(rng)).collect();
         let data = SparseContainer::from(data_vec);
         let hyper = NixHyper::default();
         let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
@@ -1325,7 +1326,7 @@ mod tests {
         ($alg:expr, $fn:ident) => {
             #[test]
             fn $fn() {
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
                 let mut view = gen_gauss_view(1, &mut rng);
                 view.reassign($alg, &mut rng);
             }
@@ -1366,7 +1367,7 @@ mod tests {
 
     #[test]
     fn extend_cols_adds_empty_unassigned_rows() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut view = gen_gauss_view(10, &mut rng);
 
         let components_start = extract_components(&view);
@@ -1388,7 +1389,7 @@ mod tests {
 
     #[test]
     fn insert_datum_into_existing_spot_updates_suffstats() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut view = gen_gauss_view(10, &mut rng);
 
         let components_start = extract_components(&view);
@@ -1409,7 +1410,7 @@ mod tests {
 
     #[test]
     fn insert_datum_into_unassigned_spot_does_not_update_suffstats() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut view = gen_gauss_view(10, &mut rng);
 
         let components_start = extract_components(&view);

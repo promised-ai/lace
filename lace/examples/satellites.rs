@@ -3,6 +3,7 @@
 use lace::examples::satellites::Column;
 use lace::examples::Example;
 use lace::prelude::*;
+use lace_stats::rand;
 use rayon::prelude::*;
 use std::convert::TryInto;
 
@@ -10,7 +11,7 @@ fn main() {
     // Load the satellites example
     let oracle = Example::Satellites.oracle().unwrap();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let xs = oracle.simulate(
         &["Class_of_Orbit"],
         &Given::Conditions(vec![(
