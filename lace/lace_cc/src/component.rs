@@ -72,7 +72,7 @@ where
 
     /// Return the observations
     #[inline]
-    pub fn obs(&self) -> DataOrSuffStat<X, Fx> {
+    pub fn obs<'a>(&'a self) -> DataOrSuffStat<'a, X, Fx> {
         DataOrSuffStat::SuffStat(&self.stat)
     }
 

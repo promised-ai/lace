@@ -1605,11 +1605,12 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use lace::examples::Example;
+    /// # use lace_stats::rand;
     /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     /// let xs = oracle.draw("pig", "fierce", 12, &mut rng).unwrap();
     ///
     /// assert_eq!(xs.len(), 12);
@@ -1670,13 +1671,14 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use lace::examples::Example;
+    /// # use lace_stats::rand;
     /// use lace::OracleT;
     /// use lace::Given;
     /// use lace_data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     ///
     /// let given = Given::Conditions(
     ///     vec![

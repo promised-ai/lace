@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn bb_log_marginal_mh() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let xs: Vec<u8> = vec![0, 0, 1, 1, 1, 1];
 
@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn bb_log_marginal_importance() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let xs: Vec<u8> = vec![0, 0, 1, 1, 1, 1];
         let prior = Beta::new(2.0, 2.0).unwrap();

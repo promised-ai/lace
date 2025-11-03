@@ -110,7 +110,7 @@ fn stream_insert_all_data() {
             format!("{}", i),
             (0..14)
                 .map(|j| {
-                    let x = Datum::Continuous(rng.gen());
+                    let x = Datum::Continuous(rng.random());
                     (format!("{}", j), x)
                 })
                 .collect::<Vec<(String, Datum)>>(),
@@ -147,7 +147,7 @@ fn trench_insert_all_data() {
             format!("{}", ix),
             (0..14)
                 .map(|j| {
-                    let x = Datum::Continuous(rng.gen());
+                    let x = Datum::Continuous(rng.random());
                     (format!("{}", j), x)
                 })
                 .collect::<Vec<(String, Datum)>>(),

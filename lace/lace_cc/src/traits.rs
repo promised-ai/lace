@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use lace_data::TranslateContainer;
-use lace_stats::rv::data::GaussianData;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 

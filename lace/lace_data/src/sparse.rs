@@ -1,7 +1,5 @@
-use crate::Datum;
 use crate::{AccumScore, Container};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 
 /// A sparse container stores contiguous vertical slices of data
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

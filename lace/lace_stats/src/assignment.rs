@@ -484,7 +484,7 @@ mod tests {
     #[test]
     fn from_prior_process_should_have_valid_alpha_and_proper_length() {
         let n: usize = 50;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let process = Process::Dirichlet(Dirichlet::from_prior(
             Gamma::new(1.0, 1.0).unwrap(),
             &mut rng,

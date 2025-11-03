@@ -190,7 +190,7 @@ impl ValueMap {
         }
     }
 
-    pub fn iter(&self) -> CategoryIter {
+    pub fn iter<'a>(&'a self) -> CategoryIter<'a> {
         CategoryIter::new(self)
     }
 

@@ -93,7 +93,7 @@ impl SimplexPoint {
     }
 
     pub fn draw<R: rand::Rng>(&self, rng: &mut R) -> usize {
-        let u: f64 = rng.gen();
+        let u: f64 = rng.random();
         let mut sum_p = 0.0;
         for (ix, &p) in self.0.iter().enumerate() {
             sum_p += p;

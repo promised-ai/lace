@@ -2,8 +2,6 @@ use std::mem;
 use std::vec::Drain;
 
 use enum_dispatch::enum_dispatch;
-use lace_data::TranslateContainer;
-use lace_data::TranslateDatum;
 use lace_data::{Category, FeatureData};
 use lace_data::{Container, SparseContainer};
 use lace_stats::assignment::Assignment;

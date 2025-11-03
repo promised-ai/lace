@@ -7,7 +7,7 @@ use lace_stats::prior::pg::PgHyper;
 use lace_utils::mean_var;
 
 fn run() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let rates: Vec<f64> = Gamma::new_unchecked(2.0, 2.0).sample(10, &mut rng);
 
     let hyper = PgHyper {

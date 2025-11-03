@@ -1,13 +1,13 @@
 use lace_stats::rand;
 use lace_stats::rv::dist::{Gamma, Gaussian, InvGamma, ScaledInvChiSquared};
-use lace_stats::rv::traits::{HasDensity, Sampleable};
+use lace_stats::rv::traits::Sampleable;
 use lace_utils::mean_var;
 
 use plotly::layout::{Axis, GridPattern, Layout, LayoutGrid};
 use plotly::{Histogram, Plot};
 
 fn main() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mean: f64 = 18429.39;
     let sigma: f64 = 28502.115;

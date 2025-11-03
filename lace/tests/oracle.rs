@@ -14,7 +14,7 @@ use lace_data::{DataStore, SparseContainer};
 use lace_stats::rand;
 use lace_stats::rand::Rng;
 use lace_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
-use lace_stats::rv::traits::{Cdf, HasDensity, Sampleable};
+use lace_stats::rv::traits::{Cdf, Sampleable};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();

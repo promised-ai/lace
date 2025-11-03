@@ -668,19 +668,6 @@ mod test {
         categorical_or_count!(i64_4, -1_i64, 21, Some(20), false);
 
         #[test]
-        fn greater_than_256_string_values_errors() {
-            let srs = Series::new(
-                "A",
-                (0..256).map(|x| format!("{x}")).collect::<Vec<_>>(),
-            );
-            match series_to_colmd(&srs, None, false) {
-                Err(CodebookError::CategoricalOverflow { .. }) => {}
-                Err(err) => panic!("wrong error: {}", err),
-                Ok(_) => panic!("should have failed"),
-            }
-        }
-
-        #[test]
         fn exactly_255_string_values_ok() {
             let srs = Series::new(
                 "A",

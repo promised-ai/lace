@@ -445,7 +445,7 @@ mod tests {
 
         for _ in 0..1000 {
             let x: f64 = {
-                let u: f64 = rng.gen();
+                let u: f64 = rng.random();
                 u * 3.0
             };
             let y = Datum::Continuous(x);

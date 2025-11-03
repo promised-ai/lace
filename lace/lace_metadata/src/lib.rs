@@ -67,7 +67,6 @@ macro_rules! loaders {
         pub(crate) mod load {
             use super::*;
             use log::info;
-            use rayon::prelude::*;
             use std::path::Path;
             use $crate::config::FileConfig;
             use $crate::utils::{

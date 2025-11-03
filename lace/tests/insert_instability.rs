@@ -4,7 +4,7 @@ use lace::{Given, Row};
 use lace_codebook::{ColMetadata, ColMetadataList};
 use lace_metadata::SerializedType;
 use lace_stats::rand;
-use lace_stats::rv::traits::{HasDensity, Sampleable};
+use lace_stats::rv::traits::Sampleable;
 
 use std::convert::TryInto;
 

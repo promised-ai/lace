@@ -72,13 +72,15 @@ impl<T: Send + Sync> Matrix<T> {
     /// assert_eq!(mat.raw_values(), &vec![1, 2, 3, 4, 5, 6])
     /// ```
     #[inline]
-    pub fn rows_mut(&mut self) -> std::slice::ChunksExactMut<T> {
+    pub fn rows_mut<'a>(&'a mut self) -> std::slice::ChunksExactMut<'a, T> {
         self.values.chunks_exact_mut(self.n_cols)
     }
 
     /// Parallel version of `rows_mut`
     #[inline]
-    pub fn par_rows_mut(&mut self) -> rayon::slice::ChunksExactMut<T> {
+    pub fn par_rows_mut<'a>(
+        &'a mut self,
+    ) -> rayon::slice::ChunksExactMut<'a, T> {
         self.values.par_chunks_exact_mut(self.n_cols)
     }
 
@@ -103,13 +105,13 @@ impl<T: Send + Sync> Matrix<T> {
     /// assert_eq!(rowsum, vec![3_u8, 12_u8])
     /// ```
     #[inline]
-    pub fn rows(&self) -> std::slice::ChunksExact<T> {
+    pub fn rows<'a>(&'a self) -> std::slice::ChunksExact<'a, T> {
         self.values.chunks_exact(self.n_cols)
     }
 
     /// Parallel version of `rows`
     #[inline]
-    pub fn par_rows(&self) -> rayon::slice::ChunksExact<T> {
+    pub fn par_rows<'a>(&'a self) -> rayon::slice::ChunksExact<'a, T> {
         self.values.par_chunks_exact(self.n_cols)
     }
 

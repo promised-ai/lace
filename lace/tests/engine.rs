@@ -12,7 +12,6 @@ use lace::{
 };
 use lace_codebook::{Codebook, ValueMap};
 use lace_metadata::SerializedType;
-use lace_stats::rand;
 use lace_stats::rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 

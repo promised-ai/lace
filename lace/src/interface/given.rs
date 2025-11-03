@@ -33,7 +33,7 @@ impl<Ix: ColumnIndex> Given<Ix> {
     /// assert!(nothing_given.is_nothing());
     ///
     /// let something_given = Given::Conditions(
-    ///     vec![(1, Datum::Categorical(1_u8.into()))]
+    ///     vec![(1, Datum::Categorical(1_u32.into()))]
     /// );
     ///
     /// assert!(!something_given.is_nothing());
@@ -54,7 +54,7 @@ impl<Ix: ColumnIndex> Given<Ix> {
     /// assert!(!nothing_given.is_conditions());
     ///
     /// let something_given = Given::Conditions(
-    ///     vec![(1, Datum::Categorical(1_u8.into()))]
+    ///     vec![(1, Datum::Categorical(1_u32.into()))]
     /// );
     ///
     /// assert!(something_given.is_conditions());
@@ -108,8 +108,8 @@ impl<Ix: ColumnIndex> Default for Given<Ix> {
 /// use lace_data::Datum;
 ///
 /// let conditions_good = vec![
-///     (0_usize, Datum::Categorical(0_u8.into())),
-///     (1_usize, Datum::Categorical(0_u8.into())),
+///     (0_usize, Datum::Categorical(0_u32.into())),
+///     (1_usize, Datum::Categorical(0_u32.into())),
 /// ];
 ///
 /// let given_good: Result<Given<usize>, IntoGivenError> = conditions_good.try_into();
@@ -117,8 +117,8 @@ impl<Ix: ColumnIndex> Default for Given<Ix> {
 ///
 /// // duplicate indices
 /// let conditions_bad = vec![
-///     (0_usize, Datum::Categorical(0_u8.into())),
-///     (0_usize, Datum::Categorical(0_u8.into())),
+///     (0_usize, Datum::Categorical(0_u32.into())),
+///     (0_usize, Datum::Categorical(0_u32.into())),
 /// ];
 /// let given_bad: Result<Given<usize>, IntoGivenError> = conditions_bad.try_into();
 ///

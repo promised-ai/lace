@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn gauss_pit_for_samples_from_target_should_have_low_error() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let g = Gaussian::standard();
         let mixture = Mixture::new(vec![1.0], vec![g.clone()]).unwrap();
 
@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn gauss_pit_for_samples_from_narrow_should_have_high_error() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let g_gen = Gaussian::standard();
         let g_target = Gaussian::new(0.0, 0.1).unwrap();
         let mixture = Mixture::new(vec![1.0], vec![g_target]).unwrap();
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn gauss_pit_for_samples_from_wide_should_have_high_error() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let g_gen = Gaussian::standard();
         let g_target = Gaussian::new(1.5, 1.0).unwrap();
         let mixture = Mixture::new(vec![1.0], vec![g_target]).unwrap();
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn ctgrl_pit_for_samples_from_target_should_have_low_error() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let c_gen = Categorical::new(&[0.25, 0.75]).unwrap();
         let mixture = Mixture::new(vec![1.0], vec![c_gen.clone()]).unwrap();
 
