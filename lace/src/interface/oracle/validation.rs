@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use lace_cc::state::State;
-use lace_data::Datum;
+use crate::cc::state::State;
+use crate::data::Datum;
 
 use crate::error::{GivenError, LogpError};
 use crate::Given;
@@ -93,7 +93,7 @@ pub(crate) trait Mnar {
     fn not_mnar(&self) -> bool;
 }
 
-impl Mnar for lace_cc::feature::ColModel {
+impl Mnar for crate::cc::feature::ColModel {
     fn is_mnar(&self) -> bool {
         matches!(self, Self::MissingNotAtRandom(_))
     }
@@ -149,12 +149,12 @@ pub fn find_value_conflicts(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cc::feature::FType;
+    use crate::codebook::Codebook;
+    use crate::data::DataStore;
     use crate::error::IndexError;
     use crate::interface::utils::load_states;
     use crate::interface::{HasStates, Oracle};
-    use lace_cc::feature::FType;
-    use lace_codebook::Codebook;
-    use lace_data::DataStore;
     use std::path::Path;
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {

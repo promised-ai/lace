@@ -169,18 +169,23 @@
 
 #[cfg(feature = "bencher")]
 pub mod bencher;
-
-pub mod config;
-pub mod data;
-pub mod defaults;
-
 #[cfg(feature = "examples")]
 pub mod examples;
 
+pub mod cc;
+pub mod codebook;
+pub mod config;
+pub mod consts;
+pub mod data;
+pub mod defaults;
+pub mod geweke;
 mod interface;
+pub mod metadata;
 pub mod misc;
 pub mod optimize;
 pub mod prelude;
+pub mod stats;
+pub mod utils;
 
 mod index;
 
@@ -189,11 +194,11 @@ pub use index::*;
 pub use config::EngineUpdateConfig;
 
 pub use interface::{
-    update_handler, utils, AppendStrategy, BuildEngineError,
-    ConditionalEntropyType, DatalessOracle, Engine, EngineBuilder, Given,
-    HasData, HasStates, InsertDataActions, InsertMode, Metadata, MiComponents,
-    MiType, Oracle, OracleT, OverwriteMode, Row, RowSimilarityVariant,
-    SupportExtension, Value, WriteMode,
+    update_handler, AppendStrategy, BuildEngineError, ConditionalEntropyType,
+    DatalessOracle, Engine, EngineBuilder, Given, HasData, HasStates,
+    InsertDataActions, InsertMode, Metadata, MiComponents, MiType, Oracle,
+    OracleT, OverwriteMode, Row, RowSimilarityVariant, SupportExtension, Value,
+    WriteMode,
 };
 
 pub mod error {
@@ -215,27 +220,7 @@ where
     }
 }
 
-pub use lace_cc::feature::FType;
-pub use lace_cc::state::StateDiagnostics;
-pub use lace_cc::transition::StateTransition;
-pub use lace_data::{Category, Datum, SummaryStatistics};
-
-pub mod consts {
-    pub use lace_consts::*;
-}
-
-pub mod metadata {
-    pub use lace_metadata::*;
-}
-
-pub mod codebook {
-    pub use lace_codebook::*;
-}
-
-pub mod cc {
-    pub use lace_cc::*;
-}
-
-pub mod stats {
-    pub use lace_stats::*;
-}
+pub use cc::feature::FType;
+pub use cc::state::StateDiagnostics;
+pub use cc::transition::StateTransition;
+pub use data::{Category, Datum, SummaryStatistics};

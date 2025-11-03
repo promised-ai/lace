@@ -10,7 +10,7 @@ pub use crate::interface::Variability;
 
 pub use crate::data::DataSource;
 
-pub use lace_cc::{
+pub use crate::cc::{
     alg::{ColAssignAlg, RowAssignAlg},
     config::StateUpdateConfig,
     feature::{Column, FType},
@@ -18,11 +18,11 @@ pub use lace_cc::{
     transition::{StateTransition, ViewTransition},
     view::View,
 };
-pub use lace_codebook::{
+pub use crate::codebook::{
     Codebook, CodebookError, ColMetadata, ColMetadataList, ColType,
 };
-pub use lace_metadata::SerializedType;
-pub use lace_stats::assignment::Assignment;
-pub use lace_stats::prior::{csd::CsdHyper, nix::NixHyper, pg::PgHyper};
-pub use lace_stats::rv;
-pub use lace_utils as utils;
+pub use crate::metadata::SerializedType;
+pub use crate::stats::assignment::Assignment;
+pub use crate::stats::prior::{csd::CsdHyper, nix::NixHyper, pg::PgHyper};
+pub use crate::utils;
+pub use rv;

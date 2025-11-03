@@ -1,6 +1,6 @@
 [package]
 name = "lace"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Promised AI"]
 build = "build.rs"
 edition = "2021"
@@ -11,18 +11,6 @@ homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
 description = "A probabilistic cross-categorization engine"
 
-[workspace]
-members = [
-  "lace_utils",
-  "lace_stats",
-  "lace_codebook",
-  "lace_cc",
-  "lace_geweke",
-  "lace_consts",
-  "lace_data",
-  "lace_metadata",
-]
-
 [build-dependencies]
 dirs = "5"
 
@@ -31,22 +19,24 @@ name = "lace"
 path = "src/lib.rs"
 
 [dependencies]
-lace_cc = { path = "lace_cc", version = "0.7.0" }
-lace_utils = { path = "lace_utils", version = "0.3.0" }
-lace_stats = { path = "lace_stats", version = "0.4.0" }
-lace_codebook = { path = "lace_codebook", version = "0.7.0", default_features = false }
-lace_geweke = { path = "lace_geweke", version = "0.4.0" }
-lace_consts = { path = "lace_consts", version = "0.2.1" }
-lace_data = { path = "lace_data", version = "0.3.0" }
-lace_metadata = { path = "lace_metadata", version = "0.7.0" }
+rv = { path = "/Users/bax/Documents/redpoll/rv", features = [
+  "serde1",
+  "arraydist",
+] }
 dirs = { version = "5", optional = true }
+enum_dispatch = "0.3.13"
 num = "0.4"
+log = "0.4.28"
+rand = { version = "0.9", features = ["serde"] }
 rand_xoshiro = { version = "0.7", features = ["serde"] }
 rand_distr = "0.5"
 rayon = "1.5"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9.4"
 serde_json = "1"
+bincode = "1"
+special = "0.10"
+itertools = "0.12"
 maplit = "1"
 indexmap = { version = "2.0.0", features = ["serde"] }
 thiserror = "1.0.19"
@@ -73,7 +63,7 @@ default = ["examples"]
 examples = ["dep:dirs"]
 ctrlc_handler = ["dep:ctrlc"]
 bencher = ["formats", "examples"]
-formats = ["lace_codebook/formats"]
+formats = ["polars/json", "polars/ipc", "polars/decompress", "polars/parquet"]
 
 [[example]]
 name = "animals"

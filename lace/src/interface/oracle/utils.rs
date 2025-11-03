@@ -7,24 +7,19 @@ use std::hash::Hash;
 use std::io::Read;
 use std::path::Path;
 
+use rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
+use rv::traits::{Entropy, HasDensity, Mode, QuadBounds, Sampleable, Variance};
+
+use super::error::IndexError;
 use crate::cc::feature::{ColModel, FType, Feature};
 use crate::cc::state::State;
 use crate::codebook::Codebook;
-use crate::stats::rv::dist::{
-    Bernoulli, Categorical, Gaussian, Mixture, Poisson,
-};
-use crate::stats::rv::traits::{
-    Entropy, HasDensity, Mode, QuadBounds, Sampleable, Variance,
-};
-use crate::stats::MixtureType;
-use lace_consts::rv::misc::LogSumExp;
-use lace_data::{Category, Datum};
-use lace_stats::rand;
-use lace_utils::{argmax, transpose};
-
-use super::error::IndexError;
+use crate::consts::rv::misc::LogSumExp;
+use crate::data::{Category, Datum};
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
+use crate::stats::MixtureType;
+use crate::utils::{argmax, transpose};
 
 pub(crate) fn u32_to_category(
     x: u32,
@@ -341,8 +336,8 @@ pub fn gen_sobol_samples(
     state: &State,
     n: usize,
 ) -> (Vec<Vec<Datum>>, f64) {
-    use lace_stats::seq::SobolSeq;
-    use lace_stats::QmcEntropy;
+    use crate::stats::seq::SobolSeq;
+    use crate::stats::QmcEntropy;
 
     let features: Vec<_> =
         col_ixs.iter().map(|&ix| state.feature(ix)).collect();
@@ -736,8 +731,8 @@ pub fn categorical_impute(
 }
 
 pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
-    use lace_stats::rv::traits::Mean;
-    use lace_utils::MinMax;
+    use crate::utils::MinMax;
+    use rv::traits::Mean;
 
     let cpnts: Vec<Poisson> = states
         .iter()
@@ -874,9 +869,7 @@ pub fn categorical_gaussian_entropy_dual(
     states: &[State],
 ) -> f64 {
     use crate::cc::feature::MissingNotAtRandom;
-    use lace_stats::rv::misc::{
-        gauss_legendre_quadrature_cached, gauss_legendre_table,
-    };
+    use rv::misc::{gauss_legendre_quadrature_cached, gauss_legendre_table};
     use std::cell::RefCell;
     use std::collections::HashMap;
 
@@ -1101,7 +1094,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
         })
         .collect();
 
-    let vals: Vec<_> = lace_utils::CategoricalCartProd::new(ranges)
+    let vals: Vec<_> = crate::utils::CategoricalCartProd::new(ranges)
         .map(|mut xs| {
             let vals: Vec<_> = xs
                 .drain(..)
@@ -1208,7 +1201,7 @@ pub fn categorical_entropy_dual(
 
 // Finds the first x such that
 fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
-    use lace_stats::rv::traits::{Cdf, Mean};
+    use rv::traits::{Cdf, Mean};
 
     let lower_threshold = (1.0 - mass) / 2.0;
     let upper_threshold = mass - (1.0 - mass) / 2.0;

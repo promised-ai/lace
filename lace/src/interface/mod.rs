@@ -4,14 +4,13 @@ mod given;
 mod metadata;
 mod oracle;
 
+use crate::codebook::Codebook;
+pub use crate::metadata::latest::Metadata;
 pub use engine::{
     update_handler, AppendStrategy, BuildEngineError, Engine, EngineBuilder,
     InsertDataActions, InsertMode, OverwriteMode, Row, SupportExtension, Value,
     WriteMode,
 };
-use lace_codebook::Codebook;
-pub use lace_metadata::latest::Metadata;
-pub use oracle::utils;
 
 pub use oracle::{
     ConditionalEntropyType, DatalessOracle, MiComponents, MiType, Oracle,
@@ -26,8 +25,8 @@ pub mod error {
     pub use super::oracle::error::*;
 }
 
-use lace_cc::state::State;
-use lace_data::{Datum, SummaryStatistics};
+use crate::cc::state::State;
+use crate::data::{Datum, SummaryStatistics};
 
 /// Returns references to crosscat states
 pub trait HasStates {

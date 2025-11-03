@@ -1,10 +1,10 @@
-use lace_codebook::Codebook;
-use lace_stats::rand::SeedableRng;
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
 use super::error::NewEngineError;
 use super::Engine;
+use crate::codebook::Codebook;
 use crate::data::{DataSource, DefaultCodebookError};
 
 const DEFAULT_NSTATES: usize = 8;

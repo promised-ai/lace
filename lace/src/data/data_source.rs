@@ -1,13 +1,15 @@
 //! Type of the data source, e.g., CSV or SQL database.
-use super::error::DefaultCodebookError;
-use lace_codebook::Codebook;
-use polars::frame::DataFrame;
-use std::fmt;
-
 #[cfg(feature = "formats")]
 use std::ffi::{OsStr, OsString};
 #[cfg(feature = "formats")]
 use std::path::PathBuf;
+
+use std::fmt;
+
+use polars::frame::DataFrame;
+
+use super::error::DefaultCodebookError;
+use crate::codebook::Codebook;
 
 /// Denotes the source type of the data to be analyzed
 #[cfg(not(feature = "formats"))]

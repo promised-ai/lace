@@ -43,18 +43,19 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
-use crate::codebook::{Codebook, ColType};
-use crate::error::DataParseError;
-use lace_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
-use lace_codebook::{CodebookError, ValueMap};
-use lace_data::{Container, SparseContainer};
-use lace_stats::prior::csd::CsdHyper;
-use lace_stats::prior::nix::NixHyper;
-use lace_stats::prior::pg::PgHyper;
-use lace_stats::rand;
-use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
-use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;
+
+use polars::prelude::{DataFrame, Series};
+use rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+
+use crate::cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
+use crate::codebook::{Codebook, ColType};
+use crate::codebook::{CodebookError, ValueMap};
+use crate::data::{Container, SparseContainer};
+use crate::error::DataParseError;
+use crate::stats::prior::csd::CsdHyper;
+use crate::stats::prior::nix::NixHyper;
+use crate::stats::prior::pg::PgHyper;
 
 fn continuous_col_model<R: rand::Rng>(
     id: usize,
@@ -203,7 +204,7 @@ pub fn df_to_col_models<R: rand::Rng>(
         let mut id_cols = df
             .get_column_names()
             .iter()
-            .filter(|&name| lace_utils::is_index_col(name))
+            .filter(|&name| crate::utils::is_index_col(name))
             .map(|name| name.to_string())
             .collect::<Vec<String>>();
 
@@ -269,8 +270,8 @@ pub fn df_to_col_models<R: rand::Rng>(
 
             // If missing not at random, convert the column type
             if colmd.missing_not_at_random {
-                use lace_stats::rv::dist::Beta;
                 use polars::prelude::DataType;
+                use rv::dist::Beta;
                 col_model.map(|cm| {
                     ColModel::MissingNotAtRandom(MissingNotAtRandom {
                         present: {
@@ -377,7 +378,7 @@ mod tests {
         let file = str_to_tempfile(csv_data);
         let (_, col_models) = df_to_col_models(
             codebook,
-            lace_codebook::data::read_csv(file.path()).unwrap(),
+            crate::codebook::data::read_csv(file.path()).unwrap(),
             &mut rng,
         )
         .unwrap();
@@ -446,7 +447,7 @@ mod tests {
         let file = str_to_tempfile(csv_data);
         let (_, col_models) = df_to_col_models(
             codebook,
-            lace_codebook::data::read_csv(file.path()).unwrap(),
+            crate::codebook::data::read_csv(file.path()).unwrap(),
             &mut rng,
         )
         .unwrap();

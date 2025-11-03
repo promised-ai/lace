@@ -1,4 +1,4 @@
-use lace_codebook::Codebook;
+use crate::codebook::Codebook;
 use serde::{Deserialize, Serialize};
 
 use crate::error::IndexError;

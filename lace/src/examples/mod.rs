@@ -1,16 +1,17 @@
 pub mod animals;
 pub mod satellites;
 
-use crate::data::DataSource;
-use crate::update_handler::Timeout;
-use crate::{Engine, Oracle};
-use lace_codebook::Codebook;
-use lace_metadata::Error;
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
 use std::time::Duration;
 use thiserror::Error;
+
+use crate::codebook::Codebook;
+use crate::data::DataSource;
+use crate::metadata::Error;
+use crate::update_handler::Timeout;
+use crate::{Engine, Oracle};
 
 const DEFAULT_N_ITERS: usize = 5_000;
 const DEFAULT_TIMEOUT: Option<u64> = None;
@@ -99,7 +100,7 @@ impl Example {
         timeout: Option<u64>,
     ) -> Result<(), Error> {
         use crate::config::EngineUpdateConfig;
-        use lace_stats::rand::SeedableRng;
+        use rand::SeedableRng;
         use rand_xoshiro::Xoshiro256Plus;
 
         let n_states = 16;
@@ -150,8 +151,10 @@ impl Example {
         );
 
         engine.update(config, timeout)?;
-        engine
-            .save(paths.lace.as_path(), lace_metadata::SerializedType::Yaml)?;
+        engine.save(
+            paths.lace.as_path(),
+            crate::metadata::SerializedType::Yaml,
+        )?;
         Ok(())
     }
 

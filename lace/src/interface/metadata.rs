@@ -1,11 +1,12 @@
 use std::convert::TryFrom;
 
-use lace_cc::state::State;
-use lace_data::DataStore;
-use lace_metadata::latest;
-use lace_stats::rand::SeedableRng;
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
+
+use crate::cc::state::State;
+use crate::data::DataStore;
+use crate::metadata::latest;
 
 use crate::{DatalessOracle, Engine, Oracle};
 
@@ -182,8 +183,8 @@ mod tests {
 
     #[test]
     fn engine_can_update_data_after() {
+        use crate::data::Datum;
         use crate::{InsertMode, OverwriteMode, Row, Value, WriteMode};
-        use lace_data::Datum;
 
         let engine_1 = Example::Animals.engine().unwrap();
         let serialized_1 = serde_yaml::to_string(&engine_1).unwrap();

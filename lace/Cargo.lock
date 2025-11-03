@@ -725,9 +725,9 @@ checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 
 [[package]]
 name = "enum_dispatch"
-version = "0.3.12"
+version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f33313078bb8d4d05a2733a94ac4c2d8a0df9a2b84424ebf4f33bfc224a890e"
+checksum = "aa18ce2bc66555b3218614519ac839ddb759a7d6720732f979ef8d13be147ecd"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -1275,152 +1275,35 @@ dependencies = [
 
 [[package]]
 name = "lace"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "approx",
+ "bincode",
  "clap",
  "criterion",
  "ctrlc",
  "dirs",
+ "enum_dispatch",
  "indexmap 2.1.0",
  "indicatif",
  "indoc",
- "lace_cc",
- "lace_codebook",
- "lace_consts",
- "lace_data",
- "lace_geweke",
- "lace_metadata",
- "lace_stats",
- "lace_utils",
+ "itertools 0.12.0",
+ "log",
  "maplit",
  "num",
  "plotly",
  "polars",
- "rand_distr 0.5.1",
- "rand_xoshiro",
- "rayon",
- "serde",
- "serde_json",
- "serde_yaml",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "lace_cc"
-version = "0.7.0"
-dependencies = [
- "approx",
- "clap",
- "criterion",
- "enum_dispatch",
- "itertools 0.12.0",
- "lace_codebook",
- "lace_consts",
- "lace_data",
- "lace_geweke",
- "lace_stats",
- "lace_utils",
- "plotly",
- "rand_xoshiro",
- "rayon",
- "serde",
- "serde_json",
- "special 0.10.3",
- "thiserror",
-]
-
-[[package]]
-name = "lace_codebook"
-version = "0.7.0"
-dependencies = [
- "indoc",
- "lace_consts",
- "lace_data",
- "lace_stats",
- "lace_utils",
- "polars",
- "serde",
- "serde_yaml",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "lace_consts"
-version = "0.2.1"
-dependencies = [
- "rv",
-]
-
-[[package]]
-name = "lace_data"
-version = "0.3.0"
-dependencies = [
- "approx",
- "lace_consts",
- "lace_utils",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "lace_geweke"
-version = "0.4.0"
-dependencies = [
- "indicatif",
- "lace_stats",
- "lace_utils",
- "serde",
- "serde_yaml",
-]
-
-[[package]]
-name = "lace_metadata"
-version = "0.7.0"
-dependencies = [
- "bincode",
- "hex",
- "lace_cc",
- "lace_codebook",
- "lace_data",
- "lace_stats",
- "log",
- "rand_xoshiro",
- "rayon",
- "serde",
- "serde_json",
- "serde_yaml",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "lace_stats"
-version = "0.4.0"
-dependencies = [
- "approx",
- "criterion",
- "itertools 0.12.0",
- "lace_consts",
- "lace_data",
- "lace_utils",
  "rand 0.9.2",
  "rand_distr 0.5.1",
- "serde",
- "special 0.10.3",
- "thiserror",
-]
-
-[[package]]
-name = "lace_utils"
-version = "0.3.0"
-dependencies = [
- "approx",
- "rand 0.8.5",
+ "rand_xoshiro",
  "rayon",
+ "rv",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "special 0.10.3",
+ "tempfile",
+ "thiserror",
 ]
 
 [[package]]
@@ -1533,9 +1416,9 @@ checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
 
 [[package]]
 name = "log"
-version = "0.4.20"
+version = "0.4.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
+checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 
 [[package]]
 name = "lru"
@@ -2381,7 +2264,6 @@ dependencies = [
  "libc",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
- "serde",
 ]
 
 [[package]]
@@ -2422,7 +2304,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom 0.2.12",
- "serde",
 ]
 
 [[package]]

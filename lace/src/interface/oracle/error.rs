@@ -1,7 +1,8 @@
 //! Errors that can occur in Oracle functions
-use lace_cc::feature::FType;
-use lace_data::Category;
 use thiserror::Error;
+
+use crate::cc::feature::FType;
+use crate::data::Category;
 
 /// Describes errors arising from a bad `Given` in the context of an Oracle
 /// query.

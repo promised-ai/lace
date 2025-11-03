@@ -8,8 +8,7 @@ use std::{
 #[cfg(feature = "ctrlc_handler")]
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use lace_cc::state::State;
-
+use crate::cc::state::State;
 use crate::EngineUpdateConfig;
 
 /// Custom state inspector for `Engine::update`.

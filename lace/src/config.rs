@@ -1,6 +1,6 @@
 use crate::cc::config::StateUpdateConfig;
 use crate::cc::transition::{StateTransition, DEFAULT_STATE_TRANSITIONS};
-use lace_metadata::SerializedType;
+use crate::metadata::SerializedType;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

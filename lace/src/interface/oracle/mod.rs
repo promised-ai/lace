@@ -9,10 +9,10 @@ pub use traits::{OracleT, Variability};
 
 use std::path::Path;
 
-use lace_cc::state::State;
-use lace_codebook::Codebook;
-use lace_data::{DataStore, Datum, SummaryStatistics};
-use lace_metadata::latest::Metadata;
+use crate::cc::state::State;
+use crate::codebook::Codebook;
+use crate::data::{DataStore, Datum, SummaryStatistics};
+use crate::metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
 use crate::{Engine, HasData, HasStates};
@@ -163,11 +163,13 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .lace file
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, lace_metadata::Error> {
-        let metadata = lace_metadata::load_metadata(path)?;
+    pub fn load<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<Self, crate::metadata::Error> {
+        let metadata = crate::metadata::load_metadata(path)?;
         metadata
             .try_into()
-            .map_err(|err| lace_metadata::Error::Other(format!("{err}")))
+            .map_err(|err| crate::metadata::Error::Other(format!("{err}")))
     }
 }
 
@@ -205,16 +207,16 @@ impl HasCodebook for Oracle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cc::feature::{FType, Feature};
+    use crate::codebook::{ColMetadata, ColType};
+    use crate::stats::rand;
+    use crate::stats::rand::Rng;
+    use crate::stats::rv::dist::{Categorical, Gaussian, Mixture};
+    use crate::stats::MixtureType;
     use crate::Given;
     use crate::{Oracle, OracleT};
     use approx::*;
-    use lace_cc::feature::{FType, Feature};
-    use lace_codebook::{ColMetadata, ColType};
-    use lace_stats::rand;
-    use lace_stats::rand::Rng;
-    use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
-    use lace_stats::rv::traits::{HasDensity, Sampleable};
-    use lace_stats::MixtureType;
+    use rv::traits::{HasDensity, Sampleable};
     use std::collections::BTreeMap;
     use std::path::Path;
 

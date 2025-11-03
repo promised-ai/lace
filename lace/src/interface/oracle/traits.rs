@@ -1,22 +1,21 @@
 use super::error::{self, IndexError};
 use super::validation::{find_given_errors, find_value_conflicts};
 use super::{utils, RowSimilarityVariant};
+use crate::cc::feature::{FType, Feature};
+use crate::cc::state::{State, StateDiagnostics};
+use crate::consts::rv::misc::LogSumExp;
+use crate::data::{Datum, SummaryStatistics};
 use crate::index::{
     extract_col_pair, extract_colixs, extract_row_pair, ColumnIndex, RowIndex,
 };
 use crate::interface::oracle::error::SurprisalError;
 use crate::interface::oracle::{ConditionalEntropyType, MiComponents, MiType};
 use crate::interface::{CanOracle, Given};
-use lace_cc::feature::{FType, Feature};
-use lace_cc::state::{State, StateDiagnostics};
-use lace_consts::rv::misc::LogSumExp;
-use lace_data::{Datum, SummaryStatistics};
-use lace_stats::rand;
-use lace_stats::rand::Rng;
-use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
-use lace_stats::rv::traits::Sampleable;
-use lace_stats::SampleError;
+use crate::stats::SampleError;
+use rand::Rng;
 use rayon::prelude::*;
+use rv::dist::{Categorical, Gaussian, Mixture};
+use rv::traits::Sampleable;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -2084,8 +2083,8 @@ pub trait OracleT: CanOracle {
         given: &Given<GIx>,
         state_ixs_opt: Option<&[usize]>,
     ) -> Result<Variability, error::VariabilityError> {
-        use crate::stats::rv::traits::{Entropy, Variance};
         use crate::stats::MixtureType;
+        use rv::traits::{Entropy, Variance};
 
         let states: Vec<&State> = if let Some(state_ixs) = state_ixs_opt {
             state_ixs.iter().map(|&ix| &self.states()[ix]).collect()

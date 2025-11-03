@@ -1,5 +1,6 @@
-use lace_utils::{argmin, sign};
 use num::Float;
+
+use crate::utils::{argmin, sign};
 
 /// The method by which to optimize
 pub enum Method {

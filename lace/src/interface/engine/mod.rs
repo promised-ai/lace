@@ -12,26 +12,25 @@ pub use data::{
 use std::collections::HashMap;
 use std::path::Path;
 
-use lace_cc::feature::{ColModel, Feature};
-use lace_cc::state::State;
-use lace_codebook::{Codebook, ColMetadataList};
-use lace_data::{Category, Datum, SummaryStatistics};
-use lace_metadata::latest::Metadata;
-use lace_stats::rand;
-use lace_stats::rand::SeedableRng;
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::cc::feature::{ColModel, Feature};
+use crate::cc::state::State;
+use crate::codebook::{Codebook, ColMetadataList};
 use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
+use crate::data::{Category, Datum, SummaryStatistics};
 use crate::error::IndexError;
 use crate::index::{ColumnIndex, RowIndex};
-use crate::utils::post_process_datum;
+use crate::interface::oracle::utils::post_process_datum;
+use crate::metadata::latest::Metadata;
+use crate::metadata::SerializedType;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
-use lace_metadata::SerializedType;
 use polars::frame::DataFrame;
 
 use self::update_handler::UpdateHandler;
@@ -128,8 +127,8 @@ fn col_models_from_data_src<R: rand::Rng>(
 fn emit_prior_process<R: rand::Rng>(
     prior_process: crate::codebook::PriorProcess,
     rng: &mut R,
-) -> lace_stats::prior_process::Process {
-    use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
+) -> crate::stats::prior_process::Process {
+    use crate::stats::prior_process::{Dirichlet, PitmanYor, Process};
     match prior_process {
         crate::codebook::PriorProcess::Dirichlet { alpha_prior } => {
             let inner = Dirichlet::from_prior(alpha_prior, rng);
@@ -213,11 +212,13 @@ impl Engine {
     }
 
     ///  Load a lacefile into an `Engine`.
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, lace_metadata::Error> {
-        let metadata = lace_metadata::load_metadata(path)?;
+    pub fn load<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<Self, crate::metadata::Error> {
+        let metadata = crate::metadata::load_metadata(path)?;
         metadata
             .try_into()
-            .map_err(|err| lace_metadata::Error::Other(format!("{err}")))
+            .map_err(|err| crate::metadata::Error::Other(format!("{err}")))
     }
 
     /// Delete n rows starting at index ix.
@@ -366,7 +367,7 @@ impl Engine {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::{OracleT, HasStates};
-    /// use lace_data::Datum;
+    /// use crate::data::Datum;
     /// use lace::{Row, Value, WriteMode};
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
@@ -409,13 +410,13 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_data::Datum;
+    /// # use crate::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
-    /// use lace_stats::prior::csd::CsdHyper;
+    /// use crate::codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
+    /// use crate::stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![("drinks+blood", Datum::Categorical(1_u32.into()))]).into(),
@@ -457,13 +458,13 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_data::Datum;
+    /// # use crate::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
-    /// use lace_stats::prior::csd::CsdHyper;
+    /// use crate::codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
+    /// use crate::stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![
@@ -525,7 +526,7 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_data::Datum;
+    /// # use crate::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
@@ -560,11 +561,11 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_data::Datum;
+    /// # use crate::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::OracleT;
     /// let mut engine = Example::Satellites.engine().unwrap();
-    /// use lace_codebook::{ColMetadata, ColType, ValueMap};
+    /// use crate::codebook::{ColMetadata, ColType, ValueMap};
     /// use std::collections::HashMap;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![(
@@ -684,7 +685,7 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// use lace::{TableIndex, OracleT};
-    /// use lace_data::Datum;
+    /// use crate::data::Datum;
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
@@ -704,7 +705,7 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// # use lace::{TableIndex, OracleT, HasStates};
-    /// # use lace_data::Datum;
+    /// # use crate::data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
@@ -724,7 +725,7 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// # use lace::{TableIndex, OracleT, HasStates};
-    /// # use lace_data::Datum;
+    /// # use crate::data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
@@ -906,9 +907,9 @@ impl Engine {
         &self,
         path: P,
         ser_type: SerializedType,
-    ) -> Result<(), lace_metadata::Error> {
+    ) -> Result<(), crate::metadata::Error> {
         let metadata: Metadata = self.into();
-        lace_metadata::save_metadata(&metadata, path, ser_type)?;
+        crate::metadata::save_metadata(&metadata, path, ser_type)?;
         Ok(())
     }
 
@@ -1030,7 +1031,7 @@ impl Engine {
                                     (data, dataless_state)
                                 };
 
-                                lace_metadata::save_state(
+                                crate::metadata::save_state(
                                     &config.path,
                                     &dataless_state,
                                     state_ix,

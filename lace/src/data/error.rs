@@ -1,5 +1,5 @@
-use lace_cc::feature::FType;
-use lace_codebook::CodebookError;
+use crate::cc::feature::FType;
+use crate::codebook::CodebookError;
 use std::io;
 use thiserror::Error;
 

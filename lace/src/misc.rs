@@ -1,7 +1,8 @@
 //! Misc, generally useful helper functions
-use lace_stats::rand::Rng;
-use lace_stats::rv::misc::pflip;
 use std::iter::Iterator;
+
+use rand::Rng;
+use rv::misc::pflip;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct CrpDraw {

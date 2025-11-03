@@ -3,20 +3,19 @@ use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 
 use indexmap::IndexSet;
-use lace_cc::feature::{ColModel, Column, FType};
-use lace_codebook::ColType;
-use lace_codebook::ValueMapExtension;
-use lace_codebook::{Codebook, ValueMap};
-use lace_codebook::{ColMetadataList, ValueMapExtensionError};
-use lace_data::SparseContainer;
-use lace_data::{Category, Datum};
-use lace_stats::rand;
-use lace_stats::rv::data::CategoricalSuffStat;
-use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
+use rand;
+use rv::data::CategoricalSuffStat;
+use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;
-
+use crate::cc::feature::{ColModel, Column, FType};
+use crate::codebook::ColType;
+use crate::codebook::ValueMapExtension;
+use crate::codebook::{Codebook, ValueMap};
+use crate::codebook::{ColMetadataList, ValueMapExtensionError};
+use crate::data::SparseContainer;
+use crate::data::{Category, Datum};
 use crate::interface::HasCodebook;
 use crate::{ColumnIndex, Engine, HasStates, OracleT, RowIndex};
 
@@ -933,7 +932,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
             match &colmd.coltype {
                 ColType::Continuous { hyper, prior } => new_col_arm!(
                     Continuous,
-                    lace_stats::prior::nix::NixHyper,
+                    crate::stats::prior::nix::NixHyper,
                     NoGaussianHyperForNewColumn,
                     colmd,
                     hyper,
@@ -945,7 +944,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 ),
                 ColType::Count { hyper, prior } => new_col_arm!(
                     Count,
-                    lace_stats::prior::pg::PgHyper,
+                    crate::stats::prior::pg::PgHyper,
                     NoPoissonHyperForNewColumn,
                     colmd,
                     hyper,
@@ -973,7 +972,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                             Ok(ColModel::Categorical(column))
                         }
                         (None, Some(pr)) => {
-                            use lace_stats::prior::csd::CsdHyper;
+                            use crate::stats::prior::csd::CsdHyper;
                             let mut column = Column::new(
                                 id,
                                 data,
@@ -1072,8 +1071,8 @@ mod tests {
 
     use super::*;
 
-    use lace_codebook::{ColMetadata, ColType, ValueMap};
-    use lace_stats::prior::csd::CsdHyper;
+    use crate::codebook::{ColMetadata, ColType, ValueMap};
+    use crate::stats::prior::csd::CsdHyper;
     use rand::SeedableRng;
 
     #[cfg(feature = "examples")]
