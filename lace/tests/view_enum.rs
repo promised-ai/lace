@@ -5,19 +5,19 @@ mod enum_test;
 
 use std::collections::BTreeMap;
 
-use lace_stats::rand::Rng;
+use rand::Rng;
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
 };
-use lace_cc::alg::RowAssignAlg;
-use lace_cc::feature::{ColModel, FType, Feature};
-use lace_cc::transition::ViewTransition;
-use lace_cc::view::{Builder, View};
-use lace_stats::prior_process::Builder as PriorProcessBuilder;
-use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
-use lace_stats::rv::dist::{Beta, Gamma};
-use lace_stats::rv::misc::LogSumExp;
+use lace::cc::alg::RowAssignAlg;
+use lace::cc::feature::{ColModel, FType, Feature};
+use lace::cc::transition::ViewTransition;
+use lace::cc::view::{Builder, View};
+use lace::stats::prior_process::Builder as PriorProcessBuilder;
+use lace::stats::prior_process::{Dirichlet, PitmanYor, Process};
+use rv::dist::{Beta, Gamma};
+use rv::misc::LogSumExp;
 
 const N_TRIES: u32 = 5;
 
@@ -105,7 +105,7 @@ pub fn view_enum_test(
     row_alg: RowAssignAlg,
     proc_type: ProcessType,
 ) -> f64 {
-    let mut rng = lace_stats::rand::rng();
+    let mut rng = rand::rng();
     let features = build_features(n_rows, n_cols, ftype, &mut rng);
     let ln_posterior =
         calc_partition_ln_posterior(&features, proc_type, &mut rng);

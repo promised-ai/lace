@@ -1,8 +1,7 @@
 //! Enumeration tests
-use lace_cc::feature::{ColModel, Column, FType};
-use lace_data::SparseContainer;
-use lace_stats::rand;
-use lace_stats::rv::traits::Sampleable;
+use lace::cc::feature::{ColModel, Column, FType};
+use lace::data::SparseContainer;
+use rv::traits::Sampleable;
 
 /// Convert a partition with to an integer index by converting a k-length
 /// partition into a k-length base-k integer from left to right.
@@ -49,8 +48,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
 ) -> impl Fn(usize, usize, &mut R) -> ColModel {
     match ftype {
         FType::Continuous => {
-            use lace_stats::prior::nix::NixHyper;
-            use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
+            use lace::stats::prior::nix::NixHyper;
+            use rv::dist::{Gaussian, NormalInvChiSquared};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -68,8 +67,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
             ctor
         }
         FType::Categorical => {
-            use lace_stats::prior::csd::CsdHyper;
-            use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
+            use lace::stats::prior::csd::CsdHyper;
+            use rv::dist::{Categorical, SymmetricDirichlet};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -86,8 +85,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
             ctor
         }
         FType::Count => {
-            use lace_stats::prior::pg::PgHyper;
-            use lace_stats::rv::dist::{Gamma, Poisson};
+            use lace::stats::prior::pg::PgHyper;
+            use rv::dist::{Gamma, Poisson};
 
             fn ctor<R: rand::Rng>(
                 id: usize,

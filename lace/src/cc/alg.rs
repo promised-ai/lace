@@ -139,6 +139,12 @@ impl FromStr for RowAssignAlg {
     }
 }
 
+impl<'s> From<&'s str> for RowAssignAlg {
+    fn from(value: &'s str) -> Self {
+        Self::from_str(value).unwrap()
+    }
+}
+
 /// The MCMC algorithm to use for column reassignment
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum ColAssignAlg {
@@ -178,6 +184,12 @@ impl FromStr for ColAssignAlg {
             "slice" => Ok(ColAssignAlg::Slice),
             _ => Err(ParseError(s.to_owned())),
         }
+    }
+}
+
+impl<'s> From<&'s str> for ColAssignAlg {
+    fn from(value: &'s str) -> Self {
+        Self::from_str(value).unwrap()
     }
 }
 

@@ -1,18 +1,18 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use lace_stats::rand::SeedableRng;
 use plotly::common::Mode;
 use plotly::layout::Layout;
 use plotly::{Plot, Scatter};
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-use lace_cc::feature::FType;
-use lace_cc::state::{State, StateGewekeSettings};
-use lace_cc::transition::StateTransition;
-use lace_geweke::GewekeTester;
-use lace_stats::prior_process::PriorProcessType;
+use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace::cc::feature::FType;
+use lace::cc::state::{State, StateGewekeSettings};
+use lace::cc::transition::StateTransition;
+use lace::geweke::GewekeTester;
+use lace::stats::prior_process::PriorProcessType;
 
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]
@@ -104,8 +104,8 @@ fn main() {
     res.report();
 
     if let Some(ref key) = opt.plot_var {
-        use lace_stats::EmpiricalCdf;
-        use lace_utils::minmax;
+        use lace::stats::EmpiricalCdf;
+        use lace::utils::minmax;
         let (min_f, max_f) = minmax(res.forward.get(key).unwrap());
         let (min_p, max_p) = minmax(res.posterior.get(key).unwrap());
         let x_min = min_f.min(min_p);

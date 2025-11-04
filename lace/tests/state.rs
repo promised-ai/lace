@@ -1,14 +1,13 @@
-use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-use lace_cc::config::StateUpdateConfig;
-use lace_cc::feature::{ColModel, Column};
-use lace_cc::state::State;
-use lace_data::{FeatureData, SparseContainer};
-use lace_stats::prior::nix::NixHyper;
-use lace_stats::prior_process::{Dirichlet, Process};
-use lace_stats::rand;
-use lace_stats::rand::Rng;
-use lace_stats::rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
-use lace_stats::rv::traits::Sampleable;
+use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace::cc::config::StateUpdateConfig;
+use lace::cc::feature::{ColModel, Column};
+use lace::cc::state::State;
+use lace::data::{FeatureData, SparseContainer};
+use lace::stats::prior::nix::NixHyper;
+use lace::stats::prior_process::{Dirichlet, Process};
+use rand::Rng;
+use rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
+use rv::traits::Sampleable;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let hyper = NixHyper::default();
@@ -186,7 +185,7 @@ fn two_part_runner(
     second_algs: (RowAssignAlg, ColAssignAlg),
     mut rng: &mut impl Rng,
 ) {
-    use lace_cc::transition::StateTransition;
+    use lace::cc::transition::StateTransition;
     let n_rows = 100;
     let n_cols = 20;
 

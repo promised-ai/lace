@@ -1,13 +1,12 @@
-use lace_data::SparseContainer;
-use lace_stats::prior::nix::NixHyper;
-use lace_stats::rand;
-use lace_stats::rand::Rng;
-use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
-use lace_stats::rv::traits::Sampleable;
+use lace::data::SparseContainer;
+use lace::stats::prior::nix::NixHyper;
+use rand::Rng;
+use rv::dist::{Gaussian, NormalInvChiSquared};
+use rv::traits::Sampleable;
 
-use lace_cc::alg::RowAssignAlg;
-use lace_cc::feature::{ColModel, Column, Feature};
-use lace_cc::view::{Builder, View};
+use lace::cc::alg::RowAssignAlg;
+use lace::cc::feature::{ColModel, Column, Feature};
+use lace::cc::view::{Builder, View};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();

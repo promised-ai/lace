@@ -11,20 +11,20 @@ mod enum_test;
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use lace_stats::rand::Rng;
-use lace_stats::rv::misc::LogSumExp;
+use rand::Rng;
+use rv::misc::LogSumExp;
 
-use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-use lace_cc::config::StateUpdateConfig;
-use lace_cc::feature::{ColModel, FType, Feature};
-use lace_cc::state::State;
-use lace_cc::transition::StateTransition;
-use lace_cc::view::{Builder, View};
-use lace_stats::prior_process::Builder as PriorProcessBuilder;
-use lace_stats::prior_process::{
+use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace::cc::config::StateUpdateConfig;
+use lace::cc::feature::{ColModel, FType, Feature};
+use lace::cc::state::State;
+use lace::cc::transition::StateTransition;
+use lace::cc::view::{Builder, View};
+use lace::stats::prior_process::Builder as PriorProcessBuilder;
+use lace::stats::prior_process::{
     Dirichlet, PitmanYor, PriorProcessT, PriorProcessType, Process,
 };
-use lace_stats::rv::dist::{Beta, Gamma};
+use rv::dist::{Beta, Gamma};
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
@@ -296,8 +296,7 @@ pub fn state_enum_test<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lace_stats::rand;
-    use lace_utils::numbers::ccnum;
+    use lace::utils::numbers::ccnum;
 
     const N_TRIES: u32 = 10;
 
