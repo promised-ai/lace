@@ -1,23 +1,37 @@
 use std::collections::HashMap;
 use std::ffi::c_long;
 
-use lace::codebook::{Codebook, ValueMap};
+use lace::codebook::Codebook;
+use lace::codebook::ValueMap;
 use lace::prelude::ColType;
 use lace::utils::is_index_col;
-use lace::{ColumnIndex, Datum, FType, Given, OracleT, RowIndex};
+use lace::ColumnIndex;
+use lace::Datum;
+use lace::FType;
+use lace::Given;
+use lace::OracleT;
+use lace::RowIndex;
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
-use pyo3::exceptions::{
-    PyIndexError, PyRuntimeError, PyTypeError, PyValueError,
-};
+use pyo3::exceptions::PyIndexError;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{
-    PyAny, PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyTuple,
-};
-use serde::{Deserialize, Serialize};
+use pyo3::types::PyAny;
+use pyo3::types::PyBool;
+use pyo3::types::PyDict;
+use pyo3::types::PyInt;
+use pyo3::types::PyList;
+use pyo3::types::PySlice;
+use pyo3::types::PyString;
+use pyo3::types::PyTuple;
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::df::{PyDataFrame, PySeries};
+use crate::df::PyDataFrame;
+use crate::df::PySeries;
 
 #[derive(FromPyObject, Clone, Debug)]
 pub enum IntOrString {

@@ -1,6 +1,6 @@
+use lace::cc::alg::ColAssignAlg;
+use lace::cc::alg::RowAssignAlg;
 use pyo3::prelude::*;
-
-use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
 
 /// A column reassignment MCMC kernel
 #[pyclass]

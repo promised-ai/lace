@@ -9,24 +9,37 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use df::{DataFrameLike, PyDataFrame, PySeries};
+use df::DataFrameLike;
+use df::PyDataFrame;
+use df::PySeries;
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
 use lace::prelude::ColMetadataList;
-use lace::{
-    Datum, EngineUpdateConfig, FType, HasStates, OracleT, StateDiagnostics,
-    TableIndex,
-};
-use polars::prelude::{DataFrame, NamedFrom, Series};
+use lace::Datum;
+use lace::EngineUpdateConfig;
+use lace::FType;
+use lace::HasStates;
+use lace::OracleT;
+use lace::StateDiagnostics;
+use lace::TableIndex;
+use metadata::Codebook;
+use metadata::CodebookBuilder;
+use polars::prelude::DataFrame;
+use polars::prelude::NamedFrom;
+use polars::prelude::Series;
 use pyo3::create_exception;
-use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::PyIndexError;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyList, PyType};
+use pyo3::types::PyBytes;
+use pyo3::types::PyDict;
+use pyo3::types::PyList;
+use pyo3::types::PyType;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{Deserialize, Serialize};
-
-use metadata::{Codebook, CodebookBuilder};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::update_handler::PyUpdateHandler;
 use crate::utils::*;
@@ -1075,8 +1088,9 @@ impl CoreEngine {
         save_path: Option<PathBuf>,
         update_handler: Option<PyObject>,
     ) -> PyResult<()> {
-        use lace::update_handler::Timeout;
         use std::time::Duration;
+
+        use lace::update_handler::Timeout;
 
         let config = match transitions {
             Some(mut trns) => {

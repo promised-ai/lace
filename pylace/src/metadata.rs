@@ -1,19 +1,28 @@
-use crate::df::PyDataFrame;
+use std::path::PathBuf;
+
 use lace::codebook::data::df_to_codebook;
-use lace::codebook::{ColMetadata, ColMetadataList, ColType, RowNameList};
-use lace::rv::dist::{
-    Beta, Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
-};
+use lace::codebook::ColMetadata;
+use lace::codebook::ColMetadataList;
+use lace::codebook::ColType;
+use lace::codebook::RowNameList;
+use lace::rv::dist::Beta;
+use lace::rv::dist::Gamma;
+use lace::rv::dist::Gaussian;
+use lace::rv::dist::InvGamma;
+use lace::rv::dist::NormalInvChiSquared;
+use lace::rv::dist::SymmetricDirichlet;
 use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
 use lace::stats::prior::pg::PgHyper;
 use polars::prelude::DataFrame;
-use pyo3::exceptions::{PyIOError, PyIndexError};
-use pyo3::exceptions::{PyKeyError, PyValueError};
+use pyo3::exceptions::PyIOError;
+use pyo3::exceptions::PyIndexError;
+use pyo3::exceptions::PyKeyError;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use std::path::PathBuf;
 
+use crate::df::PyDataFrame;
 use crate::utils::to_pyerr;
 
 macro_rules! newtype_json_repr {

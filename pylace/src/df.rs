@@ -1,14 +1,25 @@
 use polars::frame::DataFrame;
-use polars::prelude::{ArrayRef, ArrowField, PolarsError};
+use polars::prelude::ArrayRef;
+use polars::prelude::ArrowField;
+use polars::prelude::PolarsError;
 use polars::series::Series;
 use polars_arrow::ffi;
-use pyo3::exceptions::{PyException, PyIOError, PyValueError};
+use pyo3::create_exception;
+use pyo3::exceptions::PyException;
+use pyo3::exceptions::PyIOError;
+use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
-use pyo3::types::{PyAnyMethods, PyModule};
-use pyo3::{
-    create_exception, Bound, FromPyObject, IntoPy, PyAny, PyErr, PyObject,
-    PyResult, Python, ToPyObject,
-};
+use pyo3::types::PyAnyMethods;
+use pyo3::types::PyModule;
+use pyo3::Bound;
+use pyo3::FromPyObject;
+use pyo3::IntoPy;
+use pyo3::PyAny;
+use pyo3::PyErr;
+use pyo3::PyObject;
+use pyo3::PyResult;
+use pyo3::Python;
+use pyo3::ToPyObject;
 
 #[derive(Debug)]
 pub struct DataFrameError(PolarsError);

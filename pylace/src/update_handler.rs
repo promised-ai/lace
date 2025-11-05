@@ -1,10 +1,16 @@
 /// Update Handler and associated tooling for `CoreEngine.update` in Python.
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+/// Update Handler and associated tooling for `CoreEngine.update` in Python.
+use std::sync::Mutex;
 
 use lace::cc::state::State;
 use lace::update_handler::UpdateHandler;
 use lace::EngineUpdateConfig;
-use pyo3::{prelude::PyDictMethods, pyclass, IntoPy, Py, PyAny};
+use pyo3::prelude::PyDictMethods;
+use pyo3::pyclass;
+use pyo3::IntoPy;
+use pyo3::Py;
+use pyo3::PyAny;
 
 /// Python version of `EngineUpdateConfig`.
 #[derive(Clone, Debug)]
