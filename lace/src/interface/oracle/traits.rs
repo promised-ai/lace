@@ -1047,7 +1047,7 @@ pub trait OracleT: CanOracle {
         }
 
         // The target is a predictor, which means there is no left over entropy
-        if cols_x.iter().any(|&ix| ix == col_t) {
+        if cols_x.contains(&col_t) {
             return Ok(0.0);
         }
 

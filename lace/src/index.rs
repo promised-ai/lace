@@ -92,7 +92,7 @@ impl RowIndex for String {
     }
 }
 
-impl<'a> RowIndex for &'a str {
+impl RowIndex for &str {
     fn row_ix(&self, codebook: &Codebook) -> Result<usize, IndexError> {
         codebook.row_index(self).ok_or_else(|| {
             IndexError::RowNameDoesNotExist {
@@ -198,7 +198,7 @@ impl ColumnIndex for String {
     }
 }
 
-impl<'a> ColumnIndex for &'a str {
+impl ColumnIndex for &str {
     fn col_ix(&self, codebook: &Codebook) -> Result<usize, IndexError> {
         codebook.column_index(self).ok_or_else(|| {
             IndexError::ColumnNameDoesNotExist {

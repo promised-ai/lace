@@ -145,7 +145,7 @@ impl RowNameList {
         .map(|row_name| self.row_names.push(row_name))
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (usize, &'a str)> {
+    pub fn iter(&self) -> impl Iterator<Item = (usize, &str)> {
         self.row_names.iter().map(|s| s.as_str()).enumerate()
     }
 
@@ -242,7 +242,7 @@ impl ColMetadataList {
     }
 
     /// Iterate through the column metadata
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a ColMetadata> {
+    pub fn iter(&self) -> impl Iterator<Item = &ColMetadata> {
         self.metadata.iter()
     }
 

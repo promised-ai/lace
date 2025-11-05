@@ -5,7 +5,6 @@ use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 
 use indexmap::IndexSet;
-use rand;
 use rv::data::CategoricalSuffStat;
 use rv::dist::Categorical;
 use rv::dist::SymmetricDirichlet;
@@ -63,8 +62,10 @@ pub enum InsertMode {
 /// Defines the behavior of the data table when new rows are appended
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum AppendStrategy {
     /// New rows will be appended and the rest of the table will be unchanged
+    #[default]
     None,
     /// If `n` rows are added, the top `n` rows will be removed
     Window,
@@ -78,11 +79,6 @@ pub enum AppendStrategy {
     },
 }
 
-impl Default for AppendStrategy {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 /// Defines how/where data may be inserted, which day may and may not be
 /// overwritten, and whether data may extend the domain
@@ -434,8 +430,7 @@ fn col_ix_from_lookup(
             .get(col)
             .ok_or_else(|| {
                 InsertDataError::NewColumnNotInColumnMetadata(col.to_owned())
-            })
-            .map(|col| *col),
+            }).copied(),
         None => Err(InsertDataError::NewColumnNotInColumnMetadata(
             String::from(col),
         )),

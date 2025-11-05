@@ -89,11 +89,11 @@ impl AssignmentDiagnostics {
             asgn_contains_0_through_n_cats_minus_1: {
                 let mut so_far = true;
                 for k in 0..asgn.n_cats {
-                    so_far = so_far && asgn.asgn.iter().any(|&x| x == k)
+                    so_far = so_far && asgn.asgn.contains(&k)
                 }
                 so_far
             },
-            no_zero_counts: { !asgn.counts.iter().any(|&ct| ct == 0) },
+            no_zero_counts: { !asgn.counts.contains(&0) },
             n_cats_cmp_counts_len: { asgn.n_cats == asgn.counts.len() },
             sum_counts_cmp_n: {
                 let n: usize = asgn.counts.iter().sum();

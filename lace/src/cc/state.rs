@@ -562,9 +562,7 @@ impl State {
             return;
         }
 
-        let update_process_params = transitions
-            .iter()
-            .any(|&t| t == StateTransition::ViewPriorProcessParams);
+        let update_process_params = transitions.contains(&StateTransition::ViewPriorProcessParams);
 
         // The algorithm is not valid if the columns are not scanned in
         // random order
@@ -589,9 +587,7 @@ impl State {
 
         // Check if we're drawing view alpha. If not, we use the user-specified
         // alpha value for all temporary, singleton assignments
-        let draw_process_params = transitions
-            .iter()
-            .any(|&t| t == StateTransition::ViewPriorProcessParams);
+        let draw_process_params = transitions.contains(&StateTransition::ViewPriorProcessParams);
 
         // determine the number of columns for which to pre-compute transition
         // probabilities
@@ -771,9 +767,7 @@ impl State {
             return;
         }
 
-        let draw_alpha = transitions
-            .iter()
-            .any(|&t| t == StateTransition::ViewPriorProcessParams);
+        let draw_alpha = transitions.contains(&StateTransition::ViewPriorProcessParams);
         self.resample_weights(true, rng);
         self.append_empty_view(draw_alpha, rng);
 
@@ -863,9 +857,7 @@ impl State {
             );
         }
 
-        let draw_alpha = transitions
-            .iter()
-            .any(|&t| t == StateTransition::ViewPriorProcessParams);
+        let draw_alpha = transitions.contains(&StateTransition::ViewPriorProcessParams);
         for _ in 0..n_new_views {
             self.append_empty_view(draw_alpha, rng);
         }
@@ -1311,7 +1303,7 @@ impl GewekeModel for State {
         use crate::stats::prior_process::Dirichlet as PDirichlet;
 
         let has_transition = |t: StateTransition, s: &StateGewekeSettings| {
-            s.transitions.iter().any(|&ti| ti == t)
+            s.transitions.contains(&t)
         };
         // TODO: Generate new rng from randomly-drawn seed
         // TODO: Draw features properly depending on the transitions

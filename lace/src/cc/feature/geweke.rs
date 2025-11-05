@@ -37,9 +37,7 @@ pub struct ColumnGewekeSettings {
 
 impl ColumnGewekeSettings {
     pub fn new(asgn: Assignment, transitions: Vec<ViewTransition>) -> Self {
-        let fixed_prior = transitions
-            .iter()
-            .any(|t| *t == ViewTransition::FeaturePriors);
+        let fixed_prior = transitions.contains(&ViewTransition::FeaturePriors);
 
         ColumnGewekeSettings {
             asgn,
@@ -312,7 +310,7 @@ impl GewekeSummarize
             .data
             .present_cloned()
             .iter()
-            .fold(0_u32, |acc, &x| acc + u32::from(x));
+            .fold(0_u32, |acc, &x| acc + x);
 
         fn sum_sq(logws: &[f64]) -> f64 {
             logws.iter().fold(0.0, |acc, lw| {

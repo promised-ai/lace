@@ -14,12 +14,14 @@ use crate::Datum;
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Hash)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum Given<Ix: ColumnIndex> {
     /// The conditions in `(column_id, value)` tuples. The tuple
     /// `(11, Datum::Continuous(2.3))` indicates that we wish to condition on
     /// the value of column 11 being 2.3.
     Conditions(Vec<(Ix, Datum)>),
     /// The absence of conditioning observations
+    #[default]
     Nothing,
 }
 
@@ -94,11 +96,6 @@ impl<Ix: ColumnIndex> Given<Ix> {
     }
 }
 
-impl<Ix: ColumnIndex> Default for Given<Ix> {
-    fn default() -> Self {
-        Self::Nothing
-    }
-}
 
 ///
 ///

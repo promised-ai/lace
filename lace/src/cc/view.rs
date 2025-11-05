@@ -1143,9 +1143,7 @@ impl GewekeModel for View {
         rng: &mut impl Rng,
     ) -> View {
         let do_ftr_prior_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == ViewTransition::FeaturePriors);
+            .transitions.contains(&ViewTransition::FeaturePriors);
 
         // FIXME: Redundant! asgn_builder builds a PriorProcess
         let (asgn_builder, process) = view_geweke_asgn(

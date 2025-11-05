@@ -353,7 +353,9 @@ impl UpdateHandler for () {}
 
 /// Add a progress bar to the output
 #[derive(Clone)]
+#[derive(Default)]
 pub enum ProgressBar {
+    #[default]
     UnInitialized,
     Initialized {
         sender: Arc<Mutex<Sender<(usize, f64)>>>,
@@ -367,11 +369,6 @@ impl ProgressBar {
     }
 }
 
-impl Default for ProgressBar {
-    fn default() -> Self {
-        Self::UnInitialized
-    }
-}
 
 impl UpdateHandler for ProgressBar {
     fn global_init(&mut self, config: &EngineUpdateConfig, states: &[State]) {

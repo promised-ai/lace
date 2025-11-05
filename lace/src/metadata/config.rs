@@ -8,8 +8,10 @@ use crate::metadata::Error;
 /// Denotes `State` file type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum SerializedType {
     /// Fast, binary format
+    #[default]
     Bincode,
     /// Slow, human-readable format
     Yaml,
@@ -29,11 +31,6 @@ impl FromStr for SerializedType {
     }
 }
 
-impl Default for SerializedType {
-    fn default() -> Self {
-        Self::Bincode
-    }
-}
 
 #[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct FileConfig {
