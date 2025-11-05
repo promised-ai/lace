@@ -525,7 +525,7 @@ class Engine:
         'Class_of_Orbit'
         >>> params = sats.feature_params(3)
         >>> params[0][1]
-        Categorical_4(weights=[0.0010264756471345055, ..., 0.9963828657821785])
+        Categorical_4(weights=[0.0010264756471345055, ..., 0.9963828657821786])
 
         """
         if state_ixs is None:
@@ -627,7 +627,7 @@ class Engine:
         ┌────────────┬────────┬───────────┐
         │ index      ┆ fierce ┆ surprisal │
         │ ---        ┆ ---    ┆ ---       │
-        │ str        ┆ u8     ┆ f64       │
+        │ str        ┆ u32    ┆ f64       │
         ╞════════════╪════════╪═══════════╡
         │ pig        ┆ 1      ┆ 1.574539  │
         │ buffalo    ┆ 1      ┆ 1.240631  │
@@ -644,7 +644,7 @@ class Engine:
         ┌────────────┬────────┬───────────┐
         │ index      ┆ fierce ┆ surprisal │
         │ ---        ┆ ---    ┆ ---       │
-        │ str        ┆ u8     ┆ f64       │
+        │ str        ┆ u32    ┆ f64       │
         ╞════════════╪════════╪═══════════╡
         │ buffalo    ┆ 1      ┆ 1.240631  │
         │ rhinoceros ┆ 1      ┆ 1.076105  │
@@ -662,7 +662,7 @@ class Engine:
         ┌───────┬────────┬─────────────┐
         │ index ┆ fierce ┆ uncertainty │
         │ ---   ┆ ---    ┆ ---         │
-        │ str   ┆ u8     ┆ f64         │
+        │ str   ┆ u32    ┆ f64         │
         ╞═══════╪════════╪═════════════╡
         │ pig   ┆ 0      ┆ 0.094179    │
         └───────┴────────┴─────────────┘
@@ -753,7 +753,7 @@ class Engine:
         ┌────────┬──────────┐
         │ index  ┆ flippers │
         │ ---    ┆ ---      │
-        │ str    ┆ u8       │
+        │ str    ┆ u32      │
         ╞════════╪══════════╡
         │ crab   ┆ 0        │
         │ sponge ┆ 0        │
@@ -918,7 +918,7 @@ class Engine:
         >>> engine[:8, "times_watched_the_fifth_element"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (8, 2)
         ┌─────────────────┬─────────────────────────────────┐
-        │ index           ┆ times_watched_the_fifth_element │
+        │ index           ┆ times_watched_the_fifth_elemen… │
         │ ---             ┆ ---                             │
         │ str             ┆ u32                             │
         ╞═════════════════╪═════════════════════════════════╡
@@ -1090,14 +1090,14 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.entropy(["slow"])
-        0.6812321322736966
+        0.6812321322736965
         >>> animals.entropy(["water"])
         0.46626932307630625
 
         Joint entropy
 
         >>> animals.entropy(["swims", "fast"])
-        0.9367950081783651
+        0.9367950081783649
 
         We can use entropies to compute mutual information, I(X, Y) = H(X) +
         H(Y) - H(X, Y).
@@ -1110,7 +1110,7 @@ class Engine:
         >>> h_fast = animals.entropy(["fast"])
         >>> h_swims_and_fast = animals.entropy(["swims", "fast"])
         >>> h_swims + h_fast - h_swims_and_fast
-        7.03684751313105e-06
+        7.036847513353095e-06
 
         But swimming and having flippers are mutually predictive, so we should
         see more mutual information.
@@ -1118,7 +1118,7 @@ class Engine:
         >>> h_flippers = animals.entropy(["flippers"])
         >>> h_swims_and_flippers = animals.entropy(["swims", "flippers"])
         >>> h_swims + h_flippers - h_swims_and_flippers
-        0.18686797893023643
+        0.18686797893023654
 
         """
         return self.engine.entropy(cols, n_mc_samples)
@@ -1368,21 +1368,21 @@ class Engine:
         ...     "inconsistency", descending=True
         ... )  # doctest: +NORMALIZE_WHITESPACE
         shape: (1_162, 3)
-        ┌───────────────────────────────────┬───────────────┬────────────────┐
-        │ index                             ┆ inconsistency ┆ Period_minutes │
-        │ ---                               ┆ ---           ┆ ---            │
-        │ str                               ┆ f64           ┆ f64            │
-        ╞═══════════════════════════════════╪═══════════════╪════════════════╡
-        │ Intelsat 903                      ┆ 1.767642      ┆ 1436.16        │
-        │ Mercury 2 (Advanced Vortex 2, US… ┆ 1.649006      ┆ 1436.12        │
-        │ INSAT 4CR (Indian National Satel… ┆ 1.648992      ┆ 1436.11        │
-        │ QZS-1 (Quazi-Zenith Satellite Sy… ┆ 1.64879       ┆ 1436.0         │
-        │ …                                 ┆ …             ┆ …              │
-        │ Glonass 723 (Glonass 37-3, Cosmo… ┆ 0.646552      ┆ 680.75         │
-        │ Glonass 721 (Glonass 37-1, Cosmo… ┆ 0.646474      ┆ 680.91         │
-        │ Glonass 730 (Glonass 41-1, Cosmo… ┆ 0.646183      ┆ 681.53         │
-        │ Wind (International Solar-Terres… ┆ 0.526911      ┆ 19700.45       │
-        └───────────────────────────────────┴───────────────┴────────────────┘
+        ┌─────────────────────────────────┬───────────────┬────────────────┐
+        │ index                           ┆ inconsistency ┆ Period_minutes │
+        │ ---                             ┆ ---           ┆ ---            │
+        │ str                             ┆ f64           ┆ f64            │
+        ╞═════════════════════════════════╪═══════════════╪════════════════╡
+        │ Intelsat 903                    ┆ 1.767642      ┆ 1436.16        │
+        │ Mercury 2 (Advanced Vortex 2, … ┆ 1.649006      ┆ 1436.12        │
+        │ INSAT 4CR (Indian National Sat… ┆ 1.648992      ┆ 1436.11        │
+        │ QZS-1 (Quazi-Zenith Satellite … ┆ 1.64879       ┆ 1436.0         │
+        │ …                               ┆ …             ┆ …              │
+        │ Glonass 723 (Glonass 37-3, Cos… ┆ 0.646552      ┆ 680.75         │
+        │ Glonass 721 (Glonass 37-1, Cos… ┆ 0.646474      ┆ 680.91         │
+        │ Glonass 730 (Glonass 41-1, Cos… ┆ 0.646183      ┆ 681.53         │
+        │ Wind (International Solar-Terr… ┆ 0.526911      ┆ 19700.45       │
+        └─────────────────────────────────┴───────────────┴────────────────┘
 
         It looks like Intelsat 903 is the most inconsistent by a good amount.
         Let's take a look at it's data and see why its orbital period (very
@@ -1473,17 +1473,17 @@ class Engine:
         ...     "surprisal", descending=True
         ... ).head(5)
         shape: (5, 3)
-        ┌───────────────────────────────────┬───────────────────┬───────────┐
-        │ index                             ┆ Expected_Lifetime ┆ surprisal │
-        │ ---                               ┆ ---               ┆ ---       │
-        │ str                               ┆ f64               ┆ f64       │
-        ╞═══════════════════════════════════╪═══════════════════╪═══════════╡
-        │ International Space Station (ISS… ┆ 30.0              ┆ 11.423102 │
-        │ Milstar DFS-5 (USA 164, Milstar … ┆ 0.0               ┆ 6.661427  │
-        │ DSP 21 (USA 159) (Defense Suppor… ┆ 0.5               ┆ 6.366436  │
-        │ DSP 22 (USA 176) (Defense Suppor… ┆ 0.5               ┆ 6.366436  │
-        │ Intelsat 701                      ┆ 0.5               ┆ 6.366436  │
-        └───────────────────────────────────┴───────────────────┴───────────┘
+        ┌─────────────────────────────────┬───────────────────┬───────────┐
+        │ index                           ┆ Expected_Lifetime ┆ surprisal │
+        │ ---                             ┆ ---               ┆ ---       │
+        │ str                             ┆ f64               ┆ f64       │
+        ╞═════════════════════════════════╪═══════════════════╪═══════════╡
+        │ International Space Station (I… ┆ 30.0              ┆ 11.423102 │
+        │ Milstar DFS-5 (USA 164, Milsta… ┆ 0.0               ┆ 6.661427  │
+        │ DSP 21 (USA 159) (Defense Supp… ┆ 0.5               ┆ 6.366436  │
+        │ DSP 22 (USA 176) (Defense Supp… ┆ 0.5               ┆ 6.366436  │
+        │ Intelsat 701                    ┆ 0.5               ┆ 6.366436  │
+        └─────────────────────────────────┴───────────────────┴───────────┘
 
         Compute the surprisal for specific cells
 
@@ -1771,18 +1771,18 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.predict("swims")
-        (0, 0.03782005724890601)
+        (0, 0.037820057248906)
 
         Predict whether an animal swims given that it has flippers
 
         >>> animals.predict("swims", given={"flippers": 1})
-        (1, 0.08920133574559677)
+        (1, 0.08920133574559676)
 
         Let's confuse lace and see what happens to its uncertainty. Let's
         predict whether an non-water animal with flippers swims
 
         >>> animals.predict("swims", given={"flippers": 1, "water": 0})
-        (0, 0.23777388425463844)
+        (0, 0.23777388425463847)
 
         If you want to save time and you do not care about quantifying your
         epistemic uncertainty, you don't have to compute uncertainty.
@@ -1833,14 +1833,14 @@ class Engine:
         Compute the variance of Period_minutes for geosynchronous satellite
 
         >>> sats.variability("Period_minutes", given={"Class_of_Orbit": "GEO"})
-        148682.45531411088
+        148682.45531411024
 
         Compute the entropy of Class_of_orbit
 
         >>> sats.variability("Class_of_Orbit")
         0.9571321355529944
         >>> sats.variability("Class_of_Orbit", given={"Period_minutes": 1440.0})
-        0.1455965989424529
+        0.1455965989424532
 
         """
         return self.engine.variability(target, given, state_ixs)
@@ -1904,21 +1904,21 @@ class Engine:
 
         >>> engine.impute("Type_of_Orbit")  # doctest: +NORMALIZE_WHITESPACE
         shape: (645, 3)
-        ┌───────────────────────────────────┬─────────────────┬─────────────┐
-        │ index                             ┆ Type_of_Orbit   ┆ uncertainty │
-        │ ---                               ┆ ---             ┆ ---         │
-        │ str                               ┆ str             ┆ f64         │
-        ╞═══════════════════════════════════╪═════════════════╪═════════════╡
-        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.190897    │
-        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.422782    │
-        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.422782    │
-        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.422782    │
-        │ …                                 ┆ …               ┆ …           │
-        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.422782    │
-        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.422782    │
-        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.422782    │
-        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.422782    │
-        └───────────────────────────────────┴─────────────────┴─────────────┘
+        ┌─────────────────────────────────┬─────────────────┬─────────────┐
+        │ index                           ┆ Type_of_Orbit   ┆ uncertainty │
+        │ ---                             ┆ ---             ┆ ---         │
+        │ str                             ┆ str             ┆ f64         │
+        ╞═════════════════════════════════╪═════════════════╪═════════════╡
+        │ AAUSat-3                        ┆ Sun-Synchronous ┆ 0.190897    │
+        │ ABS-1 (LMI-1, Lockheed Martin-… ┆ Sun-Synchronous ┆ 0.422782    │
+        │ ABS-1A (Koreasat 2, Mugunghwa … ┆ Sun-Synchronous ┆ 0.422782    │
+        │ ABS-2i (MBSat, Mobile Broadcas… ┆ Sun-Synchronous ┆ 0.422782    │
+        │ …                               ┆ …               ┆ …           │
+        │ Zhongxing 20A                   ┆ Sun-Synchronous ┆ 0.422782    │
+        │ Zhongxing 22A (Chinastar 22A)   ┆ Sun-Synchronous ┆ 0.422782    │
+        │ Zhongxing 2A (Chinasat 2A)      ┆ Sun-Synchronous ┆ 0.422782    │
+        │ Zhongxing 9 (Chinasat 9, China… ┆ Sun-Synchronous ┆ 0.422782    │
+        └─────────────────────────────────┴─────────────────┴─────────────┘
 
         Impute a defined set of rows
 
@@ -1937,21 +1937,21 @@ class Engine:
 
         >>> engine.impute("Type_of_Orbit", with_uncertainty=False)  # doctest: +NORMALIZE_WHITESPACE
         shape: (645, 2)
-        ┌───────────────────────────────────┬─────────────────┐
-        │ index                             ┆ Type_of_Orbit   │
-        │ ---                               ┆ ---             │
-        │ str                               ┆ str             │
-        ╞═══════════════════════════════════╪═════════════════╡
-        │ AAUSat-3                          ┆ Sun-Synchronous │
-        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous │
-        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous │
-        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous │
-        │ …                                 ┆ …               │
-        │ Zhongxing 20A                     ┆ Sun-Synchronous │
-        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous │
-        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous │
-        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous │
-        └───────────────────────────────────┴─────────────────┘
+        ┌─────────────────────────────────┬─────────────────┐
+        │ index                           ┆ Type_of_Orbit   │
+        │ ---                             ┆ ---             │
+        │ str                             ┆ str             │
+        ╞═════════════════════════════════╪═════════════════╡
+        │ AAUSat-3                        ┆ Sun-Synchronous │
+        │ ABS-1 (LMI-1, Lockheed Martin-… ┆ Sun-Synchronous │
+        │ ABS-1A (Koreasat 2, Mugunghwa … ┆ Sun-Synchronous │
+        │ ABS-2i (MBSat, Mobile Broadcas… ┆ Sun-Synchronous │
+        │ …                               ┆ …               │
+        │ Zhongxing 20A                   ┆ Sun-Synchronous │
+        │ Zhongxing 22A (Chinastar 22A)   ┆ Sun-Synchronous │
+        │ Zhongxing 2A (Chinasat 2A)      ┆ Sun-Synchronous │
+        │ Zhongxing 9 (Chinasat 9, China… ┆ Sun-Synchronous │
+        └─────────────────────────────────┴─────────────────┘
 
         """
         return self.engine.impute(col, rows, with_uncertainty)
@@ -2088,12 +2088,12 @@ class Engine:
         >>> from lace.examples import Animals
         >>> engine = Animals()
         >>> engine.mi([("swims", "flippers")])
-        0.2785114781561444
+        0.27851147815614463
 
         You can select different normalizations of mutual information
 
         >>> engine.mi([("swims", "flippers")], mi_type="unnormed")
-        0.18686797893023643
+        0.18686797893023654
 
         Multiple pairs as inputs gets you a polars ``Series``
 
@@ -2246,7 +2246,7 @@ class Engine:
         │ wolf  ┆ rat   ┆ 0.801339 │
         │ wolf  ┆ otter ┆ 0.422619 │
         │ rat   ┆ wolf  ┆ 0.801339 │
-        │ rat   ┆ rat   ┆ 1.0      │
+        │ …     ┆ …     ┆ …        │
         │ rat   ┆ otter ┆ 0.572173 │
         │ otter ┆ wolf  ┆ 0.422619 │
         │ otter ┆ rat   ┆ 0.572173 │
@@ -2270,7 +2270,7 @@ class Engine:
         │ wolf  ┆ rat   ┆ 0.804412 │
         │ wolf  ┆ otter ┆ 0.323529 │
         │ rat   ┆ wolf  ┆ 0.804412 │
-        │ rat   ┆ rat   ┆ 1.0      │
+        │ …     ┆ …     ┆ …        │
         │ rat   ┆ otter ┆ 0.469853 │
         │ otter ┆ wolf  ┆ 0.323529 │
         │ otter ┆ rat   ┆ 0.469853 │
@@ -2410,17 +2410,15 @@ class Engine:
         >>> engine = Animals()
         >>> n_rows = engine.n_rows
         >>> removed = engine.remove_rows(["cow", "wolf"])
-        >>> n_rows == engine.n_rows + 1
+        >>> n_rows == engine.n_rows + 2
         True
         >>> removed["index"] # doctest: +NORMALIZE_WHITESPACE
-        ┌────────┐
-        │ index  │
-        │ ---    │
-        │ str    │
-        ╞════════╡
-        │ cow    │
-        │ wolf   │
-        └────────┘
+        shape: (2,)
+        Series: 'index' [str]
+        [
+            "cow"
+            "wolf"
+        ]
 
         """
         return self.engine.remove_rows(indices)
