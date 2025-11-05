@@ -4,9 +4,9 @@ use std::cmp::Ordering;
 pub fn choose2ixs<R: rand::Rng>(n: usize, rng: &mut R) -> (usize, usize) {
     match n.cmp(&2) {
         Ordering::Greater => {
-            let i: usize = rng.gen_range(0..n);
+            let i: usize = rng.random_range(0..n);
             loop {
-                let j: usize = rng.gen_range(0..n);
+                let j: usize = rng.random_range(0..n);
                 if j != i {
                     return (i, j);
                 }
@@ -23,7 +23,7 @@ mod tests {
 
     #[test]
     fn choose2ixs_should_return_different_ixs() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..100 {
             let (a, b) = choose2ixs(10, &mut rng);
             assert_ne!(a, b);

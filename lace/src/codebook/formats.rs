@@ -1,10 +1,12 @@
-use crate::ReadError;
+use std::fs::File;
+use std::path::Path;
+
 use polars::prelude::{
     CsvReader, DataFrame, IpcReader, JsonFormat, JsonReader, ParquetReader,
     SerReader,
 };
-use std::fs::File;
-use std::path::Path;
+
+use crate::codebook::ReadError;
 
 pub fn read_parquet<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
     let mut file = File::open(path)?;
@@ -56,9 +58,12 @@ macro_rules! codebook_from_fn {
             state_prior_process: Option<$crate::codebook::PriorProcess>,
             view_prior_process: Option<$crate::codebook::PriorProcess>,
             no_hypers: bool,
-        ) -> Result<$crate::codebook::Codebook, $crate::error::CodebookError> {
+        ) -> Result<
+            $crate::codebook::codebook::Codebook,
+            $crate::codebook::error::CodebookError,
+        > {
             let df = $reader(path).unwrap();
-            $crate::data::df_to_codebook(
+            $crate::codebook::data::df_to_codebook(
                 &df,
                 cat_cutoff,
                 state_prior_process,

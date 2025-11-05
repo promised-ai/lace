@@ -3,6 +3,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("Metadata version {0} is deprecated.")]
+    DeprecatedMetadataVersion(i32),
     #[error("Unable to retrieve the home directory")]
     CouldNotGetHomeDirectory,
     #[error("File not found")]

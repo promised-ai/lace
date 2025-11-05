@@ -223,3 +223,4 @@ pub use cc::feature::FType;
 pub use cc::state::StateDiagnostics;
 pub use cc::transition::StateTransition;
 pub use data::{Category, Datum, SummaryStatistics};
+pub use rv;

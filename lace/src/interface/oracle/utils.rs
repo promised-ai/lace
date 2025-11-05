@@ -377,18 +377,6 @@ pub fn given_weights(
 }
 
 #[inline]
-pub fn given_exp_weights(
-    states: &[&State],
-    col_ixs: &[usize],
-    given: &Given<usize>,
-) -> Vec<BTreeMap<usize, Vec<f64>>> {
-    states
-        .iter()
-        .map(|state| single_state_exp_weights(state, col_ixs, given))
-        .collect()
-}
-
-#[inline]
 pub fn state_weights(
     states: &[&State],
     col_ixs: &[usize],

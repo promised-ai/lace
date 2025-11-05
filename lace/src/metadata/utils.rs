@@ -10,8 +10,8 @@ use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 
 use crate::metadata::latest::Codebook;
+use crate::metadata::latest::DataStore;
 use crate::metadata::latest::DatalessStateAndDiagnostics;
-use crate::metadata::versions::v1::DataStore;
 use crate::metadata::{Error, FileConfig, SerializedType};
 
 fn extension_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {

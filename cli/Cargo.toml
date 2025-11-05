@@ -17,7 +17,10 @@ name = "lace"
 path = "src/main.rs"
 
 [dependencies]
-lace = { path = "../lace", version = "0.8.0", features = ["formats", "ctrlc_handler"]}
+lace = { path = "../lace", version = "0.9.0", features = [
+  "formats",
+  "ctrlc_handler",
+] }
 clap = { version = "4.3.17", features = ["derive"] }
 env_logger = "0.10"
 serde_yaml = "0.9.4"

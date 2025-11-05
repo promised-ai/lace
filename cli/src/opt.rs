@@ -5,7 +5,7 @@ use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
 use lace::metadata::{Error, FileConfig, SerializedType};
-use lace::stats::rv::dist::Gamma;
+use lace::rv::dist::Gamma;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -244,7 +244,7 @@ impl FromStr for GammaParameters {
 }
 
 impl TryInto<Gamma> for GammaParameters {
-    type Error = lace::stats::rv::dist::GammaError;
+    type Error = lace::rv::dist::GammaError;
     fn try_into(self) -> Result<Gamma, Self::Error> {
         Gamma::new(self.shape, self.rate)
     }
