@@ -1,12 +1,12 @@
 use crate::df::PyDataFrame;
 use lace::codebook::data::df_to_codebook;
 use lace::codebook::{ColMetadata, ColMetadataList, ColType, RowNameList};
+use lace::rv::dist::{
+    Beta, Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
+};
 use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
 use lace::stats::prior::pg::PgHyper;
-use lace::stats::rv::dist::{
-    Beta, Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
-};
 use polars::prelude::DataFrame;
 use pyo3::exceptions::{PyIOError, PyIndexError};
 use pyo3::exceptions::{PyKeyError, PyValueError};

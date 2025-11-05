@@ -3,8 +3,8 @@ use std::ffi::c_long;
 
 use lace::codebook::{Codebook, ValueMap};
 use lace::prelude::ColType;
+use lace::utils::is_index_col;
 use lace::{ColumnIndex, Datum, FType, Given, OracleT, RowIndex};
-use lace_utils::is_index_col;
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -156,7 +156,7 @@ impl<'s> TableIndex<'s> {
                 let row_ixs = codebook
                     .row_names
                     .iter()
-                    .map(|(a, b)| (a, b.clone()))
+                    .map(|(a, b)| (a, b.to_string()))
                     .collect();
 
                 let col_ixs = ixs.col_ixs(codebook)?;
@@ -399,8 +399,8 @@ impl Indexer {
             .iter()
             .enumerate()
             .for_each(|(ix, col_md)| {
-                to_ix.insert(col_md.name.clone(), ix);
-                to_name.insert(ix, col_md.name.clone());
+                to_ix.insert(col_md.name.to_string(), ix);
+                to_name.insert(ix, col_md.name.to_string());
             });
 
         Self { to_ix, to_name }
@@ -410,8 +410,8 @@ impl Indexer {
         let mut to_ix: HashMap<String, usize> = HashMap::new();
         let mut to_name: HashMap<usize, String> = HashMap::new();
         codebook.row_names.iter().for_each(|(ix, name)| {
-            to_ix.insert(name.clone(), ix);
-            to_name.insert(ix, name.clone());
+            to_ix.insert(name.to_string(), ix);
+            to_name.insert(ix, name.to_string());
         });
 
         Self { to_ix, to_name }

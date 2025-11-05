@@ -90,7 +90,7 @@ impl CoreEngine {
         let rng = if let Some(seed) = rng_seed {
             Xoshiro256Plus::seed_from_u64(seed)
         } else {
-            Xoshiro256Plus::from_entropy()
+            Xoshiro256Plus::from_os_rng()
         };
 
         let mut engine = lace::Engine::new(
@@ -121,8 +121,7 @@ impl CoreEngine {
         let (engine, rng) = {
             let mut engine = lace::Engine::load(path)
                 .map_err(|e| EngineLoadError::new_err(e.to_string()))?;
-            let rng = Xoshiro256Plus::from_rng(&mut engine.rng)
-                .map_err(|e| EngineLoadError::new_err(e.to_string()))?;
+            let rng = Xoshiro256Plus::from_rng(&mut engine.rng);
             (engine, rng)
         };
         Ok(Self {
