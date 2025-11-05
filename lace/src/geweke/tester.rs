@@ -56,7 +56,9 @@ impl GewekeResult {
     }
 
     pub fn ks(&self) -> BTreeMap<String, f64> {
-        use rv::misc::{ks_two_sample, KsAlternative, KsMode};
+        use rv::misc::ks_two_sample;
+        use rv::misc::KsAlternative;
+        use rv::misc::KsMode;
 
         self.forward
             .keys()

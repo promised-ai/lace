@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::codebook::ColType;
 use crate::data::Datum;

@@ -123,8 +123,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::f64::consts::PI;
+
+    use super::*;
 
     #[test]
     fn quadp_of_x2() {

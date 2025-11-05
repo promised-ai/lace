@@ -1,10 +1,11 @@
 //! Type of the data source, e.g., CSV or SQL database.
 #[cfg(feature = "formats")]
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
+#[cfg(feature = "formats")]
+use std::ffi::OsString;
+use std::fmt;
 #[cfg(feature = "formats")]
 use std::path::PathBuf;
-
-use std::fmt;
 
 use polars::frame::DataFrame;
 
@@ -147,7 +148,8 @@ impl DataSource {
 
     /// Generate a default `Codebook` from the source data
     pub fn default_codebook(&self) -> Result<Codebook, DefaultCodebookError> {
-        use crate::codebook::{data, formats};
+        use crate::codebook::data;
+        use crate::codebook::formats;
         let codebook = match &self {
             DataSource::Ipc(path) => {
                 formats::codebook_from_ipc(path, None, None, None, false)

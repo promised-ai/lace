@@ -1,8 +1,9 @@
 #[cfg(feature = "formats")]
 fn main() {
+    use std::io::Write;
+
     use lace::prelude::*;
     use lace_stats::rv::prelude::*;
-    use std::io::Write;
 
     let mut rng = rand::thread_rng();
 

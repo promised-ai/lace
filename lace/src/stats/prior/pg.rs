@@ -1,7 +1,10 @@
 use rand::Rng;
-use rv::dist::{Gamma, InvGamma, Poisson};
+use rv::dist::Gamma;
+use rv::dist::InvGamma;
+use rv::dist::Poisson;
 use rv::traits::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::stats::mh::mh_symrw_adaptive_mv;
 use crate::stats::UpdatePrior;
@@ -42,7 +45,8 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
             loglike + prior
         };
 
-        use crate::stats::mat::{Matrix2x2, Vector2};
+        use crate::stats::mat::Matrix2x2;
+        use crate::stats::mat::Vector2;
 
         // XXX; This is a janky sampler and might have problems with being
         // symmetric positive definite.

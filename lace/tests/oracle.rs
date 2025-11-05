@@ -1,19 +1,27 @@
-use approx::*;
-
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use lace::cc::feature::{ColModel, Column, FType};
+use approx::*;
+use lace::cc::feature::ColModel;
+use lace::cc::feature::Column;
+use lace::cc::feature::FType;
 use lace::cc::state::State;
 use lace::codebook::Codebook;
-use lace::data::{DataStore, SparseContainer};
+use lace::data::DataStore;
+use lace::data::SparseContainer;
 use lace::error::IndexError;
 use lace::stats::prior::nix::NixHyper;
-use lace::{Given, Oracle, OracleT};
+use lace::Given;
+use lace::Oracle;
+use lace::OracleT;
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
-use rv::traits::{Cdf, Sampleable};
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::dist::NormalInvChiSquared;
+use rv::traits::Cdf;
+use rv::traits::Sampleable;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
@@ -60,7 +68,8 @@ fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
 }
 
 fn dummy_codebook_from_state(state: &State) -> Codebook {
-    use lace::codebook::{ColMetadata, ColType};
+    use lace::codebook::ColMetadata;
+    use lace::codebook::ColType;
 
     Codebook {
         table_name: "my_table".into(),
@@ -248,9 +257,10 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod rowsim {
-            use super::*;
             use lace::error::RowSimError;
             use lace::RowSimilarityVariant;
+
+            use super::*;
 
             #[test]
             fn values() {
@@ -670,9 +680,12 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod simulate {
-            use super::*;
             use lace::data::Datum;
-            use lace::error::{GivenError, IndexError, SimulateError};
+            use lace::error::GivenError;
+            use lace::error::IndexError;
+            use lace::error::SimulateError;
+
+            use super::*;
 
             #[test]
             fn simulate_single_col_without_given_size_check() {
@@ -947,9 +960,11 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod mi {
-            use super::*;
-            use lace::error::{IndexError, MiError};
+            use lace::error::IndexError;
+            use lace::error::MiError;
             use lace::MiType;
+
+            use super::*;
 
             #[test]
             fn oob_first_col_index_causes_error() {
@@ -994,8 +1009,10 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod entropy {
+            use lace::error::EntropyError;
+            use lace::error::IndexError;
+
             use super::*;
-            use lace::error::{EntropyError, IndexError};
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1051,8 +1068,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod info_prop {
-            use super::*;
             use lace::error::InfoPropError;
+
+            use super::*;
 
             #[test]
             fn oob_target_index_causes_error() {
@@ -1166,8 +1184,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod feature_error {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1185,8 +1204,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod summarize {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1204,9 +1224,10 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod conditional_entropy {
-            use super::*;
             use lace::error::ConditionalEntropyError;
             use lace::ConditionalEntropyType;
+
+            use super::*;
 
             #[test]
             fn oob_target_col_index_causes_error() {
@@ -1404,9 +1425,11 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod surprisal {
-            use super::*;
             use lace::data::Datum;
-            use lace::error::{IndexError, SurprisalError};
+            use lace::error::IndexError;
+            use lace::error::SurprisalError;
+
+            use super::*;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1460,8 +1483,10 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod self_surprisal {
+            use lace::error::IndexError;
+            use lace::error::SurprisalError;
+
             use super::*;
-            use lace::error::{IndexError, SurprisalError};
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1496,8 +1521,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod datum {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1528,8 +1554,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod draw {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1570,8 +1597,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod impute {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1602,10 +1630,13 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod predict {
-            use super::*;
             use lace::data::Datum;
-            use lace::error::{GivenError, IndexError, PredictError};
+            use lace::error::GivenError;
+            use lace::error::IndexError;
+            use lace::error::PredictError;
             use lace::Given;
+
+            use super::*;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1686,10 +1717,13 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod logp {
-            use super::*;
             use lace::data::Datum;
-            use lace::error::{GivenError, IndexError, LogpError};
+            use lace::error::GivenError;
+            use lace::error::IndexError;
+            use lace::error::LogpError;
             use lace::Given;
+
+            use super::*;
 
             #[test]
             fn oob_target_index_causes_error() {
@@ -1999,14 +2033,16 @@ mod oracle {
 
 #[cfg(test)]
 mod dataless {
-    use super::*;
     use lace::DatalessOracle;
+
+    use super::*;
     oracle_test!(DatalessOracle::from(get_oracle_from_yaml()));
 }
 
 #[cfg(test)]
 mod engine {
-    use super::*;
     use lace::Engine;
+
+    use super::*;
     oracle_test!(Engine::from(get_oracle_from_yaml()));
 }

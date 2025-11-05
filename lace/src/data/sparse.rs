@@ -1,6 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::data::{AccumScore, Container};
+use crate::data::AccumScore;
+use crate::data::Container;
 
 /// A sparse container stores contiguous vertical slices of data
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

@@ -1,9 +1,15 @@
 use lace::utils::mean_var;
-use rv::dist::{Gamma, Gaussian, InvGamma, ScaledInvChiSquared};
+use plotly::layout::Axis;
+use plotly::layout::GridPattern;
+use plotly::layout::Layout;
+use plotly::layout::LayoutGrid;
+use plotly::Histogram;
+use plotly::Plot;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::InvGamma;
+use rv::dist::ScaledInvChiSquared;
 use rv::traits::Sampleable;
-
-use plotly::layout::{Axis, GridPattern, Layout, LayoutGrid};
-use plotly::{Histogram, Plot};
 
 fn main() {
     let mut rng = rand::rng();

@@ -3,12 +3,14 @@ mod enum_test;
 use enum_test::*;
 
 mod partition {
-    use super::*;
     use lace::stats::assignment::Assignment;
-    use lace::stats::prior_process::{Dirichlet, PriorProcessT};
+    use lace::stats::prior_process::Dirichlet;
+    use lace::stats::prior_process::PriorProcessT;
     use rand::rngs::StdRng;
     use rand::SeedableRng;
     use rv::dist::Gamma;
+
+    use super::*;
 
     fn crp_draw<R: rand::Rng>(n: usize, alpha: f64, rng: &mut R) -> Assignment {
         let process = Dirichlet {

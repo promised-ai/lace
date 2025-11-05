@@ -1,18 +1,23 @@
 //! Misc file utilities
 use std::fs;
 use std::io;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::Read;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use log::info;
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::metadata::latest::Codebook;
 use crate::metadata::latest::DataStore;
 use crate::metadata::latest::DatalessStateAndDiagnostics;
-use crate::metadata::{Error, FileConfig, SerializedType};
+use crate::metadata::Error;
+use crate::metadata::FileConfig;
+use crate::metadata::SerializedType;
 
 fn extension_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {
     path.as_ref()
@@ -409,8 +414,9 @@ pub fn save_file_config<P: AsRef<Path>>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     const VALID_FILES: [&str; 5] = [
         "0.state",

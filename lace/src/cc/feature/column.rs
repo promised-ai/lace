@@ -1,34 +1,49 @@
 use std::mem;
+use std::sync::OnceLock;
 use std::vec::Drain;
 
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
-use rv::dist::{
-    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
-    SymmetricDirichlet,
-};
-use rv::traits::{
-    ConjugatePrior, HasDensity, Mean, QuadBounds, Sampleable, SuffStat,
-};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::sync::OnceLock;
+use rv::dist::Categorical;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::Poisson;
+use rv::dist::SymmetricDirichlet;
+use rv::traits::ConjugatePrior;
+use rv::traits::HasDensity;
+use rv::traits::Mean;
+use rv::traits::QuadBounds;
+use rv::traits::Sampleable;
+use rv::traits::SuffStat;
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
+use serde::Serialize;
 
-use super::{Component, MissingNotAtRandom};
+use super::Component;
+use super::MissingNotAtRandom;
 use crate::cc::component::ConjugateComponent;
-use crate::cc::feature::traits::{Feature, FeatureHelper};
+use crate::cc::feature::traits::Feature;
+use crate::cc::feature::traits::FeatureHelper;
 use crate::cc::feature::FType;
-use crate::cc::traits::{
-    AccumScore, LaceDatum, LaceLikelihood, LacePrior, LaceStat,
-};
+use crate::cc::traits::AccumScore;
+use crate::cc::traits::LaceDatum;
+use crate::cc::traits::LaceLikelihood;
+use crate::cc::traits::LacePrior;
+use crate::cc::traits::LaceStat;
+use crate::data::Category;
+use crate::data::Container;
 use crate::data::Datum;
-use crate::data::{Category, FeatureData};
-use crate::data::{Container, SparseContainer};
+use crate::data::FeatureData;
+use crate::data::SparseContainer;
 use crate::stats::assignment::Assignment;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
-use crate::stats::{MixtureType, QmcEntropy};
+use crate::stats::MixtureType;
+use crate::stats::QmcEntropy;
 use crate::utils::MinMax;
 
 /// A partitioned columns of data
@@ -637,12 +652,14 @@ impl QmcEntropy for ColModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use crate::cc::feature::{Column, Feature};
-    use crate::data::{FeatureData, SparseContainer};
-    use crate::stats::prior_process::{Builder, Dirichlet, Process};
-
+    use crate::cc::feature::Column;
+    use crate::cc::feature::Feature;
+    use crate::data::FeatureData;
+    use crate::data::SparseContainer;
     use crate::stats::prior::nix::NixHyper;
+    use crate::stats::prior_process::Builder;
+    use crate::stats::prior_process::Dirichlet;
+    use crate::stats::prior_process::Process;
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::rng();
         let asgn = Builder::new(5)
@@ -745,10 +762,12 @@ mod tests {
 
     #[test]
     fn to_mixture_with_zero_weight_ignores_component() {
-        use crate::stats::prior::csd::CsdHyper;
         use approx::*;
         use rv::data::CategoricalSuffStat;
-        use rv::dist::{Categorical, SymmetricDirichlet};
+        use rv::dist::Categorical;
+        use rv::dist::SymmetricDirichlet;
+
+        use crate::stats::prior::csd::CsdHyper;
 
         let col = Column {
             id: 0,

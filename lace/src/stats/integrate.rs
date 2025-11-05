@@ -65,10 +65,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rv::data::DataOrSuffStat;
-    use rv::dist::{Bernoulli, Beta};
-    use rv::traits::{ConjugatePrior, HasDensity, Sampleable};
+    use rv::dist::Bernoulli;
+    use rv::dist::Beta;
+    use rv::traits::ConjugatePrior;
+    use rv::traits::HasDensity;
+    use rv::traits::Sampleable;
+
+    use super::*;
 
     fn relerr(x: f64, x_est: f64) -> f64 {
         (x_est / x - 1.0).abs()

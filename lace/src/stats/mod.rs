@@ -30,21 +30,26 @@ mod sample_error;
 
 pub use cdf::EmpiricalCdf;
 pub use entropy::QmcEntropy;
+use itertools::iproduct;
 pub use mixture_type::MixtureType;
 pub use perm::L2Norm;
+use rand::Rng;
+use rv::traits::KlDivergence;
+use rv::traits::Rv;
 pub use sample_error::SampleError;
 pub use simplex::*;
 
-use itertools::iproduct;
-use rand::Rng;
-use rv::traits::{KlDivergence, Rv};
-
 pub mod test {
-    use super::{chi_square, ks, perm};
-
     pub use chi_square::chi_square_test;
-    pub use ks::{ks2sample, ks_test};
-    pub use perm::{gauss_kernel, gauss_perm_test, perm_test};
+    pub use ks::ks2sample;
+    pub use ks::ks_test;
+    pub use perm::gauss_kernel;
+    pub use perm::gauss_perm_test;
+    pub use perm::perm_test;
+
+    use super::chi_square;
+    use super::ks;
+    use super::perm;
 }
 
 /// Trait defining methods to update prior hyperparameters

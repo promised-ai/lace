@@ -1,5 +1,7 @@
 //! Enumeration tests
-use lace::cc::feature::{ColModel, Column, FType};
+use lace::cc::feature::ColModel;
+use lace::cc::feature::Column;
+use lace::cc::feature::FType;
 use lace::data::SparseContainer;
 use rv::traits::Sampleable;
 
@@ -49,7 +51,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
     match ftype {
         FType::Continuous => {
             use lace::stats::prior::nix::NixHyper;
-            use rv::dist::{Gaussian, NormalInvChiSquared};
+            use rv::dist::Gaussian;
+            use rv::dist::NormalInvChiSquared;
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -68,7 +71,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
         }
         FType::Categorical => {
             use lace::stats::prior::csd::CsdHyper;
-            use rv::dist::{Categorical, SymmetricDirichlet};
+            use rv::dist::Categorical;
+            use rv::dist::SymmetricDirichlet;
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -86,7 +90,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
         }
         FType::Count => {
             use lace::stats::prior::pg::PgHyper;
-            use rv::dist::{Gamma, Poisson};
+            use rv::dist::Gamma;
+            use rv::dist::Poisson;
 
             fn ctor<R: rand::Rng>(
                 id: usize,

@@ -28,14 +28,18 @@
 //! assert_eq!(res.len(), 3);
 //! ```
 
-use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use std::path::PathBuf;
+
+use lace_cc::alg::ColAssignAlg;
+use lace_cc::alg::RowAssignAlg;
 use lace_cc::config::StateUpdateConfig;
-use lace_cc::state::{BuildStateError, Builder, State};
+use lace_cc::state::BuildStateError;
+use lace_cc::state::Builder;
+use lace_cc::state::State;
 use lace_cc::transition::StateTransition;
 use lace_codebook::Codebook;
 use rand::Rng;
 use serde::Serialize;
-use std::path::PathBuf;
 use thiserror::Error;
 
 use crate::defaults;
@@ -66,7 +70,9 @@ fn emit_prior_process<R: rand::Rng>(
     prior_process: crate::codebook::PriorProcess,
     rng: &mut R,
 ) -> lace_stats::prior_process::Process {
-    use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
+    use lace_stats::prior_process::Dirichlet;
+    use lace_stats::prior_process::PitmanYor;
+    use lace_stats::prior_process::Process;
     match prior_process {
         crate::codebook::PriorProcess::Dirichlet { alpha_prior } => {
             let inner = Dirichlet::from_prior(alpha_prior, rng);
@@ -290,8 +296,9 @@ impl Bencher {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use lace_codebook::ColType;
+
+    use super::*;
 
     fn quick_bencher() -> Bencher {
         let builder = Builder::new()

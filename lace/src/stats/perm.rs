@@ -164,8 +164,9 @@ pub fn gauss_perm_test<T: L2Norm + Clone + Send + Sync>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     const TOL: f64 = 1E-8;
 

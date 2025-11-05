@@ -1,6 +1,9 @@
 use std::convert::TryFrom;
 
-use rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
+use rv::dist::Bernoulli;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::Poisson;
 
 #[derive(Clone, Debug)]
 /// A column mixture component

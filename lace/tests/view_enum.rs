@@ -5,18 +5,24 @@ mod enum_test;
 
 use std::collections::BTreeMap;
 
-use rand::Rng;
-
-use enum_test::{
-    build_features, normalize_assignment, partition_to_ix, Partition,
-};
+use enum_test::build_features;
+use enum_test::normalize_assignment;
+use enum_test::partition_to_ix;
+use enum_test::Partition;
 use lace::cc::alg::RowAssignAlg;
-use lace::cc::feature::{ColModel, FType, Feature};
+use lace::cc::feature::ColModel;
+use lace::cc::feature::FType;
+use lace::cc::feature::Feature;
 use lace::cc::transition::ViewTransition;
-use lace::cc::view::{Builder, View};
+use lace::cc::view::Builder;
+use lace::cc::view::View;
 use lace::stats::prior_process::Builder as PriorProcessBuilder;
-use lace::stats::prior_process::{Dirichlet, PitmanYor, Process};
-use rv::dist::{Beta, Gamma};
+use lace::stats::prior_process::Dirichlet;
+use lace::stats::prior_process::PitmanYor;
+use lace::stats::prior_process::Process;
+use rand::Rng;
+use rv::dist::Beta;
+use rv::dist::Gamma;
 use rv::misc::LogSumExp;
 
 const N_TRIES: u32 = 5;

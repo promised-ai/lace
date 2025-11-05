@@ -10,25 +10,31 @@ mod enum_test;
 
 use std::collections::HashMap;
 
+use enum_test::build_features;
+use enum_test::normalize_assignment;
+use enum_test::partition_to_ix;
+use enum_test::Partition;
 use itertools::Itertools;
-use rand::Rng;
-use rv::misc::LogSumExp;
-
-use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace::cc::alg::ColAssignAlg;
+use lace::cc::alg::RowAssignAlg;
 use lace::cc::config::StateUpdateConfig;
-use lace::cc::feature::{ColModel, FType, Feature};
+use lace::cc::feature::ColModel;
+use lace::cc::feature::FType;
+use lace::cc::feature::Feature;
 use lace::cc::state::State;
 use lace::cc::transition::StateTransition;
-use lace::cc::view::{Builder, View};
+use lace::cc::view::Builder;
+use lace::cc::view::View;
 use lace::stats::prior_process::Builder as PriorProcessBuilder;
-use lace::stats::prior_process::{
-    Dirichlet, PitmanYor, PriorProcessT, PriorProcessType, Process,
-};
-use rv::dist::{Beta, Gamma};
-
-use enum_test::{
-    build_features, normalize_assignment, partition_to_ix, Partition,
-};
+use lace::stats::prior_process::Dirichlet;
+use lace::stats::prior_process::PitmanYor;
+use lace::stats::prior_process::PriorProcessT;
+use lace::stats::prior_process::PriorProcessType;
+use lace::stats::prior_process::Process;
+use rand::Rng;
+use rv::dist::Beta;
+use rv::dist::Gamma;
+use rv::misc::LogSumExp;
 
 type StateIndex = (u64, Vec<u64>);
 
@@ -295,8 +301,9 @@ pub fn state_enum_test<R: Rng>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use lace::utils::numbers::ccnum;
+
+    use super::*;
 
     const N_TRIES: u32 = 10;
 

@@ -1,13 +1,17 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
-use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
-    SymmetricDirichlet,
-};
+use rv::dist::Categorical;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::Poisson;
+use rv::dist::SymmetricDirichlet;
 
 use super::Component;
-use crate::cc::feature::{ColModel, Column, FType};
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Column;
+use crate::cc::feature::FType;
 use crate::data::Datum;
 use crate::data::FeatureData;
 use crate::stats::assignment::Assignment;
@@ -143,12 +147,13 @@ pub(crate) trait FeatureHelper: Feature {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::data::SparseContainer;
-    use crate::stats::prior_process::Builder as PriorProcessBuilder;
     use approx::*;
     use rv::dist::Gaussian;
     use rv::traits::Sampleable;
+
+    use super::*;
+    use crate::data::SparseContainer;
+    use crate::stats::prior_process::Builder as PriorProcessBuilder;
 
     #[test]
     fn score_and_asgn_score_equivalency() {

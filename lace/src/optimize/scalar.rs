@@ -1,6 +1,7 @@
 use num::Float;
 
-use crate::utils::{argmin, sign};
+use crate::utils::argmin;
+use crate::utils::sign;
 
 /// The method by which to optimize
 pub enum Method {
@@ -301,8 +302,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     const TOL: f64 = 1E-8;
 

@@ -1,6 +1,9 @@
 //! Probability Integral transform test
-use rv::dist::{Categorical, Mixture};
-use rv::traits::{Cdf, ContinuousDistr, Rv};
+use rv::dist::Categorical;
+use rv::dist::Mixture;
+use rv::traits::Cdf;
+use rv::traits::ContinuousDistr;
+use rv::traits::Rv;
 
 #[inline]
 fn pit_quad_lower_part(a: f64, b: f64, f: f64) -> f64 {
@@ -173,10 +176,12 @@ impl SampleError<u32> for Mixture<Categorical> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
-    use rv::dist::{Categorical, Gaussian};
+    use rv::dist::Categorical;
+    use rv::dist::Gaussian;
     use rv::traits::Sampleable;
+
+    use super::*;
 
     const N_TRIES: usize = 5;
 

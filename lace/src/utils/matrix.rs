@@ -1,5 +1,7 @@
-use rayon::prelude::{ParallelSlice, ParallelSliceMut};
 use std::ops::Index;
+
+use rayon::prelude::ParallelSlice;
+use rayon::prelude::ParallelSliceMut;
 
 /// A lightweight Matrix abstraction that does almost nothing.
 #[derive(Clone, Debug)]

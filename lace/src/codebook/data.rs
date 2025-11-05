@@ -1,14 +1,23 @@
-use crate::codebook::error::{CodebookError, ReadError};
-use crate::codebook::PriorProcess;
-use crate::codebook::{
-    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, ValueMap,
-};
+use std::path::Path;
 
+use polars::prelude::CsvReader;
+use polars::prelude::DataFrame;
+use polars::prelude::DataType;
+use polars::prelude::SerReader;
+use polars::prelude::Series;
+
+use crate::codebook::error::CodebookError;
+use crate::codebook::error::ReadError;
+use crate::codebook::Codebook;
+use crate::codebook::ColMetadata;
+use crate::codebook::ColMetadataList;
+use crate::codebook::ColType;
+use crate::codebook::PriorProcess;
+use crate::codebook::RowNameList;
+use crate::codebook::ValueMap;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
-use polars::prelude::{CsvReader, DataFrame, DataType, SerReader, Series};
-use std::path::Path;
 
 pub const DEFAULT_CAT_CUTOFF: u32 = 20;
 
@@ -335,8 +344,9 @@ fn string_categorical_coltype(
     srs: &Series,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    use rv::dist::SymmetricDirichlet;
     use std::collections::BTreeSet;
+
+    use rv::dist::SymmetricDirichlet;
 
     let n_unique = srs.n_unique()?;
     if n_unique > std::u32::MAX as usize {
@@ -500,11 +510,13 @@ pub fn codebook_from_csv<P: AsRef<Path>>(
 
 #[cfg(test)]
 mod test {
+    use std::io::Write;
+
+    use polars::prelude::*;
+    use tempfile::NamedTempFile;
+
     use super::*;
     use crate::data::Category;
-    use polars::prelude::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
 
     fn tempfile() -> NamedTempFile {
         NamedTempFile::new().unwrap()

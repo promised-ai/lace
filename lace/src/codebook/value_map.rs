@@ -1,8 +1,14 @@
-use crate::data::Category;
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::hash::Hash;
+
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
+
+use crate::data::Category;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(

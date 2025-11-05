@@ -1,21 +1,34 @@
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-use rv::dist::{
-    Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
-    NormalInvChiSquared, Poisson, SymmetricDirichlet,
-};
-
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use rv::dist::Bernoulli;
+use rv::dist::Beta;
+use rv::dist::Categorical;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::Poisson;
+use rv::dist::SymmetricDirichlet;
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::cc::component::ConjugateComponent;
+use crate::cc::feature::ColModel;
 use crate::cc::feature::Column;
-use crate::cc::feature::{ColModel, MissingNotAtRandom};
-use crate::cc::state::{State, StateDiagnostics, StateScoreComponents};
-use crate::cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
+use crate::cc::feature::MissingNotAtRandom;
+use crate::cc::state::State;
+use crate::cc::state::StateDiagnostics;
+use crate::cc::state::StateScoreComponents;
+use crate::cc::traits::LaceDatum;
+use crate::cc::traits::LaceLikelihood;
+use crate::cc::traits::LacePrior;
+use crate::cc::traits::LaceStat;
 use crate::cc::view::View;
-use crate::data::{FeatureData, SparseContainer};
+use crate::data::FeatureData;
+use crate::data::SparseContainer;
 use crate::impl_metadata_version;
 use crate::metadata::MetadataVersion;
 use crate::stats::prior::csd::CsdHyper;

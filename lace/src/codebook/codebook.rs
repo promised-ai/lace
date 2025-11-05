@@ -1,20 +1,28 @@
+use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::fs::File;
+use std::io::Read;
+use std::io::{self};
+use std::path::Path;
+
+use polars::prelude::DataFrame;
+use rv::dist::Beta;
+use rv::dist::Gamma;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::SymmetricDirichlet;
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::codebook::data::df_to_codebook;
-use crate::codebook::error::{
-    CodebookError, ColMetadataListError, InsertRowError, MergeColumnsError,
-    RowNameListError,
-};
+use crate::codebook::error::CodebookError;
+use crate::codebook::error::ColMetadataListError;
+use crate::codebook::error::InsertRowError;
+use crate::codebook::error::MergeColumnsError;
+use crate::codebook::error::RowNameListError;
 use crate::codebook::ValueMap;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
-use polars::prelude::DataFrame;
-use rv::dist::{Beta, Gamma, NormalInvChiSquared, SymmetricDirichlet};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::fs::File;
-use std::io::{self, Read};
-use std::path::Path;
 
 /// A structure that enforces unique IDs and row names.
 ///
@@ -603,9 +611,11 @@ pub struct ColMetadata {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use indoc::indoc;
     use std::convert::TryInto;
+
+    use indoc::indoc;
+
+    use super::*;
 
     fn quick_codebook() -> Codebook {
         let coltype = ColType::Categorical {

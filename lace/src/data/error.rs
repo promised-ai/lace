@@ -1,7 +1,9 @@
+use std::io;
+
+use thiserror::Error;
+
 use crate::cc::feature::FType;
 use crate::codebook::CodebookError;
-use std::io;
-use thiserror::Error;
 
 /// Errors that can arise while parsing a CSV together with a codebook
 #[derive(Debug, Error)]

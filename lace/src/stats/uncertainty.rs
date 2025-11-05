@@ -1,5 +1,11 @@
-use rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
-use rv::traits::{HasDensity, Mean, QuadBounds};
+use rv::dist::Bernoulli;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::dist::Poisson;
+use rv::traits::HasDensity;
+use rv::traits::Mean;
+use rv::traits::QuadBounds;
 
 /// Compute the normed mean Total Variation Distance of a set of mixture
 /// distributions with the mean of distributions.
@@ -74,9 +80,8 @@ fn gaussian_quad_points(
 
 impl TotalVariationDistance for Mixture<Gaussian> {
     fn tvd(&self, other: &Self) -> f64 {
-        use rv::misc::{
-            gauss_legendre_quadrature_cached, gauss_legendre_table,
-        };
+        use rv::misc::gauss_legendre_quadrature_cached;
+        use rv::misc::gauss_legendre_table;
 
         let func = |x| (self.f(&x) - other.f(&x)).abs();
 

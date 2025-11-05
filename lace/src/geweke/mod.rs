@@ -13,5 +13,8 @@
 mod tester;
 mod traits;
 
-pub use tester::{GewekeResult, GewekeTester};
-pub use traits::{GewekeModel, GewekeResampleData, GewekeSummarize};
+pub use tester::GewekeResult;
+pub use tester::GewekeTester;
+pub use traits::GewekeModel;
+pub use traits::GewekeResampleData;
+pub use traits::GewekeSummarize;

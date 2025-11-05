@@ -87,9 +87,13 @@
 //! - Users must be careful when using a prior on CRP α that has high or
 //!   infinite variance. If α is too high, the stick will break indefinitely and
 //!   cause an panic.
+use std::fmt;
+use std::str::FromStr;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::ParseError;
-use serde::{Deserialize, Serialize};
-use std::{fmt, str::FromStr};
 
 /// The MCMC algorithm to use for row reassignment
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq)]

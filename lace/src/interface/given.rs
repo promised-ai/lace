@@ -1,12 +1,15 @@
+use std::collections::HashSet;
+use std::convert::TryInto;
+use std::hash::Hash;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::codebook::Codebook;
 use crate::error::IndexError;
 use crate::index::ColumnIndex;
 use crate::interface::oracle::utils;
 use crate::Datum;
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::convert::TryInto;
-use std::hash::Hash;
 
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Hash)]

@@ -2,7 +2,8 @@
 use std::ops::Index;
 
 use rv::dist::Categorical;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
 
 /// A point on the N-Simplex

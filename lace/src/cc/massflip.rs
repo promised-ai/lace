@@ -197,10 +197,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::utils::Matrix;
     use rand::SeedableRng;
     use rand_xoshiro::Xoshiro256Plus;
+
+    use super::*;
+    use crate::utils::Matrix;
 
     fn gen_weights(n_rows: usize, n_cols: usize) -> Vec<Vec<f64>> {
         let mut rng = Xoshiro256Plus::seed_from_u64(1337);

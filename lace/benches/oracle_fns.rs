@@ -1,7 +1,11 @@
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main};
 use lace::examples::Example;
-use lace::{Given, Oracle, OracleT};
+use lace::Given;
+use lace::Oracle;
+use lace::OracleT;
 use lace_data::Datum;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;

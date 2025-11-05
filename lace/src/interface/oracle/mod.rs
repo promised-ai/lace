@@ -4,20 +4,24 @@ mod traits;
 pub mod utils;
 mod validation;
 
-pub use dataless::DatalessOracle;
-pub use traits::{OracleT, Variability};
-
 use std::path::Path;
 
-use crate::cc::state::State;
-use crate::codebook::Codebook;
-use crate::data::{DataStore, Datum, SummaryStatistics};
-use crate::metadata::latest::Metadata;
-use serde::{Deserialize, Serialize};
-
-use crate::{Engine, HasData, HasStates};
+pub use dataless::DatalessOracle;
+use serde::Deserialize;
+use serde::Serialize;
+pub use traits::OracleT;
+pub use traits::Variability;
 
 use super::HasCodebook;
+use crate::cc::state::State;
+use crate::codebook::Codebook;
+use crate::data::DataStore;
+use crate::data::Datum;
+use crate::data::SummaryStatistics;
+use crate::metadata::latest::Metadata;
+use crate::Engine;
+use crate::HasData;
+use crate::HasStates;
 
 /// Mutual Information Type
 #[derive(
@@ -206,18 +210,26 @@ impl HasCodebook for Oracle {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::cc::feature::{FType, Feature};
-    use crate::codebook::{ColMetadata, ColType};
-    use crate::stats::MixtureType;
-    use crate::Given;
-    use crate::{Oracle, OracleT};
-    use approx::*;
-    use rand::Rng;
-    use rv::dist::{Categorical, Gaussian, Mixture};
-    use rv::traits::{HasDensity, Sampleable};
     use std::collections::BTreeMap;
     use std::path::Path;
+
+    use approx::*;
+    use rand::Rng;
+    use rv::dist::Categorical;
+    use rv::dist::Gaussian;
+    use rv::dist::Mixture;
+    use rv::traits::HasDensity;
+    use rv::traits::Sampleable;
+
+    use super::*;
+    use crate::cc::feature::FType;
+    use crate::cc::feature::Feature;
+    use crate::codebook::ColMetadata;
+    use crate::codebook::ColType;
+    use crate::stats::MixtureType;
+    use crate::Given;
+    use crate::Oracle;
+    use crate::OracleT;
 
     fn dummy_codebook_from_state(state: &State) -> Codebook {
         Codebook {
@@ -664,9 +676,10 @@ mod tests {
             given: &Given<usize>,
             state_ixs_opt: Option<Vec<usize>>,
         ) {
-            use crate::examples::Example;
             use rand::SeedableRng;
             use rand_xoshiro::Xoshiro256Plus;
+
+            use crate::examples::Example;
 
             let n: usize = 100;
             let oracle = Example::Satellites.oracle().unwrap();

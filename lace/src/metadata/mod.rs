@@ -14,13 +14,15 @@ mod error;
 pub mod latest;
 mod utils;
 
-pub use utils::{deserialize_file, save_state, serialize_obj};
-
-use log::info;
 use std::path::Path;
 
-pub use config::{FileConfig, SerializedType};
+pub use config::FileConfig;
+pub use config::SerializedType;
 pub use error::Error;
+use log::info;
+pub use utils::deserialize_file;
+pub use utils::save_state;
+pub use utils::serialize_obj;
 
 pub trait MetadataVersion {
     fn metadata_version() -> i32;
@@ -64,15 +66,22 @@ macro_rules! to_from_newtype {
 macro_rules! loaders {
     ($state:ident, $data:ty, $codebook:ty, $rng:ty) => {
         pub(crate) mod load {
-            use super::*;
-            use log::info;
             use std::path::Path;
+
+            use log::info;
             use $crate::metadata::config::FileConfig;
-            use $crate::metadata::utils::{
-                get_codebook_path, get_data_path, get_rng_path, get_state_ids,
-                get_state_path, load, load_as_type, read_diagnostics,
-            };
-            use $crate::metadata::{Error, SerializedType};
+            use $crate::metadata::utils::get_codebook_path;
+            use $crate::metadata::utils::get_data_path;
+            use $crate::metadata::utils::get_rng_path;
+            use $crate::metadata::utils::get_state_ids;
+            use $crate::metadata::utils::get_state_path;
+            use $crate::metadata::utils::load;
+            use $crate::metadata::utils::load_as_type;
+            use $crate::metadata::utils::read_diagnostics;
+            use $crate::metadata::Error;
+            use $crate::metadata::SerializedType;
+
+            use super::*;
 
             pub(crate) fn load_rng<P: AsRef<Path>>(
                 path: P,

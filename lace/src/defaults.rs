@@ -1,5 +1,6 @@
 //! Default values
-use crate::cc::alg::{ColAssignAlg, RowAssignAlg};
+use crate::cc::alg::ColAssignAlg;
+use crate::cc::alg::RowAssignAlg;
 
 /// Default row re-assignment algorithm
 pub const ROW_ASSIGN_ALG: RowAssignAlg = RowAssignAlg::Slice;

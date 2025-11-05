@@ -1,11 +1,11 @@
+use lace::cc::feature::geweke::ColumnGewekeSettings;
 use lace::geweke::*;
 use lace::prelude::*;
 use lace::stats::prior_process::Builder as AssignmentBuilder;
-use rv::dist::{
-    Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
-};
-
-use lace::cc::feature::geweke::ColumnGewekeSettings;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::SymmetricDirichlet;
 
 type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CategoricalColumn = Column<u32, Categorical, SymmetricDirichlet, CsdHyper>;

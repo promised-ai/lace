@@ -1,25 +1,41 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
-use std::convert::{TryFrom, TryInto};
-use std::f64::{INFINITY, NEG_INFINITY};
+use std::convert::TryFrom;
+use std::convert::TryInto;
+use std::f64::INFINITY;
+use std::f64::NEG_INFINITY;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::Read;
 use std::path::Path;
 
-use rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
-use rv::traits::{Entropy, HasDensity, Mode, QuadBounds, Sampleable, Variance};
+use rv::dist::Bernoulli;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::dist::Poisson;
+use rv::traits::Entropy;
+use rv::traits::HasDensity;
+use rv::traits::Mode;
+use rv::traits::QuadBounds;
+use rv::traits::Sampleable;
+use rv::traits::Variance;
 
 use super::error::IndexError;
-use crate::cc::feature::{ColModel, FType, Feature};
+use crate::cc::feature::ColModel;
+use crate::cc::feature::FType;
+use crate::cc::feature::Feature;
 use crate::cc::state::State;
 use crate::codebook::Codebook;
 use crate::consts::rv::misc::LogSumExp;
-use crate::data::{Category, Datum};
+use crate::data::Category;
+use crate::data::Datum;
 use crate::interface::Given;
-use crate::optimize::{fmin_bounded, fmin_brute};
+use crate::optimize::fmin_bounded;
+use crate::optimize::fmin_brute;
 use crate::stats::MixtureType;
-use crate::utils::{argmax, transpose};
+use crate::utils::argmax;
+use crate::utils::transpose;
 
 pub(crate) fn u32_to_category(
     x: u32,
@@ -719,8 +735,9 @@ pub fn categorical_impute(
 }
 
 pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
-    use crate::utils::MinMax;
     use rv::traits::Mean;
+
+    use crate::utils::MinMax;
 
     let cpnts: Vec<Poisson> = states
         .iter()
@@ -856,10 +873,13 @@ pub fn categorical_gaussian_entropy_dual(
     col_gauss: usize,
     states: &[State],
 ) -> f64 {
-    use crate::cc::feature::MissingNotAtRandom;
-    use rv::misc::{gauss_legendre_quadrature_cached, gauss_legendre_table};
     use std::cell::RefCell;
     use std::collections::HashMap;
+
+    use rv::misc::gauss_legendre_quadrature_cached;
+    use rv::misc::gauss_legendre_table;
+
+    use crate::cc::feature::MissingNotAtRandom;
 
     // get a mixture model of the Gaussian component to compute the quad points
     let (dep_weight, gm_dep, gm_ind) =
@@ -1189,7 +1209,8 @@ pub fn categorical_entropy_dual(
 
 // Finds the first x such that
 fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
-    use rv::traits::{Cdf, Mean};
+    use rv::traits::Cdf;
+    use rv::traits::Mean;
 
     let lower_threshold = (1.0 - mass) / 2.0;
     let upper_threshold = mass - (1.0 - mass) / 2.0;
@@ -1653,8 +1674,9 @@ pub fn impute_uncertainty(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     const TOL: f64 = 1E-8;
 

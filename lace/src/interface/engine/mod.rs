@@ -3,39 +3,55 @@ mod data;
 pub mod error;
 pub mod update_handler;
 
-pub use builder::{BuildEngineError, EngineBuilder};
-pub use data::{
-    AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
-    SupportExtension, Value, WriteMode,
-};
-
 use std::collections::HashMap;
 use std::path::Path;
 
+pub use builder::BuildEngineError;
+pub use builder::EngineBuilder;
+use data::append_empty_columns;
+use data::insert_data_tasks;
+use data::maybe_add_categories;
+pub use data::AppendStrategy;
+pub use data::InsertDataActions;
+pub use data::InsertMode;
+pub use data::OverwriteMode;
+pub use data::Row;
+pub use data::SupportExtension;
+pub use data::Value;
+pub use data::WriteMode;
+use error::DataParseError;
+use error::InsertDataError;
+use error::NewEngineError;
+use error::RemoveDataError;
+use polars::frame::DataFrame;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::cc::feature::{ColModel, Feature};
+use self::update_handler::UpdateHandler;
+use super::HasCodebook;
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Feature;
 use crate::cc::state::State;
-use crate::codebook::{Codebook, ColMetadataList};
+use crate::codebook::Codebook;
+use crate::codebook::ColMetadataList;
 use crate::config::EngineUpdateConfig;
+use crate::data::Category;
 use crate::data::DataSource;
-use crate::data::{Category, Datum, SummaryStatistics};
+use crate::data::Datum;
+use crate::data::SummaryStatistics;
 use crate::error::IndexError;
-use crate::index::{ColumnIndex, RowIndex};
+use crate::index::ColumnIndex;
+use crate::index::RowIndex;
 use crate::interface::oracle::utils::post_process_datum;
 use crate::metadata::latest::Metadata;
 use crate::metadata::SerializedType;
-use crate::{HasData, HasStates, Oracle, TableIndex};
-use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
-use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
-use polars::frame::DataFrame;
-
-use self::update_handler::UpdateHandler;
-
-use super::HasCodebook;
+use crate::HasData;
+use crate::HasStates;
+use crate::Oracle;
+use crate::TableIndex;
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -128,7 +144,9 @@ fn emit_prior_process<R: rand::Rng>(
     prior_process: crate::codebook::PriorProcess,
     rng: &mut R,
 ) -> crate::stats::prior_process::Process {
-    use crate::stats::prior_process::{Dirichlet, PitmanYor, Process};
+    use crate::stats::prior_process::Dirichlet;
+    use crate::stats::prior_process::PitmanYor;
+    use crate::stats::prior_process::Process;
     match prior_process {
         crate::codebook::PriorProcess::Dirichlet { alpha_prior } => {
             let inner = Dirichlet::from_prior(alpha_prior, rng);
@@ -747,8 +765,11 @@ impl Engine {
     ) -> Result<(), RemoveDataError> {
         // We use hashset because btreeset doesn't have drain. we use btreeset,
         // becuase it maintains the order of elements.
-        use crate::interface::engine::data::{remove_cell, remove_col};
-        use std::collections::{BTreeSet, HashSet};
+        use std::collections::BTreeSet;
+        use std::collections::HashSet;
+
+        use crate::interface::engine::data::remove_cell;
+        use crate::interface::engine::data::remove_col;
 
         let codebook = self.codebook();
 
@@ -1086,16 +1107,14 @@ impl Engine {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashSet,
-        path::PathBuf,
-        sync::{Arc, RwLock},
-        time::Duration,
-    };
-
-    use crate::update_handler::StateTimeout;
+    use std::collections::HashSet;
+    use std::path::PathBuf;
+    use std::sync::Arc;
+    use std::sync::RwLock;
+    use std::time::Duration;
 
     use super::*;
+    use crate::update_handler::StateTimeout;
 
     fn animals_csv() -> DataSource {
         let df = crate::codebook::data::read_csv(PathBuf::from(

@@ -1,19 +1,26 @@
 use std::fmt::Debug;
 
+use rv::data::BernoulliSuffStat;
+use rv::data::CategoricalDatum;
+use rv::data::CategoricalSuffStat;
+use rv::data::GaussianSuffStat;
+use rv::data::PoissonSuffStat;
+use rv::dist::Bernoulli;
+use rv::dist::Beta;
+use rv::dist::Categorical;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::Poisson;
+use rv::dist::SymmetricDirichlet;
+use rv::traits::ConjugatePrior;
+use rv::traits::HasDensity;
+use rv::traits::HasSuffStat;
+use rv::traits::Mode;
+use rv::traits::Rv;
+use rv::traits::Sampleable;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-
-use rv::data::{
-    BernoulliSuffStat, CategoricalDatum, CategoricalSuffStat, GaussianSuffStat,
-    PoissonSuffStat,
-};
-use rv::dist::{
-    Bernoulli, Beta, Categorical, Gamma, Gaussian, NormalInvChiSquared,
-    Poisson, SymmetricDirichlet,
-};
-use rv::traits::{
-    ConjugatePrior, HasDensity, HasSuffStat, Mode, Rv, Sampleable,
-};
 
 use crate::cc::feature::Component;
 use crate::cc::feature::FType;

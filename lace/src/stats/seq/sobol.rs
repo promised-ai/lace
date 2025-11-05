@@ -193,9 +193,11 @@ impl Iterator for SobolSeq {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use approx::{abs_diff_eq, assert_ulps_eq};
+    use approx::abs_diff_eq;
+    use approx::assert_ulps_eq;
     use rv::misc::ks_test;
+
+    use super::*;
 
     #[test]
     fn most_significant_bit_checks() {

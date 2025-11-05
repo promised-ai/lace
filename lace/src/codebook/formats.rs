@@ -1,10 +1,13 @@
 use std::fs::File;
 use std::path::Path;
 
-use polars::prelude::{
-    CsvReader, DataFrame, IpcReader, JsonFormat, JsonReader, ParquetReader,
-    SerReader,
-};
+use polars::prelude::CsvReader;
+use polars::prelude::DataFrame;
+use polars::prelude::IpcReader;
+use polars::prelude::JsonFormat;
+use polars::prelude::JsonReader;
+use polars::prelude::ParquetReader;
+use polars::prelude::SerReader;
 
 use crate::codebook::ReadError;
 

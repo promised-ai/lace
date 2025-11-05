@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 // An empirical CDf derived from samples
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]

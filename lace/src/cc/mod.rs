@@ -20,8 +20,10 @@ pub mod traits;
 pub mod transition;
 pub mod view;
 
+use std::fmt::Debug;
+use std::fmt::Display;
+
 use serde::Serialize;
-use std::fmt::{Debug, Display};
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ParseError<T: Serialize + Debug + Clone + PartialEq + Eq>(T);

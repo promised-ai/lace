@@ -1,8 +1,10 @@
 use std::convert::TryFrom;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::cc::alg::{ColAssignAlg, RowAssignAlg};
+use crate::cc::alg::ColAssignAlg;
+use crate::cc::alg::RowAssignAlg;
 use crate::ParseError;
 
 pub const DEFAULT_STATE_TRANSITIONS: [StateTransition; 5] = [

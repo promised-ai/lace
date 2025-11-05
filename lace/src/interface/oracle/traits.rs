@@ -1,23 +1,39 @@
-use super::error::{self, IndexError};
-use super::validation::{find_given_errors, find_value_conflicts};
-use super::{utils, RowSimilarityVariant};
-use crate::cc::feature::{FType, Feature};
-use crate::cc::state::{State, StateDiagnostics};
-use crate::consts::rv::misc::LogSumExp;
-use crate::data::{Datum, SummaryStatistics};
-use crate::index::{
-    extract_col_pair, extract_colixs, extract_row_pair, ColumnIndex, RowIndex,
-};
-use crate::interface::oracle::error::SurprisalError;
-use crate::interface::oracle::{ConditionalEntropyType, MiComponents, MiType};
-use crate::interface::{CanOracle, Given};
-use crate::stats::SampleError;
+use std::collections::BTreeSet;
+
 use rand::Rng;
 use rayon::prelude::*;
-use rv::dist::{Categorical, Gaussian, Mixture};
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
 use rv::traits::Sampleable;
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use serde::Deserialize;
+use serde::Serialize;
+
+use super::error::IndexError;
+use super::error::{self};
+use super::utils;
+use super::validation::find_given_errors;
+use super::validation::find_value_conflicts;
+use super::RowSimilarityVariant;
+use crate::cc::feature::FType;
+use crate::cc::feature::Feature;
+use crate::cc::state::State;
+use crate::cc::state::StateDiagnostics;
+use crate::consts::rv::misc::LogSumExp;
+use crate::data::Datum;
+use crate::data::SummaryStatistics;
+use crate::index::extract_col_pair;
+use crate::index::extract_colixs;
+use crate::index::extract_row_pair;
+use crate::index::ColumnIndex;
+use crate::index::RowIndex;
+use crate::interface::oracle::error::SurprisalError;
+use crate::interface::oracle::ConditionalEntropyType;
+use crate::interface::oracle::MiComponents;
+use crate::interface::oracle::MiType;
+use crate::interface::CanOracle;
+use crate::interface::Given;
+use crate::stats::SampleError;
 
 macro_rules! col_indices_ok  {
     ($n_cols:expr, $col_ixs:expr, $($err_variant:tt)+) => {{
@@ -2081,8 +2097,10 @@ pub trait OracleT: CanOracle {
         given: &Given<GIx>,
         state_ixs_opt: Option<&[usize]>,
     ) -> Result<Variability, error::VariabilityError> {
+        use rv::traits::Entropy;
+        use rv::traits::Variance;
+
         use crate::stats::MixtureType;
-        use rv::traits::{Entropy, Variance};
 
         let states: Vec<&State> = if let Some(state_ixs) = state_ixs_opt {
             state_ixs.iter().map(|&ix| &self.states()[ix]).collect()

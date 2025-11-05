@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use crate::cc::state::State;
 use crate::data::Datum;
-
-use crate::error::{GivenError, LogpError};
+use crate::error::GivenError;
+use crate::error::LogpError;
 use crate::Given;
 
 // Given a set of target indices on which to condition, determine whether
@@ -148,14 +148,16 @@ pub fn find_value_conflicts(
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
     use crate::cc::feature::FType;
     use crate::codebook::Codebook;
     use crate::data::DataStore;
     use crate::error::IndexError;
     use crate::interface::oracle::utils::load_states;
-    use crate::interface::{HasStates, Oracle};
-    use std::path::Path;
+    use crate::interface::HasStates;
+    use crate::interface::Oracle;
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {
         let states = load_states(filenames);

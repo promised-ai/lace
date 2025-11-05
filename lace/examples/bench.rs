@@ -4,7 +4,8 @@ fn main() {
 
     use lace::bencher::Bencher;
     use lace::prelude::*;
-    use lace_utils::{mean, std};
+    use lace_utils::mean;
+    use lace_utils::std;
 
     let args: Vec<String> = env::args().skip(1).collect();
 

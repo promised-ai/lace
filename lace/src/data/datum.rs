@@ -1,8 +1,11 @@
-use crate::Category;
-use serde::{Deserialize, Serialize};
 use std::convert::From;
 use std::hash::Hash;
+
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
+
+use crate::Category;
 
 /// Represents the types of data lace can work with
 #[derive(Debug, Clone, Serialize, Deserialize, PartialOrd)]

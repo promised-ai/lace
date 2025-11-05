@@ -5,7 +5,8 @@ use thiserror::Error;
 use super::error::NewEngineError;
 use super::Engine;
 use crate::codebook::Codebook;
-use crate::data::{DataSource, DefaultCodebookError};
+use crate::data::DataSource;
+use crate::data::DefaultCodebookError;
 
 const DEFAULT_NSTATES: usize = 8;
 const DEFAULT_ID_OFFSET: usize = 0;
@@ -108,15 +109,19 @@ impl EngineBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::codebook::ReadError;
+    use std::collections::BTreeSet;
+    use std::path::Path;
+    use std::path::PathBuf;
+
     use maplit::btreeset;
     use polars::prelude::DataFrame;
-    use std::path::Path;
-    use std::{collections::BTreeSet, path::PathBuf};
+
+    use super::*;
+    use crate::codebook::ReadError;
 
     fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-        use polars::prelude::{CsvReader, SerReader};
+        use polars::prelude::CsvReader;
+        use polars::prelude::SerReader;
         let df = CsvReader::from_path(path.as_ref())?
             .infer_schema(Some(1000))
             .has_header(true)

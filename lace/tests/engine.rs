@@ -1,17 +1,21 @@
 use std::convert::Into;
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
-use lace::codebook::{Codebook, ValueMap};
+use lace::codebook::Codebook;
+use lace::codebook::ValueMap;
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
 use lace::metadata::SerializedType;
-use lace::{
-    AppendStrategy, Engine, EngineBuilder, HasStates, InsertDataActions,
-    SupportExtension,
-};
+use lace::AppendStrategy;
+use lace::Engine;
+use lace::EngineBuilder;
+use lace::HasStates;
+use lace::InsertDataActions;
+use lace::SupportExtension;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -153,10 +157,14 @@ fn run_engine_after_flatten_cols_smoke_test() {
 }
 
 mod constructor {
-    use super::*;
-    use lace::codebook::{ColMetadata, ColType};
-    use lace::error::{DataParseError, NewEngineError};
     use std::convert::TryInto;
+
+    use lace::codebook::ColMetadata;
+    use lace::codebook::ColType;
+    use lace::error::DataParseError;
+    use lace::error::NewEngineError;
+
+    use super::*;
 
     #[test]
     fn non_empty_col_metadata_empty_data_source_errors() {
@@ -240,17 +248,25 @@ fn engine_build_without_flat_col_is_not_flat() {
 // errors. They do not make sure the State metadata (assignment and sufficient
 // statistics) have been updated properly. Those tests occur in State.
 mod insert_data {
-    use super::*;
-    use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+    use lace::cc::alg::ColAssignAlg;
+    use lace::cc::alg::RowAssignAlg;
     use lace::cc::feature::FType;
     use lace::cc::transition::StateTransition;
-    use lace::codebook::{
-        ColMetadata, ColMetadataList, ColType, ValueMapExtension,
-    };
+    use lace::codebook::ColMetadata;
+    use lace::codebook::ColMetadataList;
+    use lace::codebook::ColType;
+    use lace::codebook::ValueMapExtension;
     use lace::data::Datum;
     use lace::error::InsertDataError;
     use lace::stats::prior::csd::CsdHyper;
-    use lace::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
+    use lace::InsertMode;
+    use lace::OracleT;
+    use lace::OverwriteMode;
+    use lace::Row;
+    use lace::Value;
+    use lace::WriteMode;
+
+    use super::*;
 
     #[test]
     fn add_new_row_to_animals_adds_values_in_empty_row() {
@@ -2272,8 +2288,9 @@ mod insert_data {
 }
 
 mod del_rows {
-    use super::*;
     use lace::HasData;
+
+    use super::*;
 
     #[test]
     fn del_first_row() {
@@ -2384,10 +2401,13 @@ mod del_rows {
 }
 
 mod remove_data {
-    use super::*;
     use lace::data::Datum;
-    use lace::examples::animals::{Column, Row};
-    use lace::{OracleT, TableIndex};
+    use lace::examples::animals::Column;
+    use lace::examples::animals::Row;
+    use lace::OracleT;
+    use lace::TableIndex;
+
+    use super::*;
 
     #[test]
     fn remove_random_cells() {
@@ -2624,14 +2644,19 @@ mod remove_data {
 #[cfg(feature = "formats")]
 #[cfg(test)]
 mod prior_in_codebook {
-    use super::*;
+    use std::convert::TryInto;
+    use std::io::Write;
+
     use lace::cc::feature::ColModel;
-    use lace::codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
+    use lace::codebook::Codebook;
+    use lace::codebook::ColMetadata;
+    use lace::codebook::ColMetadataList;
+    use lace::codebook::ColType;
     use lace::stats::prior::nix::NixHyper;
     use rv::dist::NormalInvChiSquared;
     use rv::traits::Rv;
-    use std::convert::TryInto;
-    use std::io::Write;
+
+    use super::*;
 
     // Generate a two-column codebook ('x' and 'y'). The x column will always
     // have a hyper for the x column, but will have a prior defined if set_prior

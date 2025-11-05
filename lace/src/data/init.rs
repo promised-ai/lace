@@ -45,13 +45,22 @@
 //! ```
 use std::collections::HashMap;
 
-use polars::prelude::{DataFrame, Series};
-use rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+use polars::prelude::DataFrame;
+use polars::prelude::Series;
+use rv::dist::Gamma;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::SymmetricDirichlet;
 
-use crate::cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
-use crate::codebook::{Codebook, ColType};
-use crate::codebook::{CodebookError, ValueMap};
-use crate::data::{Container, SparseContainer};
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Column;
+use crate::cc::feature::Feature;
+use crate::cc::feature::MissingNotAtRandom;
+use crate::codebook::Codebook;
+use crate::codebook::CodebookError;
+use crate::codebook::ColType;
+use crate::codebook::ValueMap;
+use crate::data::Container;
+use crate::data::SparseContainer;
 use crate::error::DataParseError;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
@@ -313,9 +322,10 @@ pub fn df_to_col_models<R: rand::Rng>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
     use indoc::indoc;
+
+    use super::*;
 
     fn str_to_tempfile(data: &str) -> tempfile::NamedTempFile {
         use std::io::Write;

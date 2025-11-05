@@ -1,28 +1,42 @@
 //! Common import for general use.
 
-pub use crate::{
-    update_handler, AppendStrategy, Datum, Engine, EngineBuilder,
-    EngineUpdateConfig, Given, InsertMode, MiType, OracleT, OverwriteMode, Row,
-    RowSimilarityVariant, SupportExtension, Value, WriteMode,
-};
+pub use rv;
 
-pub use crate::interface::Variability;
-
+pub use crate::cc::alg::ColAssignAlg;
+pub use crate::cc::alg::RowAssignAlg;
+pub use crate::cc::config::StateUpdateConfig;
+pub use crate::cc::feature::Column;
+pub use crate::cc::feature::FType;
+pub use crate::cc::state::State;
+pub use crate::cc::transition::StateTransition;
+pub use crate::cc::transition::ViewTransition;
+pub use crate::cc::view::View;
+pub use crate::codebook::Codebook;
+pub use crate::codebook::CodebookError;
+pub use crate::codebook::ColMetadata;
+pub use crate::codebook::ColMetadataList;
+pub use crate::codebook::ColType;
 pub use crate::data::DataSource;
-
-pub use crate::cc::{
-    alg::{ColAssignAlg, RowAssignAlg},
-    config::StateUpdateConfig,
-    feature::{Column, FType},
-    state::State,
-    transition::{StateTransition, ViewTransition},
-    view::View,
-};
-pub use crate::codebook::{
-    Codebook, CodebookError, ColMetadata, ColMetadataList, ColType,
-};
+pub use crate::interface::Variability;
 pub use crate::metadata::SerializedType;
 pub use crate::stats::assignment::Assignment;
-pub use crate::stats::prior::{csd::CsdHyper, nix::NixHyper, pg::PgHyper};
+pub use crate::stats::prior::csd::CsdHyper;
+pub use crate::stats::prior::nix::NixHyper;
+pub use crate::stats::prior::pg::PgHyper;
+pub use crate::update_handler;
 pub use crate::utils;
-pub use rv;
+pub use crate::AppendStrategy;
+pub use crate::Datum;
+pub use crate::Engine;
+pub use crate::EngineBuilder;
+pub use crate::EngineUpdateConfig;
+pub use crate::Given;
+pub use crate::InsertMode;
+pub use crate::MiType;
+pub use crate::OracleT;
+pub use crate::OverwriteMode;
+pub use crate::Row;
+pub use crate::RowSimilarityVariant;
+pub use crate::SupportExtension;
+pub use crate::Value;
+pub use crate::WriteMode;

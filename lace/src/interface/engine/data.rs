@@ -1,23 +1,36 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 
 use indexmap::IndexSet;
 use rand;
 use rv::data::CategoricalSuffStat;
-use rv::dist::{Categorical, SymmetricDirichlet};
-use serde::{Deserialize, Serialize};
+use rv::dist::Categorical;
+use rv::dist::SymmetricDirichlet;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::error::InsertDataError;
-use crate::cc::feature::{ColModel, Column, FType};
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Column;
+use crate::cc::feature::FType;
+use crate::codebook::Codebook;
+use crate::codebook::ColMetadataList;
 use crate::codebook::ColType;
+use crate::codebook::ValueMap;
 use crate::codebook::ValueMapExtension;
-use crate::codebook::{Codebook, ValueMap};
-use crate::codebook::{ColMetadataList, ValueMapExtensionError};
+use crate::codebook::ValueMapExtensionError;
+use crate::data::Category;
+use crate::data::Datum;
 use crate::data::SparseContainer;
-use crate::data::{Category, Datum};
 use crate::interface::HasCodebook;
-use crate::{ColumnIndex, Engine, HasStates, OracleT, RowIndex};
+use crate::ColumnIndex;
+use crate::Engine;
+use crate::HasStates;
+use crate::OracleT;
+use crate::RowIndex;
 
 /// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -1067,13 +1080,14 @@ pub(crate) fn check_if_removes_row(
 
 #[cfg(test)]
 mod tests {
-    use crate::data::data_source;
+    use rand::SeedableRng;
 
     use super::*;
-
-    use crate::codebook::{ColMetadata, ColType, ValueMap};
+    use crate::codebook::ColMetadata;
+    use crate::codebook::ColType;
+    use crate::codebook::ValueMap;
+    use crate::data::data_source;
     use crate::stats::prior::csd::CsdHyper;
-    use rand::SeedableRng;
 
     #[cfg(feature = "examples")]
     mod requiring_examples {

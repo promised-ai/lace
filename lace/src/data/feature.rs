@@ -1,8 +1,13 @@
-use rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
-use serde::{Deserialize, Serialize};
+use rv::dist::Bernoulli;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::Poisson;
+use serde::Deserialize;
+use serde::Serialize;
 
+use crate::data::Container;
 use crate::data::Datum;
-use crate::data::{Container, SparseContainer};
+use crate::data::SparseContainer;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -112,7 +117,8 @@ impl FeatureData {
 pub fn summarize_continuous(
     container: &SparseContainer<f64>,
 ) -> SummaryStatistics {
-    use crate::utils::{mean, var};
+    use crate::utils::mean;
+    use crate::utils::var;
     let mut xs: Vec<f64> = container.present_cloned();
 
     xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -134,7 +140,8 @@ pub fn summarize_continuous(
 pub fn summarize_categorical(
     container: &SparseContainer<u32>,
 ) -> SummaryStatistics {
-    use crate::utils::{bincount, minmax};
+    use crate::utils::bincount;
+    use crate::utils::minmax;
     let xs: Vec<usize> = container
         .present_cloned()
         .drain(..)
@@ -161,7 +168,8 @@ pub fn summarize_categorical(
 }
 
 pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {
-    use crate::utils::{bincount, minmax};
+    use crate::utils::bincount;
+    use crate::utils::minmax;
     let xs: Vec<usize> = {
         let mut xs: Vec<usize> =
             container.present_iter().map(|&x| x as usize).collect();
@@ -209,9 +217,10 @@ pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {
 
 #[cfg(test)]
 mod tests {
+    use approx::*;
+
     use super::*;
     use crate::Category;
-    use approx::*;
 
     fn get_continuous() -> FeatureData {
         let dc1: SparseContainer<f64> = SparseContainer::from(vec![

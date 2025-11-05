@@ -9,13 +9,14 @@
 
 #[cfg(feature = "formats")]
 mod requires_formats {
-    use clap::Parser;
-    use rand::{Rng, SeedableRng};
-    use rand_distr::Uniform;
     use std::io;
-    use tempfile::NamedTempFile;
 
+    use clap::Parser;
     use lace::prelude::*;
+    use rand::Rng;
+    use rand::SeedableRng;
+    use rand_distr::Uniform;
+    use tempfile::NamedTempFile;
 
     #[derive(Debug, Parser)]
     struct Opt {
@@ -68,8 +69,11 @@ mod requires_formats {
         ys_sim: Vec<f64>,
     ) {
         use plotly::common::Mode;
-        use plotly::layout::{GridPattern, Layout, LayoutGrid};
-        use plotly::{Plot, Scatter};
+        use plotly::layout::GridPattern;
+        use plotly::layout::Layout;
+        use plotly::layout::LayoutGrid;
+        use plotly::Plot;
+        use plotly::Scatter;
 
         let trace1 =
             Scatter::new(xs_in, ys_in).name("Input").mode(Mode::Markers);

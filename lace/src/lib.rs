@@ -188,24 +188,39 @@ pub mod utils;
 
 mod index;
 
-pub use index::*;
-
 pub use config::EngineUpdateConfig;
-
-pub use interface::{
-    update_handler, AppendStrategy, BuildEngineError, ConditionalEntropyType,
-    DatalessOracle, Engine, EngineBuilder, Given, HasData, HasStates,
-    InsertDataActions, InsertMode, Metadata, MiComponents, MiType, Oracle,
-    OracleT, OverwriteMode, Row, RowSimilarityVariant, SupportExtension, Value,
-    WriteMode,
-};
+pub use index::*;
+pub use interface::update_handler;
+pub use interface::AppendStrategy;
+pub use interface::BuildEngineError;
+pub use interface::ConditionalEntropyType;
+pub use interface::DatalessOracle;
+pub use interface::Engine;
+pub use interface::EngineBuilder;
+pub use interface::Given;
+pub use interface::HasData;
+pub use interface::HasStates;
+pub use interface::InsertDataActions;
+pub use interface::InsertMode;
+pub use interface::Metadata;
+pub use interface::MiComponents;
+pub use interface::MiType;
+pub use interface::Oracle;
+pub use interface::OracleT;
+pub use interface::OverwriteMode;
+pub use interface::Row;
+pub use interface::RowSimilarityVariant;
+pub use interface::SupportExtension;
+pub use interface::Value;
+pub use interface::WriteMode;
 
 pub mod error {
     pub use super::interface::error::*;
 }
 
-use serde::Serialize;
 use std::fmt::Debug;
+
+use serde::Serialize;
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ParseError<T: Serialize + Debug + Clone + PartialEq + Eq>(T);
@@ -222,5 +237,7 @@ where
 pub use cc::feature::FType;
 pub use cc::state::StateDiagnostics;
 pub use cc::transition::StateTransition;
-pub use data::{Category, Datum, SummaryStatistics};
+pub use data::Category;
+pub use data::Datum;
+pub use data::SummaryStatistics;
 pub use rv;

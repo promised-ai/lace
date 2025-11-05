@@ -1,11 +1,14 @@
-use crate::consts::rv::misc::pflip;
-use crate::consts::rv::traits::Sampleable;
-use crate::stats::assignment::{Assignment, AssignmentError};
 use rand::Rng;
-use serde::{Deserialize, Serialize};
+use rv::dist::Beta;
+use rv::dist::Gamma;
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
 
-use rv::dist::{Beta, Gamma};
+use crate::consts::rv::misc::pflip;
+use crate::consts::rv::traits::Sampleable;
+use crate::stats::assignment::Assignment;
+use crate::stats::assignment::AssignmentError;
 
 const MAX_STICK_BREAKING_ITERS: u16 = 10_000;
 
@@ -615,8 +618,9 @@ impl Builder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     const TOL: f64 = 1E-12;
 

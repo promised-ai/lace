@@ -1,3 +1,7 @@
+use std::io::Write;
+use std::path::PathBuf;
+use std::time::Duration;
+
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::update_handler::Timeout;
@@ -5,9 +9,6 @@ use lace::Engine;
 use lace::EngineBuilder;
 use lace_codebook::data::codebook_from_csv;
 use rand::SeedableRng;
-use std::io::Write;
-use std::path::PathBuf;
-use std::time::Duration;
 
 const CSV_DATA: &str = r#"
 id,x,y

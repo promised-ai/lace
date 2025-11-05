@@ -1,5 +1,6 @@
 //! Data structures for assignments of items to components (partitions)
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
 
 /// Validates assignments if the `LACE_NOCHECK` is not set to `"1"`.
@@ -359,11 +360,13 @@ pub fn lpyp(cts: &[usize], alpha: f64, d: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::stats::prior_process::Builder as AssignmentBuilder;
-    use crate::stats::prior_process::{Dirichlet, Process};
     use approx::*;
     use rv::dist::Gamma;
+
+    use super::*;
+    use crate::stats::prior_process::Builder as AssignmentBuilder;
+    use crate::stats::prior_process::Dirichlet;
+    use crate::stats::prior_process::Process;
 
     #[test]
     fn zero_count_fails_validation() {

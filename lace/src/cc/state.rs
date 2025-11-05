@@ -1,35 +1,48 @@
 mod builder;
-pub use builder::{BuildStateError, Builder};
-
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
+pub use builder::BuildStateError;
+pub use builder::Builder;
 use rand::seq::SliceRandom as _;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rv::dist::Dirichlet;
 use rv::misc::ln_pflip;
 use rv::traits::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::cc::alg::{ColAssignAlg, RowAssignAlg};
+use crate::cc::alg::ColAssignAlg;
+use crate::cc::alg::RowAssignAlg;
 use crate::cc::config::StateUpdateConfig;
 use crate::cc::feature::geweke::gen_geweke_col_models;
+use crate::cc::feature::ColModel;
 use crate::cc::feature::Component;
-use crate::cc::feature::{ColModel, FType, Feature};
+use crate::cc::feature::FType;
+use crate::cc::feature::Feature;
 use crate::cc::transition::StateTransition;
-use crate::cc::view::{self, GewekeViewSummary, View, ViewGewekeSettings};
+use crate::cc::view::GewekeViewSummary;
+use crate::cc::view::View;
+use crate::cc::view::ViewGewekeSettings;
+use crate::cc::view::{self};
 use crate::consts::geweke_alpha_prior;
-use crate::data::{Datum, FeatureData};
-use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use crate::data::Datum;
+use crate::data::FeatureData;
+use crate::geweke::GewekeModel;
+use crate::geweke::GewekeResampleData;
+use crate::geweke::GewekeSummarize;
 use crate::stats::assignment::Assignment;
 use crate::stats::prior_process::Builder as AssignmentBuilder;
-use crate::stats::prior_process::{
-    PriorProcess, PriorProcessT, PriorProcessType, Process,
-};
+use crate::stats::prior_process::PriorProcess;
+use crate::stats::prior_process::PriorProcessT;
+use crate::stats::prior_process::PriorProcessType;
+use crate::stats::prior_process::Process;
 use crate::stats::MixtureType;
-use crate::utils::{unused_components, Matrix};
+use crate::utils::unused_components;
+use crate::utils::Matrix;
 
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
@@ -1414,7 +1427,6 @@ impl GewekeModel for State {
 #[cfg(test)]
 mod test {
     use super::*;
-
     use crate::cc::state::Builder;
     use crate::codebook::ColType;
 

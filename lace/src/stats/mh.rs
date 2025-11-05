@@ -3,7 +3,9 @@ use std::ops::Mul;
 
 use rand::Rng;
 
-use crate::stats::mat::{MeanVector, ScaleMatrix, SquareT};
+use crate::stats::mat::MeanVector;
+use crate::stats::mat::ScaleMatrix;
+use crate::stats::mat::SquareT;
 
 /// Information from the last step of a Metropolis-Hastings (MH) update
 pub struct MhResult<T> {
@@ -358,7 +360,8 @@ where
     S: ScaleMatrix + Mul<f64, Output = S>,
 {
     use rv::dist::MvGaussian;
-    use rv::nalgebra::{DMatrix, DVector};
+    use rv::nalgebra::DMatrix;
+    use rv::nalgebra::DVector;
     use rv::traits::Sampleable;
 
     // TODO: initialize this properly
@@ -421,11 +424,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rand_distr::Normal;
-    use rv::dist::{Bernoulli, Beta, Gaussian};
+    use rv::dist::Bernoulli;
+    use rv::dist::Beta;
+    use rv::dist::Gaussian;
     use rv::misc::ks_test;
-    use rv::traits::{Cdf, HasDensity, Sampleable};
+    use rv::traits::Cdf;
+    use rv::traits::HasDensity;
+    use rv::traits::Sampleable;
+
+    use super::*;
 
     const KS_PVAL: f64 = 0.2;
     const N_FLAKY_TEST: usize = 10;
@@ -648,7 +656,8 @@ mod tests {
 
     #[test]
     fn test_mh_slice_gaussian() {
-        use std::f64::{INFINITY, NEG_INFINITY};
+        use std::f64::INFINITY;
+        use std::f64::NEG_INFINITY;
 
         let gauss = Gaussian::new(1.0, 1.5).unwrap();
 
@@ -686,7 +695,8 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_adaptive_gaussian() {
-        use std::f64::{INFINITY, NEG_INFINITY};
+        use std::f64::INFINITY;
+        use std::f64::NEG_INFINITY;
 
         let gauss = Gaussian::new(1.0, 1.5).unwrap();
 
@@ -725,7 +735,8 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_adaptive_normal_gamma() {
-        use std::f64::{INFINITY, NEG_INFINITY};
+        use std::f64::INFINITY;
+        use std::f64::NEG_INFINITY;
 
         let mut rng = rand::rng();
         let sigma: f64 = 1.5;
@@ -839,8 +850,10 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_adaptive_mv_normal_gamma_known_var() {
+        use std::f64::INFINITY;
+        use std::f64::NEG_INFINITY;
+
         use crate::stats::mat::Matrix1x1;
-        use std::f64::{INFINITY, NEG_INFINITY};
 
         let mut rng = rand::rng();
         let sigma: f64 = 1.5;
@@ -904,10 +917,14 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_adaptive_mv_normal_gamma_unknown() {
-        use crate::stats::mat::{Matrix2x2, Vector2};
-        use crate::stats::test::gauss_perm_test;
+        use std::f64::INFINITY;
+        use std::f64::NEG_INFINITY;
+
         use rv::dist::InvGamma;
-        use std::f64::{INFINITY, NEG_INFINITY};
+
+        use crate::stats::mat::Matrix2x2;
+        use crate::stats::mat::Vector2;
+        use crate::stats::test::gauss_perm_test;
 
         let n = 20;
         let n_samples = 250;
@@ -973,7 +990,8 @@ mod tests {
         };
 
         let (mean_mu, var_mu) = {
-            use crate::utils::{mean, var};
+            use crate::utils::mean;
+            use crate::utils::var;
             let mus: Vec<f64> =
                 posterior_samples.iter().map(|xy| xy.0).collect();
             (mean(&mus), var(&mus))
@@ -1001,7 +1019,8 @@ mod tests {
             );
 
             let (mean_mu_mh, var_mu_mh) = {
-                use crate::utils::{mean, var};
+                use crate::utils::mean;
+                use crate::utils::var;
                 let mus: Vec<f64> =
                     mcmc_samples.iter().map(|xy| xy.0).collect();
                 (mean(&mus), var(&mus))

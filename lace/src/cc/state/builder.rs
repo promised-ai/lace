@@ -1,3 +1,18 @@
+use rand::Rng;
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256Plus;
+use rv::dist::Categorical;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::Poisson;
+use rv::traits::*;
+use thiserror::Error;
+
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Column;
+use crate::cc::feature::Feature;
+use crate::cc::state::State;
 use crate::codebook::ColType;
 use crate::data::SparseContainer;
 use crate::stats::prior::csd::CsdHyper;
@@ -5,15 +20,6 @@ use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
 use crate::stats::prior_process::Builder as AssignmentBuilder;
 use crate::stats::prior_process::Process;
-use rand::Rng;
-use rand::SeedableRng;
-use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson};
-use rv::traits::*;
-use thiserror::Error;
-
-use crate::cc::feature::{ColModel, Column, Feature};
-use crate::cc::state::State;
 
 /// Builds a dummy state with a given size and structure
 #[derive(Debug, Clone, Default)]

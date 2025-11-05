@@ -1,10 +1,11 @@
 use std::io;
 
+use thiserror::Error;
+
 use crate::cc::feature::FType;
 use crate::codebook::CodebookError;
 use crate::data::Category;
 use crate::error::IndexError;
-use thiserror::Error;
 
 /// Errors that can arise when parsing data for an Engine
 #[derive(Debug, Error)]

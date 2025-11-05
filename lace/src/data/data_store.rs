@@ -1,9 +1,13 @@
 use std::collections::BTreeMap;
 use std::ops::Index;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::data::{Category, Container, Datum, FeatureData};
+use crate::data::Category;
+use crate::data::Container;
+use crate::data::Datum;
+use crate::data::FeatureData;
 
 /// Stores the data for an `Oracle`
 ///

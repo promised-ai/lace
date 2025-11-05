@@ -1,6 +1,7 @@
 //! Utilities for the satellites example
-use crate::examples::IndexConversionError;
 use std::convert::TryInto;
+
+use crate::examples::IndexConversionError;
 
 /// Row names for the animals data set
 #[repr(usize)]

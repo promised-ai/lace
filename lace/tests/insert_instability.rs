@@ -1,11 +1,13 @@
 // This test reproduces behavior whereby inserting data into an engine without
 // running an Engine update leaves the metadata in an invalid state.
-use lace::codebook::{ColMetadata, ColMetadataList};
-use lace::metadata::SerializedType;
-use lace::{Given, Row};
-use rv::traits::Sampleable;
-
 use std::convert::TryInto;
+
+use lace::codebook::ColMetadata;
+use lace::codebook::ColMetadataList;
+use lace::metadata::SerializedType;
+use lace::Given;
+use lace::Row;
+use rv::traits::Sampleable;
 
 fn empty_engine() -> lace::Engine {
     use lace::codebook::Codebook;
@@ -87,7 +89,9 @@ fn gen_new_metadata<R: lace::RowIndex>(
 
 #[test]
 fn otacon_on_empty_table() {
-    use lace::{HasData, OracleT, WriteMode};
+    use lace::HasData;
+    use lace::OracleT;
+    use lace::WriteMode;
 
     let mut rng = rand::rng();
     let mut engine = empty_engine();
@@ -123,7 +127,8 @@ fn otacon_on_empty_table() {
 
 #[test]
 fn otacon_insert_after_save_load() {
-    use lace::{AppendStrategy, WriteMode};
+    use lace::AppendStrategy;
+    use lace::WriteMode;
 
     let mut rng = rand::rng();
     let mut engine = empty_engine();

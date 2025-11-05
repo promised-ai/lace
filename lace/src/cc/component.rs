@@ -1,14 +1,18 @@
 //! Conjugate component data structure
+use std::sync::OnceLock;
+
+use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::traits::*;
-use serde::{Deserialize, Serialize};
-use std::sync::OnceLock;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::cc::feature::Component;
 use crate::cc::traits::AccumScore;
-use crate::cc::traits::{LaceDatum, LaceLikelihood, LaceStat};
+use crate::cc::traits::LaceDatum;
+use crate::cc::traits::LaceLikelihood;
+use crate::cc::traits::LaceStat;
 use crate::data::SparseContainer;
-use rand::Rng;
 
 /// Maintains a component model and a sufficient statistic capturing the data
 /// assigned to the component.

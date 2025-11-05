@@ -2,21 +2,30 @@
 use std::collections::BTreeMap;
 
 use rand::Rng;
-use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
-    SymmetricDirichlet,
-};
+use rv::dist::Categorical;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::Poisson;
+use rv::dist::SymmetricDirichlet;
 use rv::traits::Sampleable;
 
-use crate::cc::feature::{ColModel, Column, FType, Feature};
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Column;
+use crate::cc::feature::FType;
+use crate::cc::feature::Feature;
 use crate::cc::transition::ViewTransition;
-use crate::data::{Container, SparseContainer};
-use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use crate::data::Container;
+use crate::data::SparseContainer;
+use crate::geweke::GewekeModel;
+use crate::geweke::GewekeResampleData;
+use crate::geweke::GewekeSummarize;
 use crate::stats::assignment::Assignment;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
-use crate::utils::{mean, std};
+use crate::utils::mean;
+use crate::utils::std;
 
 #[derive(Clone)]
 pub struct ColumnGewekeSettings {

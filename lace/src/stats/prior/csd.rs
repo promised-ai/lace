@@ -1,8 +1,11 @@
 use rand::Rng;
 use rv::data::CategoricalDatum;
-use rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
+use rv::dist::Categorical;
+use rv::dist::InvGamma;
+use rv::dist::SymmetricDirichlet;
 use rv::traits::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::stats::mh::mh_prior;
 use crate::stats::UpdatePrior;

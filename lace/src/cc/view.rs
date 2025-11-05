@@ -1,28 +1,41 @@
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
-use crate::data::{Datum, FeatureData};
-use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use crate::stats::assignment::Assignment;
-use crate::stats::prior_process::Builder as AssignmentBuilder;
-use crate::stats::prior_process::{
-    PriorProcess, PriorProcessT, PriorProcessType, Process,
-};
-use crate::utils::{logaddexp, unused_components, Matrix, Shape};
-use rand::{seq::SliceRandom as _, Rng, SeedableRng};
+use rand::seq::SliceRandom as _;
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Dirichlet;
 use rv::misc::ln_pflip;
 use rv::traits::Sampleable;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 // use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::cc::alg::RowAssignAlg;
+use crate::cc::feature::geweke::gen_geweke_col_models;
+use crate::cc::feature::geweke::ColumnGewekeSettings;
 use crate::cc::feature::geweke::GewekeColumnSummary;
-use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
-use crate::cc::feature::{ColModel, FType, Feature};
+use crate::cc::feature::ColModel;
+use crate::cc::feature::FType;
+use crate::cc::feature::Feature;
 use crate::cc::massflip;
 use crate::cc::transition::ViewTransition;
+use crate::data::Datum;
+use crate::data::FeatureData;
+use crate::geweke::GewekeModel;
+use crate::geweke::GewekeResampleData;
+use crate::geweke::GewekeSummarize;
+use crate::stats::assignment::Assignment;
+use crate::stats::prior_process::Builder as AssignmentBuilder;
+use crate::stats::prior_process::PriorProcess;
+use crate::stats::prior_process::PriorProcessT;
+use crate::stats::prior_process::PriorProcessType;
+use crate::stats::prior_process::Process;
+use crate::utils::logaddexp;
+use crate::utils::unused_components;
+use crate::utils::Matrix;
+use crate::utils::Shape;
 
 /// A cross-categorization view of columns/features
 ///
@@ -1095,8 +1108,9 @@ fn view_geweke_asgn<R: Rng>(
             Process::Dirichlet(inner)
         }
         PriorProcessType::PitmanYor => {
-            use crate::stats::prior_process::PitmanYor;
             use rv::dist::Beta;
+
+            use crate::stats::prior_process::PitmanYor;
             let inner = if do_process_params_transition {
                 PitmanYor::from_prior(
                     geweke_alpha_prior(),
@@ -1273,13 +1287,14 @@ impl GewekeSummarize for View {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use rv::dist::Gaussian;
+    use rv::dist::NormalInvChiSquared;
 
+    use super::*;
     use crate::cc::component::ConjugateComponent;
     use crate::cc::feature::Column;
     use crate::data::SparseContainer;
     use crate::stats::prior::nix::NixHyper;
-    use rv::dist::{Gaussian, NormalInvChiSquared};
 
     fn gen_col<R: Rng>(id: usize, n: usize, rng: &mut R) -> ColModel {
         let gauss = Gaussian::new(0.0, 1.0).unwrap();

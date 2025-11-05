@@ -29,8 +29,9 @@ pub fn chi_square_test(freq_obs: &[f64], freq_exp: &[f64]) -> (f64, f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     const TOL: f64 = 1E-8;
 

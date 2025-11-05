@@ -1,12 +1,18 @@
-use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace::cc::alg::ColAssignAlg;
+use lace::cc::alg::RowAssignAlg;
 use lace::cc::config::StateUpdateConfig;
-use lace::cc::feature::{ColModel, Column};
+use lace::cc::feature::ColModel;
+use lace::cc::feature::Column;
 use lace::cc::state::State;
-use lace::data::{FeatureData, SparseContainer};
+use lace::data::FeatureData;
+use lace::data::SparseContainer;
 use lace::stats::prior::nix::NixHyper;
-use lace::stats::prior_process::{Dirichlet, Process};
+use lace::stats::prior_process::Dirichlet;
+use lace::stats::prior_process::Process;
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
 use rv::traits::Sampleable;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {

@@ -1,18 +1,20 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use plotly::common::Mode;
-use plotly::layout::Layout;
-use plotly::{Plot, Scatter};
-use rand::SeedableRng;
-use rand_xoshiro::Xoshiro256Plus;
-
-use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace::cc::alg::ColAssignAlg;
+use lace::cc::alg::RowAssignAlg;
 use lace::cc::feature::FType;
-use lace::cc::state::{State, StateGewekeSettings};
+use lace::cc::state::State;
+use lace::cc::state::StateGewekeSettings;
 use lace::cc::transition::StateTransition;
 use lace::geweke::GewekeTester;
 use lace::stats::prior_process::PriorProcessType;
+use plotly::common::Mode;
+use plotly::layout::Layout;
+use plotly::Plot;
+use plotly::Scatter;
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256Plus;
 
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]

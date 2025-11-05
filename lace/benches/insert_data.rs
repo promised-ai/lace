@@ -1,15 +1,23 @@
 use std::convert::TryInto;
 
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use criterion::BatchSize;
 use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main};
-use rand::{Rng, SeedableRng};
-use rand_xoshiro::Xoshiro256Plus;
-
-use lace::{Engine, Row, Value, WriteMode};
+use lace::Engine;
+use lace::Row;
+use lace::Value;
+use lace::WriteMode;
 use lace_cc::state::Builder;
-use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
+use lace_codebook::Codebook;
+use lace_codebook::ColMetadata;
+use lace_codebook::ColMetadataList;
+use lace_codebook::ColType;
 use lace_data::Datum;
+use rand::Rng;
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256Plus;
 
 // build a one-state Engine
 fn build_engine(nrows: usize, ncols: usize) -> Engine {

@@ -1,12 +1,15 @@
+use lace::cc::alg::RowAssignAlg;
+use lace::cc::feature::ColModel;
+use lace::cc::feature::Column;
+use lace::cc::feature::Feature;
+use lace::cc::view::Builder;
+use lace::cc::view::View;
 use lace::data::SparseContainer;
 use lace::stats::prior::nix::NixHyper;
 use rand::Rng;
-use rv::dist::{Gaussian, NormalInvChiSquared};
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
 use rv::traits::Sampleable;
-
-use lace::cc::alg::RowAssignAlg;
-use lace::cc::feature::{ColModel, Column, Feature};
-use lace::cc::view::{Builder, View};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();

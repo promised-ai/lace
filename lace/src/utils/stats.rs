@@ -30,8 +30,9 @@ pub fn std(xs: &[f64]) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     // mean
     // ----

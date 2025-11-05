@@ -1,7 +1,10 @@
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::cc::config::StateUpdateConfig;
-use crate::cc::transition::{StateTransition, DEFAULT_STATE_TRANSITIONS};
+use crate::cc::transition::StateTransition;
+use crate::cc::transition::DEFAULT_STATE_TRANSITIONS;
 use crate::metadata::SerializedType;
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]

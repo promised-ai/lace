@@ -1,12 +1,12 @@
 use clap::Parser;
-use rand_xoshiro::Xoshiro256Plus;
-
 use lace::cc::alg::RowAssignAlg;
 use lace::cc::feature::FType;
 use lace::cc::transition::ViewTransition;
-use lace::cc::view::{View, ViewGewekeSettings};
+use lace::cc::view::View;
+use lace::cc::view::ViewGewekeSettings;
 use lace::geweke::GewekeTester;
 use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256Plus;
 
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]

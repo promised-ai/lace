@@ -1,7 +1,11 @@
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, InvGamma, NormalInvChiSquared};
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::InvGamma;
+use rv::dist::NormalInvChiSquared;
 use rv::traits::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::stats::UpdatePrior;
 use crate::utils::mean_var;

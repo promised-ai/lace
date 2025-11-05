@@ -57,8 +57,9 @@ pub fn ks2sample(mut xs: Vec<f64>, mut ys: Vec<f64>) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     const TOL: f64 = 1E-8;
 

@@ -1,9 +1,18 @@
 use rand::Rng;
-use rv::dist::{Bernoulli, Beta};
-use serde::{Deserialize, Serialize};
+use rv::dist::Bernoulli;
+use rv::dist::Beta;
+use serde::Deserialize;
+use serde::Serialize;
 
-use super::{ColModel, Column, Component, FType, Feature, FeatureHelper};
-use crate::data::{Datum, FeatureData, SparseContainer};
+use super::ColModel;
+use super::Column;
+use super::Component;
+use super::FType;
+use super::Feature;
+use super::FeatureHelper;
+use crate::data::Datum;
+use crate::data::FeatureData;
+use crate::data::SparseContainer;
 use crate::stats::assignment::Assignment;
 use crate::stats::MixtureType;
 
@@ -245,9 +254,11 @@ impl Feature for MissingNotAtRandom {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::data::{Category, Container};
     use approx::*;
+
+    use super::*;
+    use crate::data::Category;
+    use crate::data::Container;
 
     // Return categorical (k = 4) column with missing values at indices 50, 51,
     // and 52.

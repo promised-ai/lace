@@ -5,16 +5,18 @@ use std::f64::consts::LN_2;
 use std::sync::OnceLock;
 
 use lace::cc::component::ConjugateComponent;
-use lace::cc::feature::{Column, Feature};
+use lace::cc::feature::Column;
+use lace::cc::feature::Feature;
 use lace::data::SparseContainer;
 use lace::stats::assignment::Assignment;
 use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
 use lace::stats::prior_process::Builder as AssignmentBuilder;
 use rand::Rng;
-use rv::dist::{
-    Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
-};
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::SymmetricDirichlet;
 use rv::traits::Sampleable;
 
 type GaussCol = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;

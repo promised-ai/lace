@@ -7,8 +7,9 @@ use thiserror::Error;
 use crate::cc::state::State;
 use crate::data::DataStore;
 use crate::metadata::latest;
-
-use crate::{DatalessOracle, Engine, Oracle};
+use crate::DatalessOracle;
+use crate::Engine;
+use crate::Oracle;
 
 impl From<Engine> for latest::Metadata {
     fn from(mut engine: Engine) -> Self {
@@ -184,7 +185,11 @@ mod tests {
     #[test]
     fn engine_can_update_data_after() {
         use crate::data::Datum;
-        use crate::{InsertMode, OverwriteMode, Row, Value, WriteMode};
+        use crate::InsertMode;
+        use crate::OverwriteMode;
+        use crate::Row;
+        use crate::Value;
+        use crate::WriteMode;
 
         let engine_1 = Example::Animals.engine().unwrap();
         let serialized_1 = serde_yaml::to_string(&engine_1).unwrap();

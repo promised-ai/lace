@@ -1,6 +1,7 @@
-use crate::codebook::Codebook;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
+use crate::codebook::Codebook;
 use crate::error::IndexError;
 
 /// Trait defining an item that can be converted into a row index

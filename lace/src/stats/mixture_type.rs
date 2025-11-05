@@ -1,6 +1,10 @@
 use std::convert::From;
 
-use rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
+use rv::dist::Bernoulli;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::dist::Poisson;
 use rv::traits::Entropy;
 
 use crate::stats::MixtureJsd;

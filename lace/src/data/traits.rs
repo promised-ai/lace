@@ -1,4 +1,6 @@
-use crate::data::{Datum, FeatureData, SparseContainer};
+use crate::data::Datum;
+use crate::data::FeatureData;
+use crate::data::SparseContainer;
 
 pub trait AccumScore<T> {
     /// Compute scores on the data using `score_fn` and add them to `scores`

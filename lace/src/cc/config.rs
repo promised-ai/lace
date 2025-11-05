@@ -1,8 +1,10 @@
-use serde::{Deserialize, Serialize};
-
 use std::convert::Into;
 
-use crate::cc::transition::{StateTransition, DEFAULT_STATE_TRANSITIONS};
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::cc::transition::StateTransition;
+use crate::cc::transition::DEFAULT_STATE_TRANSITIONS;
 
 /// Configuration for `State.update`
 ///
