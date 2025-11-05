@@ -1,14 +1,14 @@
 use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use criterion::BatchSize;
 use criterion::BenchmarkId;
 use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
-
-use lace_cc::massflip::massflip_mat;
-use lace_cc::massflip::massflip_mat_par;
-use lace_cc::massflip::massflip_slice_mat;
-use lace_cc::massflip::massflip_slice_mat_par;
-use lace_utils::Matrix;
+use lace::cc::massflip::massflip_mat;
+use lace::cc::massflip::massflip_mat_par;
+use lace::cc::massflip::massflip_slice_mat;
+use lace::cc::massflip::massflip_slice_mat_par;
+use lace::utils::Matrix;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -26,7 +26,7 @@ fn bench_compare_5_rows(c: &mut Criterion) {
     for n_rows in parameters {
         let serial_id = BenchmarkId::new("serial", n_rows);
         group.bench_with_input(serial_id, &n_rows, |b, &n_rows| {
-            let mut rng = Xoshiro256Plus::from_entropy();
+            let mut rng = Xoshiro256Plus::from_os_rng();
             b.iter_batched(
                 || gen_log_weights_mat(n_rows, 10),
                 |logps| {
@@ -43,7 +43,7 @@ fn bench_compare_5_rows(c: &mut Criterion) {
 
         let parallel_id = BenchmarkId::new("parallel", n_rows);
         group.bench_with_input(parallel_id, &n_rows, |b, &n_rows| {
-            let mut rng = Xoshiro256Plus::from_entropy();
+            let mut rng = Xoshiro256Plus::from_os_rng();
             b.iter_batched(
                 || gen_log_weights_mat(n_rows, 10),
                 |logps| {
@@ -68,7 +68,7 @@ fn bench_compare_5_rows_slice(c: &mut Criterion) {
     for n_rows in parameters {
         let serial_id = BenchmarkId::new("serial", n_rows);
         group.bench_with_input(serial_id, &n_rows, |b, &n_rows| {
-            let mut rng = Xoshiro256Plus::from_entropy();
+            let mut rng = Xoshiro256Plus::from_os_rng();
             b.iter_batched(
                 || gen_log_weights_mat(n_rows, 10),
                 |logps| {
@@ -84,7 +84,7 @@ fn bench_compare_5_rows_slice(c: &mut Criterion) {
 
         let parallel_id = BenchmarkId::new("parallel par", n_rows);
         group.bench_with_input(parallel_id, &n_rows, |b, &n_rows| {
-            let mut rng = Xoshiro256Plus::from_entropy();
+            let mut rng = Xoshiro256Plus::from_os_rng();
             b.iter_batched(
                 || gen_log_weights_mat(n_rows, 10),
                 |logps| {

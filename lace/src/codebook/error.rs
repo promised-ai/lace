@@ -31,7 +31,7 @@ pub enum ColMetadataListError {
 
 #[derive(Debug, Error)]
 pub enum RowNameListError {
-    #[error("Duplicate row name `{row_name}` at index {ix_1} and {ix_1}")]
+    #[error("Duplicate row name `{row_name}` at index {ix_1} and {ix_2}")]
     Duplicate {
         row_name: String,
         ix_1: usize,

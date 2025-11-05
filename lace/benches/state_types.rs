@@ -1,13 +1,14 @@
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use criterion::BatchSize;
 use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main};
+use lace::cc::config::StateUpdateConfig;
+use lace::cc::state::Builder;
+use lace::codebook::ColType;
+use lace::codebook::ValueMap;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-
-use lace_cc::config::StateUpdateConfig;
-use lace_cc::state::Builder;
-use lace_codebook::ColType;
-use lace_codebook::ValueMap;
 
 macro_rules! state_type_bench {
     ($id: expr, $fn: ident, $config: expr) => {
@@ -40,7 +41,7 @@ state_type_bench!(
         k: 2,
         prior: None,
         hyper: None,
-        value_map: ValueMap::U8(2),
+        value_map: ValueMap::UInt(2),
     }
 );
 

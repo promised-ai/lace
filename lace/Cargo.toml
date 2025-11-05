@@ -99,4 +99,19 @@ harness = false
 [[bench]]
 name = "oracle_fns"
 harness = false
-required-features = ["examples"]
+
+[[bench]]
+name = "state_types"
+harness = false
+
+[[bench]]
+name = "all_algs"
+harness = false
+
+[[bench]]
+name = "feature_prior_update"
+harness = false
+
+[[bench]]
+name = "massflip"
+hequired-features = ["examples"]

@@ -1,19 +1,21 @@
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main};
+use lace::stats::UpdatePrior;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-
-use lace_stats::rv::traits::Rv;
-use lace_stats::UpdatePrior;
+use rv::traits::Sampleable;
 
 fn bench_continuous_prior(c: &mut Criterion) {
-    use lace_stats::prior::nix::NixHyper;
-    use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
+    use lace::stats::prior::nix::NixHyper;
+    use rv::dist::Gaussian;
+    use rv::dist::NormalInvChiSquared;
 
     c.bench_function("update continuous prior", |b| {
         let hyper = NixHyper::default();
         let mut prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
-        let mut rng = Xoshiro256Plus::from_entropy();
+        let mut rng = Xoshiro256Plus::from_os_rng();
         let components: Vec<Gaussian> = prior.sample(50, &mut rng);
         let components_ref: Vec<&Gaussian> = components.iter().collect();
         b.iter(|| {
@@ -24,11 +26,12 @@ fn bench_continuous_prior(c: &mut Criterion) {
 }
 
 fn bench_categorical_prior(c: &mut Criterion) {
-    use lace_stats::prior::csd::CsdHyper;
-    use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
+    use lace::stats::prior::csd::CsdHyper;
+    use rv::dist::Categorical;
+    use rv::dist::SymmetricDirichlet;
 
     c.bench_function("update categorical prior", |b| {
-        let mut rng = Xoshiro256Plus::from_entropy();
+        let mut rng = Xoshiro256Plus::from_os_rng();
         let hyper = CsdHyper::default();
         let mut prior: SymmetricDirichlet = hyper.draw(4, &mut rng);
         let components: Vec<Categorical> = prior.sample(50, &mut rng);
@@ -48,11 +51,12 @@ fn bench_categorical_prior(c: &mut Criterion) {
 }
 
 fn bench_count_prior(c: &mut Criterion) {
-    use lace_stats::prior::pg::PgHyper;
-    use lace_stats::rv::dist::{Gamma, Poisson};
+    use lace::stats::prior::pg::PgHyper;
+    use rv::dist::Gamma;
+    use rv::dist::Poisson;
 
     c.bench_function("update count prior", |b| {
-        let mut rng = Xoshiro256Plus::from_entropy();
+        let mut rng = Xoshiro256Plus::from_os_rng();
         let hyper = PgHyper::default();
         let mut prior: Gamma = hyper.draw(&mut rng);
         let components: Vec<Poisson> = prior.sample(50, &mut rng);

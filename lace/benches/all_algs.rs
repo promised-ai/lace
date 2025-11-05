@@ -1,15 +1,17 @@
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use criterion::BatchSize;
 use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main};
+use lace::cc::alg::ColAssignAlg;
+use lace::cc::alg::RowAssignAlg;
+use lace::cc::config::StateUpdateConfig;
+use lace::cc::state::Builder;
+use lace::cc::transition::StateTransition;
+use lace::codebook::ColType;
+use lace::codebook::ValueMap;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-
-use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-use lace_cc::config::StateUpdateConfig;
-use lace_cc::state::Builder;
-use lace_cc::transition::StateTransition;
-use lace_codebook::ColType;
-use lace_codebook::ValueMap;
 
 const NCOLS: usize = 100;
 const NROWS: usize = 1000;
@@ -28,13 +30,13 @@ macro_rules! state_type_bench {
                             k: 3,
                             hyper: None,
                             prior: None,
-                            value_map: ValueMap::U8(3),
+                            value_map: ValueMap::UInt(3),
                         },
                     )
                     .n_views(NVIEWS)
                     .n_cats(NCATS);
 
-                let mut rng = Xoshiro256Plus::from_entropy();
+                let mut rng = Xoshiro256Plus::from_os_rng();
 
                 b.iter_batched(
                     || builder.clone().build().unwrap(),
@@ -43,9 +45,9 @@ macro_rules! state_type_bench {
                             n_iters: 1,
                             transitions: vec![
                                 StateTransition::ColumnAssignment($col_alg),
-                                StateTransition::StateAlpha,
+                                StateTransition::StatePriorProcessParams,
                                 StateTransition::RowAssignment($row_alg),
-                                StateTransition::ViewAlphas,
+                                StateTransition::ViewPriorProcessParams,
                                 StateTransition::FeaturePriors,
                             ],
                         };
