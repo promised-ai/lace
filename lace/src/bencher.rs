@@ -6,9 +6,9 @@
 //!
 //! ```
 //! use lace::bencher::Bencher;
-//! use lace_codebook::ColType;
-//! use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-//! use lace_cc::state::Builder;
+//! use lace::codebook::ColType;
+//! use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+//! use lace::cc::state::Builder;
 //!
 //! let state_builder = Builder::new()
 //!     .n_cats(2)
@@ -22,7 +22,7 @@
 //!     .col_assign_alg(ColAssignAlg::Gibbs)
 //!     .row_assign_alg(RowAssignAlg::FiniteCpu);
 //!
-//! let mut rng = rand::thread_rng();
+//! let mut rng = rand::rng();
 //! let res = bencher.run(&mut rng);
 //!
 //! assert_eq!(res.len(), 3);
@@ -30,18 +30,18 @@
 
 use std::path::PathBuf;
 
-use lace_cc::alg::ColAssignAlg;
-use lace_cc::alg::RowAssignAlg;
-use lace_cc::config::StateUpdateConfig;
-use lace_cc::state::BuildStateError;
-use lace_cc::state::Builder;
-use lace_cc::state::State;
-use lace_cc::transition::StateTransition;
-use lace_codebook::Codebook;
 use rand::Rng;
 use serde::Serialize;
 use thiserror::Error;
 
+use crate::cc::alg::ColAssignAlg;
+use crate::cc::alg::RowAssignAlg;
+use crate::cc::config::StateUpdateConfig;
+use crate::cc::state::BuildStateError;
+use crate::cc::state::Builder;
+use crate::cc::state::State;
+use crate::cc::transition::StateTransition;
+use crate::codebook::Codebook;
 use crate::defaults;
 
 /// Different ways to set up a benchmarker
@@ -69,10 +69,10 @@ pub enum GenerateStateError {
 fn emit_prior_process<R: rand::Rng>(
     prior_process: crate::codebook::PriorProcess,
     rng: &mut R,
-) -> lace_stats::prior_process::Process {
-    use lace_stats::prior_process::Dirichlet;
-    use lace_stats::prior_process::PitmanYor;
-    use lace_stats::prior_process::Process;
+) -> crate::stats::prior_process::Process {
+    use crate::stats::prior_process::Dirichlet;
+    use crate::stats::prior_process::PitmanYor;
+    use crate::stats::prior_process::Process;
     match prior_process {
         crate::codebook::PriorProcess::Dirichlet { alpha_prior } => {
             let inner = Dirichlet::from_prior(alpha_prior, rng);
@@ -296,9 +296,8 @@ impl Bencher {
 
 #[cfg(test)]
 mod tests {
-    use lace_codebook::ColType;
-
     use super::*;
+    use crate::codebook::ColType;
 
     fn quick_bencher() -> Bencher {
         let builder = Builder::new()
@@ -316,7 +315,7 @@ mod tests {
     #[test]
     fn bencher_from_state_builder_should_return_properly_sized_result() {
         let mut bencher = quick_bencher();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let results = bencher.run(&mut rng);
         assert_eq!(results.len(), 5);
 

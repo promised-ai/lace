@@ -41,7 +41,7 @@ mod requires_formats {
         fileout: &mut W,
         rng: &mut R,
     ) -> io::Result<(Vec<f64>, Vec<f64>)> {
-        let unif = Uniform::new(-1.0, 1.0);
+        let unif = Uniform::new(-1.0, 1.0).unwrap();
 
         let mut n_collected: usize = 0;
         let mut xs = Vec::with_capacity(n);
@@ -104,7 +104,7 @@ mod requires_formats {
 
         // generate csv data
         println!("Generating data");
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut f = NamedTempFile::new().unwrap();
         let (xs_in, ys_in) =
             gen_ring(opt.n, opt.scale, opt.width, &mut f, &mut rng).unwrap();
@@ -112,7 +112,7 @@ mod requires_formats {
 
         // generate codebook
         println!("Generating codebook");
-        let codebook = lace_codebook::data::codebook_from_csv(
+        let codebook = lace::codebook::data::codebook_from_csv(
             f.path(),
             None,
             None,
@@ -128,7 +128,7 @@ mod requires_formats {
             codebook,
             DataSource::Csv(f.path().into()),
             0,
-            rand_xoshiro::Xoshiro256Plus::from_entropy(),
+            rand_xoshiro::Xoshiro256Plus::from_os_rng(),
         )
         .unwrap();
 

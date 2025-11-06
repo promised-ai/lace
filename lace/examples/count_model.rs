@@ -3,9 +3,9 @@ fn main() {
     use std::io::Write;
 
     use lace::prelude::*;
-    use lace_stats::rv::prelude::*;
+    use lace::rv::prelude::*;
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // Draw data from a mixture of Poisson
     let mixture = Mixture::uniform(vec![

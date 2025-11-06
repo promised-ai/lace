@@ -2,12 +2,12 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use lace::codebook::data::codebook_from_csv;
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::update_handler::Timeout;
 use lace::Engine;
 use lace::EngineBuilder;
-use lace_codebook::data::codebook_from_csv;
 use rand::SeedableRng;
 
 const CSV_DATA: &str = r#"
@@ -38,7 +38,7 @@ fn default_csv_workflow() {
     // default codebook
     let codebook =
         codebook_from_csv(file.path(), None, None, None, false).unwrap();
-    let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
+    let rng = rand_xoshiro::Xoshiro256Plus::from_os_rng();
     let mut engine = Engine::new(
         4,
         codebook,

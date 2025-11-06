@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [rust-0.9.0] - 2025-11-19
+
+### Changed
+
+- Updated `rv` and `rand` dependencies
+- Removed all subcrates and collapsed into single `lace` crate
+
+## [python-0.9.0] - 2025-11-19
+
+### Changed
+- Updated to lace 0.9.0
+
 ## [rust-0.8.0] - 2024-04-10
 
 ### Added
@@ -305,6 +317,8 @@ Initial release on [PyPi](https://pypi.org/)
 Initial release on [crates.io](https://crates.io/)
 
 [unreleased]: https://github.com/promised-ai/lace/compare/python-0.8.0...HEAD
+[rust-0.9.0]: https://github.com/promised-ai/lace/compare/rust-0.8.0...rust-0.9.0
+[python-0.9.0]: https://github.com/promised-ai/lace/compare/python-0.8.0...python-0.9.0
 [rust-0.8.0]: https://github.com/promised-ai/lace/compare/rust-0.7.0...rust-0.8.0
 [python-0.8.0]: https://github.com/promised-ai/lace/compare/python-0.7.1...python-0.8.0
 [python-0.7.1]: https://github.com/promised-ai/lace/compare/python-0.7.0...python-0.7.1
