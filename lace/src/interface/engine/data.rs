@@ -79,7 +79,6 @@ pub enum AppendStrategy {
     },
 }
 
-
 /// Defines how/where data may be inserted, which day may and may not be
 /// overwritten, and whether data may extend the domain
 ///
@@ -430,7 +429,8 @@ fn col_ix_from_lookup(
             .get(col)
             .ok_or_else(|| {
                 InsertDataError::NewColumnNotInColumnMetadata(col.to_owned())
-            }).copied(),
+            })
+            .copied(),
         None => Err(InsertDataError::NewColumnNotInColumnMetadata(
             String::from(col),
         )),

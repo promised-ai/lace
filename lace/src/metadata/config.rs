@@ -31,7 +31,6 @@ impl FromStr for SerializedType {
     }
 }
 
-
 #[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct FileConfig {
     pub metadata_version: i32,

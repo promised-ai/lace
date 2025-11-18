@@ -352,8 +352,7 @@ impl UpdateHandler for StateTimeout {
 impl UpdateHandler for () {}
 
 /// Add a progress bar to the output
-#[derive(Clone)]
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub enum ProgressBar {
     #[default]
     UnInitialized,
@@ -368,7 +367,6 @@ impl ProgressBar {
         Self::UnInitialized
     }
 }
-
 
 impl UpdateHandler for ProgressBar {
     fn global_init(&mut self, config: &EngineUpdateConfig, states: &[State]) {
