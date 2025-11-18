@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::f64::NEG_INFINITY;
 
 use rand::seq::SliceRandom as _;
 use rand::Rng;
@@ -220,7 +219,7 @@ impl View {
         col_ix: usize,
     ) -> Option<Datum> {
         let k = self.asgn().asgn[row_ix];
-        let is_assigned = k != usize::max_value();
+        let is_assigned = k != usize::MAX;
 
         if is_assigned {
             let ftr = self.ftrs.get_mut(&col_ix).unwrap();
@@ -237,7 +236,7 @@ impl View {
         }
 
         let k = self.asgn().asgn[row_ix];
-        let is_assigned = k != usize::max_value();
+        let is_assigned = k != usize::MAX;
 
         let ftr = self.ftrs.get_mut(&col_ix).unwrap();
 
@@ -457,7 +456,7 @@ impl View {
             let mut values = Vec::with_capacity(weights.len() * self.n_rows());
             weights.iter().for_each(|w| {
                 us.iter().for_each(|ui| {
-                    let value = if w >= ui { 0.0 } else { NEG_INFINITY };
+                    let value = if w >= ui { 0.0 } else { f64::NEG_INFINITY };
                     values.push(value);
                 });
             });
@@ -651,13 +650,15 @@ impl View {
             .asgn()
             .iter()
             .enumerate()
-            .filter_map(|(row_ix, &z)| {
-                if z == usize::max_value() {
-                    Some(row_ix)
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |(row_ix, &z)| {
+                    if z == usize::MAX {
+                        Some(row_ix)
+                    } else {
+                        None
+                    }
+                },
+            )
             .collect();
 
         unassigned_rows.drain(..).for_each(|row_ix| {
@@ -922,7 +923,7 @@ impl View {
             let mut zs: Vec<usize> = self
                 .asgn()
                 .iter()
-                .map(|&z| if z == zi { std::usize::MAX } else { z })
+                .map(|&z| if z == zi { usize::MAX } else { z })
                 .collect();
             zs[i] = zi_tmp;
             zs[j] = zj_tmp;
@@ -1388,8 +1389,8 @@ mod tests {
         view.extend_cols(2);
 
         assert_eq!(view.asgn().asgn.len(), 12);
-        assert_eq!(view.asgn().asgn[10], usize::max_value());
-        assert_eq!(view.asgn().asgn[11], usize::max_value());
+        assert_eq!(view.asgn().asgn[10], usize::MAX);
+        assert_eq!(view.asgn().asgn[11], usize::MAX);
 
         for ftr in view.ftrs.values() {
             assert_eq!(ftr.len(), 12);

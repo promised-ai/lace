@@ -310,7 +310,7 @@ impl GewekeSummarize
             .data
             .present_cloned()
             .iter()
-            .fold(0_u32, |acc, &x| acc + x);
+            .sum::<u32>();
 
         fn sum_sq(logws: &[f64]) -> f64 {
             logws.iter().fold(0.0, |acc, lw| {

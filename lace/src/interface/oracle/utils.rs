@@ -2,12 +2,7 @@ use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
-use std::f64::INFINITY;
-use std::f64::NEG_INFINITY;
-use std::fs::File;
 use std::hash::Hash;
-use std::io::Read;
-use std::path::Path;
 
 use rv::dist::Bernoulli;
 use rv::dist::Categorical;
@@ -330,7 +325,10 @@ where
     }
 }
 
-pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
+#[cfg(test)]
+pub fn load_states<P: AsRef<std::path::Path>>(filenames: Vec<P>) -> Vec<State> {
+    use std::fs::File;
+    use std::io::Read;
     filenames
         .iter()
         .map(|path| {
@@ -679,9 +677,10 @@ fn impute_bounds(states: &[&State], col_ix: usize) -> (f64, f64) {
     states
         .iter()
         .map(|state| state.impute_bounds(col_ix).unwrap())
-        .fold((INFINITY, NEG_INFINITY), |(min, max), (lower, upper)| {
-            (min.min(lower), max.max(upper))
-        })
+        .fold(
+            (f64::INFINITY, f64::NEG_INFINITY),
+            |(min, max), (lower, upper)| (min.min(lower), max.max(upper)),
+        )
 }
 
 pub fn continuous_impute(
@@ -815,8 +814,8 @@ where
             match (&state, (mode, std)) {
                 ((Some(m1), s1), (Some(m2), s2)) => {
                     if (m2 - *m1)
-                        > (m * s1.unwrap_or(INFINITY))
-                            .min(m * s2.unwrap_or(INFINITY))
+                        > (m * s1.unwrap_or(f64::INFINITY))
+                            .min(m * s2.unwrap_or(f64::INFINITY))
                     {
                         state = (mode, std);
                         Some(m2)

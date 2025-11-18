@@ -251,7 +251,7 @@ impl Assignment {
     /// to `n_cats` and `counts`, and will mark `asgn[ix]` with the unassigned
     /// designator..
     pub fn unassign(&mut self, ix: usize) {
-        if self.asgn[ix] == usize::max_value() {
+        if self.asgn[ix] == usize::MAX {
             // The row might already be unassigned because it was just
             // inserted and the engine hasn't updated yet.
             return;
@@ -269,7 +269,7 @@ impl Assignment {
         } else {
             self.counts[k] -= 1;
         }
-        self.asgn[ix] = usize::max_value();
+        self.asgn[ix] = usize::MAX;
     }
 
     /// Reassign an unassigned entry
@@ -278,10 +278,10 @@ impl Assignment {
     pub fn reassign(&mut self, ix: usize, k: usize) {
         // If the index is the one beyond the number of entries, append k.
         if ix == self.len() {
-            self.asgn.push(usize::max_value());
+            self.asgn.push(usize::MAX);
         }
 
-        if self.asgn[ix] != usize::max_value() {
+        if self.asgn[ix] != usize::MAX {
             panic!("Entry {} is assigned. Use assign instead", ix);
         } else if k < self.n_cats {
             self.asgn[ix] = k;
@@ -311,10 +311,10 @@ impl Assignment {
     ///
     /// assignment.push_unassigned();
     ///
-    /// assert_eq!(assignment.asgn, vec![0, 0, 1, usize::max_value()]);
+    /// assert_eq!(assignment.asgn, vec![0, 0, 1, usize::MAX]);
     /// ```
     pub fn push_unassigned(&mut self) {
-        self.asgn.push(usize::max_value())
+        self.asgn.push(usize::MAX)
     }
 
     /// Validates the assignment
@@ -579,7 +579,7 @@ mod tests {
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 2, 2]);
-        assert_eq!(asgn.asgn, vec![0, usize::max_value(), 1, 1, 2, 2]);
+        assert_eq!(asgn.asgn, vec![0, usize::MAX, 1, 1, 2, 2]);
     }
 
     #[test]
@@ -594,7 +594,7 @@ mod tests {
 
         assert_eq!(asgn.n_cats, 2);
         assert_eq!(asgn.counts, vec![3, 2]);
-        assert_eq!(asgn.asgn, vec![usize::max_value(), 0, 0, 0, 1, 1]);
+        assert_eq!(asgn.asgn, vec![usize::MAX, 0, 0, 0, 1, 1]);
     }
 
     #[test]
@@ -609,7 +609,7 @@ mod tests {
 
         assert_eq!(asgn.n_cats, 2);
         assert_eq!(asgn.counts, vec![2, 3]);
-        assert_eq!(asgn.asgn, vec![0, 0, 1, 1, 1, usize::max_value()]);
+        assert_eq!(asgn.asgn, vec![0, 0, 1, 1, 1, usize::MAX]);
     }
 
     #[test]
@@ -624,7 +624,7 @@ mod tests {
 
         assert_eq!(asgn.n_cats, 2);
         assert_eq!(asgn.counts, vec![2, 3]);
-        assert_eq!(asgn.asgn, vec![0, 0, usize::max_value(), 1, 1, 1]);
+        assert_eq!(asgn.asgn, vec![0, 0, usize::MAX, 1, 1, 1]);
     }
 
     #[test]
@@ -639,7 +639,7 @@ mod tests {
 
         assert_eq!(asgn.n_cats, 3);
         assert_eq!(asgn.counts, vec![1, 2, 2]);
-        assert_eq!(asgn.asgn, vec![0, usize::max_value(), 1, 1, 2, 2]);
+        assert_eq!(asgn.asgn, vec![0, usize::MAX, 1, 1, 2, 2]);
 
         asgn.reassign(1, 1);
 
@@ -660,7 +660,7 @@ mod tests {
 
         assert_eq!(asgn.n_cats, 2);
         assert_eq!(asgn.counts, vec![3, 2]);
-        assert_eq!(asgn.asgn, vec![usize::max_value(), 0, 0, 0, 1, 1]);
+        assert_eq!(asgn.asgn, vec![usize::MAX, 0, 0, 0, 1, 1]);
 
         asgn.reassign(0, 2);
 

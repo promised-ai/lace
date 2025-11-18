@@ -1503,9 +1503,7 @@ pub trait OracleT: CanOracle {
             })?;
 
         match state_ixs_opt {
-            Some(state_ixs) if state_ixs.is_empty() => {
-                Err(error::LogpError::NoStateIndices)
-            }
+            Some([]) => Err(error::LogpError::NoStateIndices),
             Some(state_ixs) => state_indices_ok!(
                 self.n_states(),
                 state_ixs,
@@ -1592,9 +1590,7 @@ pub trait OracleT: CanOracle {
             })?;
 
         match state_ixs_opt {
-            Some(state_ixs) if state_ixs.is_empty() => {
-                Err(error::LogpError::NoStateIndices)
-            }
+            Some([]) => Err(error::LogpError::NoStateIndices),
             Some(state_ixs) => state_indices_ok!(
                 self.n_states(),
                 state_ixs,

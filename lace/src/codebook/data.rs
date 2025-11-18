@@ -349,7 +349,7 @@ fn string_categorical_coltype(
     use rv::dist::SymmetricDirichlet;
 
     let n_unique = srs.n_unique()?;
-    if n_unique > std::u32::MAX as usize {
+    if n_unique > u32::MAX as usize {
         Err(CodebookError::CategoricalOverflow {
             col_name: srs.name().to_owned(),
         })

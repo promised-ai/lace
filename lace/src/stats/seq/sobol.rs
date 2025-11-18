@@ -123,8 +123,8 @@ impl SobolSeq {
         let mut l = 1;
         for j in (1..LOG_MAX).rev() {
             l <<= 1;
-            for d in 0..dim {
-                v[j - 1][d] *= l;
+            for vi in v[j - 1].iter_mut().take(dim) {
+                *vi *= l;
             }
         }
 

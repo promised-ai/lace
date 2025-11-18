@@ -13,11 +13,11 @@ use rv::traits::QuadBounds;
 /// # Notes
 /// - The output will be in [0, 1.0).
 /// - Normalization is used to account for the fact that the maximum TVD is
-/// limited by the number of mixtures. For example, if there are two mixtures
-/// in `mixtures` the max TVD in only 1/2; if there are three, the max TVD is
-/// 2/3; if there are four the max TVD is 3/4; and so on. We divide the final
-/// output by `(n - 1) / n`, where `n` is the number of mixtures, so that the
-/// output can be interpreted similarly regardless of the input.
+///   limited by the number of mixtures. For example, if there are two mixtures
+///   in `mixtures` the max TVD in only 1/2; if there are three, the max TVD is
+///   2/3; if there are four the max TVD is 3/4; and so on. We divide the final
+///   output by `(n - 1) / n`, where `n` is the number of mixtures, so that the
+///   output can be interpreted similarly regardless of the input.
 pub fn mixture_normed_tvd<Fx>(mixtures: &[Mixture<Fx>]) -> f64
 where
     Fx: Clone,

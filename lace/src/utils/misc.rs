@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::collections::HashSet;
-use std::f64::NAN;
 use std::mem::swap;
 use std::ops::AddAssign;
 use std::str::FromStr;
@@ -64,7 +63,7 @@ pub fn parse_result<T: FromStr>(x: &str) -> Result<Option<T>, T::Err> {
 #[inline]
 pub fn sign(x: f64) -> f64 {
     if x.is_nan() {
-        NAN
+        f64::NAN
     } else if x < 0.0 {
         -1.0
     } else if x > 0.0 {
@@ -302,7 +301,7 @@ mod tests {
 
     #[test]
     fn nan_sign_is_nan() {
-        assert!(sign(NAN).is_nan())
+        assert!(sign(f64::NAN).is_nan())
     }
 
     // cumsum

@@ -1,4 +1,3 @@
-use std::f64::NEG_INFINITY;
 use std::ops::Index;
 
 use rand::Rng;
@@ -130,7 +129,7 @@ where
             let mut ps: Vec<f64> = Vec::with_capacity(n_cols);
             (0..n_cols).fold(0.0, |prev, j| {
                 let logp = logps[(i, j)];
-                let value = if logp != NEG_INFINITY {
+                let value = if logp != f64::NEG_INFINITY {
                     (logp - maxval).exp() + prev
                 } else {
                     prev
@@ -177,7 +176,7 @@ where
             let mut ps: Vec<f64> = Vec::with_capacity(n_cols);
             (0..n_cols).fold(0.0, |prev, j| {
                 let logp = logps[(i, j)];
-                let value = if logp != NEG_INFINITY {
+                let value = if logp != f64::NEG_INFINITY {
                     (logp - maxval).exp() + prev
                 } else {
                     prev

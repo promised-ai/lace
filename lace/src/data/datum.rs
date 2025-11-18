@@ -40,7 +40,7 @@ pub enum DatumConversionError {
 
 fn hash_float<H: std::hash::Hasher>(float: f64, state: &mut H) {
     // Note that IEEE 754 doesn’t define just a single NaN value
-    let x: f64 = if float.is_nan() { std::f64::NAN } else { float };
+    let x: f64 = if float.is_nan() { f64::NAN } else { float };
 
     x.to_bits().hash(state);
 }
@@ -52,7 +52,7 @@ impl Hash for Datum {
             Self::Continuous(x) => hash_float(*x, state),
             Self::Categorical(x) => x.hash(state),
             Self::Count(x) => x.hash(state),
-            Self::Missing => hash_float(std::f64::NAN, state),
+            Self::Missing => hash_float(f64::NAN, state),
         }
     }
 }

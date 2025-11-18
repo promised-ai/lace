@@ -250,14 +250,14 @@ where
                 b = x;
             }
 
-            if (fu <= fnfc) || (nfc - xf).abs() < std::f64::EPSILON {
+            if (fu <= fnfc) || (nfc - xf).abs() < f64::EPSILON {
                 fulc = nfc;
                 ffulc = fnfc;
                 nfc = x;
                 fnfc = fu;
             } else if (fu <= ffulc)
-                || (fulc - xf).abs() < std::f64::EPSILON
-                || (fulc - nfc).abs() < std::f64::EPSILON
+                || (fulc - xf).abs() < f64::EPSILON
+                || (fulc - nfc).abs() < f64::EPSILON
             {
                 fulc = x;
                 ffulc = fu;

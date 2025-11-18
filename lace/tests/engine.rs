@@ -2655,7 +2655,6 @@ mod prior_in_codebook {
     use lace::codebook::ColType;
     use lace::stats::prior::nix::NixHyper;
     use rv::dist::NormalInvChiSquared;
-    use rv::traits::Rv;
 
     use super::*;
 

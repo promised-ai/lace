@@ -9,7 +9,7 @@ use polars::prelude::JsonReader;
 use polars::prelude::ParquetReader;
 use polars::prelude::SerReader;
 
-use crate::codebook::ReadError;
+use super::ReadError;
 
 pub fn read_parquet<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
     let mut file = File::open(path)?;
@@ -62,7 +62,7 @@ macro_rules! codebook_from_fn {
             view_prior_process: Option<$crate::codebook::PriorProcess>,
             no_hypers: bool,
         ) -> Result<
-            $crate::codebook::codebook::Codebook,
+            $crate::codebook::Codebook,
             $crate::codebook::error::CodebookError,
         > {
             let df = $reader(path).unwrap();

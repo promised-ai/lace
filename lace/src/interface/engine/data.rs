@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryInto;
-use std::f64::NEG_INFINITY;
 
 use indexmap::IndexSet;
 use rv::data::CategoricalSuffStat;
@@ -875,7 +874,7 @@ fn incr_column_categories(
 
                     cpnt.fx = Categorical::new_unchecked({
                         let mut ln_weights = cpnt.fx.ln_weights().clone();
-                        ln_weights.resize(n_cats_req, NEG_INFINITY);
+                        ln_weights.resize(n_cats_req, f64::NEG_INFINITY);
                         ln_weights
                     });
                 })

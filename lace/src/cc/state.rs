@@ -1,6 +1,5 @@
 mod builder;
 use std::collections::BTreeMap;
-use std::f64::NEG_INFINITY;
 
 pub use builder::BuildStateError;
 pub use builder::Builder;
@@ -879,7 +878,7 @@ impl State {
                             if w >= ui {
                                 ftr.asgn_score(view.asgn())
                             } else {
-                                NEG_INFINITY
+                                f64::NEG_INFINITY
                             }
                         })
                         .collect::<Vec<f64>>()
