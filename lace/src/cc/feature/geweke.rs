@@ -306,11 +306,7 @@ impl GewekeSummarize
         &self,
         settings: &ColumnGewekeSettings,
     ) -> Self::Summary {
-        let x_sum = self
-            .data
-            .present_cloned()
-            .iter()
-            .sum::<u32>();
+        let x_sum = self.data.present_cloned().iter().sum::<u32>();
 
         fn sum_sq(logws: &[f64]) -> f64 {
             logws.iter().fold(0.0, |acc, lw| {
