@@ -312,14 +312,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [python-0.1.0] - 2023-04-24
 
 ### Added
-
-Initial release on [PyPi](https://pypi.org/)
+- Initial release on [PyPi](https://pypi.org/)
 
 ## [rust-0.1.0] - 2023-04-20
 
 ### Added
-
-Initial release on [crates.io](https://crates.io/)
+- Initial release on [crates.io](https://crates.io/)
 
 [unreleased]: https://github.com/promised-ai/lace/compare/python-0.8.0...HEAD
 [rust-0.9.0]: https://github.com/promised-ai/lace/compare/rust-0.8.0...rust-0.9.0
