@@ -5,9 +5,7 @@ use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
 use lace::metadata::{Error, FileConfig, SerializedType};
-use lace::rv::dist::Gamma;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 pub struct SummarizeArgs {
@@ -205,48 +203,6 @@ impl RunArgs {
         } else {
             None
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct GammaParameters {
-    pub shape: f64,
-    pub rate: f64,
-}
-
-fn params_parse_fail(s: &str) -> String {
-    format!("`{s}` cannot be converted to GammaParameters")
-}
-
-impl Default for GammaParameters {
-    fn default() -> Self {
-        GammaParameters {
-            shape: 1.0,
-            rate: 1.0,
-        }
-    }
-}
-
-impl FromStr for GammaParameters {
-    type Err = String;
-
-    // Params are of the form "shape, rate", e.g. "1.0, 2.0"
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.trim().split(',').collect();
-        if parts.len() != 2 {
-            return Err(params_parse_fail(s));
-        }
-        let shape: f64 = parts[0].trim().parse().map_err(|_| params_parse_fail(s))?;
-        let rate: f64 = parts[1].trim().parse().map_err(|_| params_parse_fail(s))?;
-
-        Ok(GammaParameters { shape, rate })
-    }
-}
-
-impl TryInto<Gamma> for GammaParameters {
-    type Error = lace::rv::dist::GammaError;
-    fn try_into(self) -> Result<Gamma, Self::Error> {
-        Gamma::new(self.shape, self.rate)
     }
 }
 
