@@ -96,7 +96,6 @@ impl<Ix: ColumnIndex> Given<Ix> {
     }
 }
 
-
 ///
 ///
 /// # Example
