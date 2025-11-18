@@ -96,6 +96,7 @@ harness = false
 [[bench]]
 name = "oracle_fns"
 harness = false
+required-features = ["examples"]
 
 [[bench]]
 name = "state_types"
