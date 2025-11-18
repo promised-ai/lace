@@ -169,7 +169,7 @@ fn categorical_col_model<R: rand::Rng>(
             .collect(),
         _ => {
             return Err(CodebookError::UnsupportedDataType {
-                col_name: srs.name().to_owned(),
+                col_name: srs.name().to_string(),
                 dtype: srs.dtype().clone(),
             })
         }
@@ -230,7 +230,7 @@ pub fn df_to_col_models<R: rand::Rng>(
         let mut srss: HashMap<&str, &Series> = df
             .get_columns()
             .iter()
-            .map(|srs| (srs.name(), srs))
+            .map(|col| (col.name().as_str(), col.as_materialized_series()))
             .collect();
         srss.remove(id_col.as_str())
             .ok_or(DataParseError::NoIDColumn)?;
@@ -293,7 +293,7 @@ pub fn df_to_col_models<R: rand::Rng>(
                                         !(matches!(dtype, DataType::Null)
                                             || matches!(
                                                 dtype,
-                                                DataType::Unknown
+                                                DataType::Unknown(_)
                                             ))
                                     })
                                     .collect::<Vec<bool>>(),

@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - *Prior version metadata is incompatible with this version*
-- Updated `rv` and `rand` dependencies
+- Updated `rv`, `polars`, and `rand` dependencies
 - Removed all subcrates and collapsed into single `lace` crate
 - Categorical variables can take on more than 256 distinct values because
   categorical data are now represented with `u32` instead of `u8`.

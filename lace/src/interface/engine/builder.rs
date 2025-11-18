@@ -114,17 +114,18 @@ mod tests {
     use std::path::PathBuf;
 
     use maplit::btreeset;
+    use polars::prelude::CsvReadOptions;
     use polars::prelude::DataFrame;
 
     use super::*;
     use crate::codebook::ReadError;
 
     fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-        use polars::prelude::CsvReader;
         use polars::prelude::SerReader;
-        let df = CsvReader::from_path(path.as_ref())?
-            .infer_schema(Some(1000))
-            .has_header(true)
+        let df = CsvReadOptions::default()
+            .with_infer_schema_length(Some(1000))
+            .with_has_header(true)
+            .try_into_reader_with_file_path(Some(path.as_ref().into()))?
             .finish()?;
         Ok(df)
     }

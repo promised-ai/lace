@@ -1,7 +1,8 @@
 use std::fs::File;
+use std::num::NonZero;
 use std::path::Path;
 
-use polars::prelude::CsvReader;
+use polars::prelude::CsvReadOptions;
 use polars::prelude::DataFrame;
 use polars::prelude::IpcReader;
 use polars::prelude::JsonFormat;
@@ -38,7 +39,7 @@ pub fn read_json<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
     let mut file = File::open(path)?;
 
     let df = JsonReader::new(&mut file)
-        .infer_schema_len(Some(1000))
+        .infer_schema_len(NonZero::new(1000))
         .with_json_format(format)
         .finish()?;
 
@@ -46,9 +47,10 @@ pub fn read_json<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
 }
 
 pub fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-    let df = CsvReader::from_path(path.as_ref())?
-        .infer_schema(Some(1000))
-        .has_header(true)
+    let df = CsvReadOptions::default()
+        .with_infer_schema_length(Some(1000))
+        .with_has_header(true)
+        .try_into_reader_with_file_path(Some(path.as_ref().into()))?
         .finish()?;
     Ok(df)
 }

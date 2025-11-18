@@ -39,7 +39,7 @@ indexmap = { version = "2.0.0", features = ["serde"] }
 thiserror = "1.0.19"
 indicatif = "0.17.0"
 ctrlc = { version = "3.2.1", optional = true }
-polars = { version = "0.36", default_features = false, features = [
+polars = { version = "0.52", default_features = false, features = [
   "csv",
   "dtype-i8",
   "dtype-i16",

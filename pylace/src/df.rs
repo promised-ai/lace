@@ -1,6 +1,7 @@
 use polars::frame::DataFrame;
 use polars::prelude::ArrayRef;
 use polars::prelude::ArrowField;
+use polars::prelude::CompatLevel;
 use polars::prelude::PolarsError;
 use polars::series::Series;
 use polars_arrow::ffi;
@@ -43,7 +44,9 @@ impl std::convert::From<DataFrameError> for PyErr {
             PolarsError::SchemaMismatch(err) => {
                 SchemaError::new_err(err.to_string())
             }
-            PolarsError::Io(err) => PyIOError::new_err(err.to_string()),
+            PolarsError::IO { error, .. } => {
+                PyIOError::new_err(error.to_string())
+            }
             PolarsError::InvalidOperation(err) => {
                 PyValueError::new_err(err.to_string())
             }
@@ -64,6 +67,9 @@ impl std::convert::From<DataFrameError> for PyErr {
             }
             PolarsError::OutOfBounds(_) => {
                 OutOfBounds::new_err(err.0.to_string())
+            }
+            _ => {
+                todo!()
             }
         }
     }
@@ -115,7 +121,7 @@ fn array_to_rust(obj: &PyAny) -> PyResult<ArrayRef> {
     unsafe {
         let field = ffi::import_field_from_c(schema.as_ref())
             .map_err(DataFrameError::from)?;
-        let array = ffi::import_array_from_c(*array, field.data_type)
+        let array = ffi::import_array_from_c(*array, field.dtype)
             .map_err(DataFrameError::from)?;
         Ok(array)
     }
@@ -123,10 +129,11 @@ fn array_to_rust(obj: &PyAny) -> PyResult<ArrayRef> {
 
 impl<'a> FromPyObject<'a> for PySeries {
     fn extract(ob: &'a PyAny) -> PyResult<Self> {
+        use polars::prelude::PlSmallStr;
         let ob = ob.call_method0("rechunk")?;
 
         let name = ob.getattr("name")?;
-        let name = name.str()?.to_str()?;
+        let name = PlSmallStr::from(name.str()?.to_str()?);
 
         let arr = ob.call_method0("to_arrow")?;
         let arr = array_to_rust(arr)?;
@@ -147,9 +154,9 @@ impl<'a> FromPyObject<'a> for PyDataFrame {
         for pyseries in series.iter()? {
             let pyseries = pyseries?;
             let s = pyseries.extract::<PySeries>()?.0;
-            columns.push(s);
+            columns.push(s.into());
         }
-        Ok(PyDataFrame(DataFrame::new_no_checks(columns)))
+        Ok(PyDataFrame(DataFrame::new(columns).unwrap()))
     }
 }
 
@@ -160,8 +167,8 @@ pub(crate) fn to_py_array(
     pyarrow: &Bound<PyModule>,
 ) -> PyResult<PyObject> {
     let schema = Box::new(ffi::export_field_to_c(&ArrowField::new(
-        "",
-        array.data_type().clone(),
+        "".into(),
+        array.dtype().clone(),
         true,
     )));
     let array = Box::new(ffi::export_array_to_c(array));
@@ -182,8 +189,8 @@ pub(crate) fn to_py_array(
 impl IntoPy<PyObject> for PySeries {
     fn into_py(self, py: Python<'_>) -> PyObject {
         let s = self.0.rechunk();
-        let name = s.name();
-        let arr = s.to_arrow(0);
+        let name = s.name().as_str();
+        let arr = s.to_arrow(0, CompatLevel::newest());
         let pyarrow =
             py.import_bound("pyarrow").expect("pyarrow not installed");
         let polars = py.import_bound("polars").expect("polars not installed");
@@ -203,7 +210,10 @@ impl IntoPy<PyObject> for PyDataFrame {
             .0
             .get_columns()
             .iter()
-            .map(|s| PySeries(s.clone()).into_py(py))
+            .map(|s| {
+                PySeries(s.clone().as_materialized_series_maintain_scalar())
+                    .into_py(py)
+            })
             .collect::<Vec<_>>();
 
         let polars = py.import_bound("polars").expect("polars not installed");

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use polars::prelude::CsvReader;
+use polars::prelude::CsvReadOptions;
 use polars::prelude::DataFrame;
 use polars::prelude::DataType;
 use polars::prelude::SerReader;
@@ -66,7 +66,7 @@ macro_rules! series_to_opt_vec {
             _ => {
                 return Err(
                     $crate::codebook::CodebookError::UnableToInferColumnType {
-                        col_name: $srs.name().to_owned(),
+                        col_name: $srs.name().to_string(),
                     },
                 )
             }
@@ -119,7 +119,7 @@ macro_rules! series_to_vec {
             _ => {
                 return Err(
                     $crate::codebook::CodebookError::UnableToInferColumnType {
-                        col_name: $srs.name().to_owned(),
+                        col_name: $srs.name().to_string(),
                     },
                 )
             }
@@ -175,7 +175,7 @@ macro_rules! series_to_opt_strings {
             _ => {
                 return Err(
                     $crate::codebook::CodebookError::UnableToInferColumnType {
-                        col_name: $srs.name().to_owned(),
+                        col_name: $srs.name().to_string(),
                     },
                 )
             }
@@ -231,7 +231,7 @@ macro_rules! series_to_strings {
             _ => {
                 return Err(
                     $crate::codebook::CodebookError::UnableToInferColumnType {
-                        col_name: $srs.name().to_owned(),
+                        col_name: $srs.name().to_string(),
                     },
                 )
             }
@@ -351,7 +351,7 @@ fn string_categorical_coltype(
     let n_unique = srs.n_unique()?;
     if n_unique > u32::MAX as usize {
         Err(CodebookError::CategoricalOverflow {
-            col_name: srs.name().to_owned(),
+            col_name: srs.name().to_string(),
         })
     } else {
         let unique: BTreeSet<String> = srs
@@ -393,7 +393,7 @@ pub fn series_to_colmd(
     cat_cutoff: Option<u32>,
     no_hypers: bool,
 ) -> Result<ColMetadata, CodebookError> {
-    let name = String::from(srs.name());
+    let name = srs.name().to_string();
     let dtype = srs.dtype();
     let coltype = match dtype {
         DataType::Boolean => bool_categorical_coltype(no_hypers),
@@ -450,7 +450,8 @@ pub fn df_to_codebook(
     let (col_metadata, row_names) = {
         let mut row_names_opt: Option<RowNameList> = None;
         let mut col_metadata = Vec::with_capacity(df.shape().1);
-        for srs in df.get_columns().iter() {
+        for col in df.get_columns().iter() {
+            let srs = col.as_materialized_series();
             if crate::utils::is_index_col(srs.name()) {
                 if row_names_opt.is_some() {
                     return Err(CodebookError::MultipleIdColumns);
@@ -459,7 +460,7 @@ pub fn df_to_codebook(
             } else {
                 if srs.n_unique()? < 2 {
                     return Err(CodebookError::SingleValueColumn(
-                        srs.name().to_owned(),
+                        srs.name().to_string(),
                     ));
                 }
                 let colmd = series_to_colmd(srs, cat_cutoff, no_hypers)?;
@@ -484,9 +485,10 @@ pub fn df_to_codebook(
 }
 
 pub fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-    let df = CsvReader::from_path(path.as_ref())?
-        .infer_schema(Some(1000))
-        .has_header(true)
+    let df = CsvReadOptions::default()
+        .with_infer_schema_length(Some(1000))
+        .with_has_header(true)
+        .try_into_reader_with_file_path(Some(path.as_ref().into()))?
         .finish()?;
     Ok(df)
 }
@@ -563,7 +565,7 @@ mod test {
 
     #[test]
     fn string_col_value_map_should_be_sorted_no_null() {
-        let srs = Series::new("a", vec!["dog", "cat", "bear", "fox"]);
+        let srs = Series::new("a".into(), vec!["dog", "cat", "bear", "fox"]);
         let coltype = string_categorical_coltype(&srs, true).unwrap();
         match coltype {
             ColType::Categorical { k, value_map, .. } => {
@@ -592,7 +594,7 @@ mod test {
     #[test]
     fn string_col_value_map_should_be_sorted_null() {
         let srs = Series::new(
-            "a",
+            "a".into(),
             vec![Some("dog"), Some("cat"), None, Some("bear"), Some("fox")],
         );
         let coltype = string_categorical_coltype(&srs, true).unwrap();
@@ -628,7 +630,7 @@ mod test {
                 #[test]
                 fn $test_name() {
                     let srs = Series::new(
-                        "a",
+                        "a".into(),
                         ($int_min..$int_max).collect::<Vec<_>>(),
                     );
                     let colmd =
@@ -686,7 +688,7 @@ mod test {
         #[test]
         fn exactly_255_string_values_ok() {
             let srs = Series::new(
-                "A",
+                "A".into(),
                 (0..255).map(|x| format!("{x}")).collect::<Vec<_>>(),
             );
             assert!(series_to_colmd(&srs, None, false).is_ok());
@@ -695,7 +697,7 @@ mod test {
         #[test]
         fn fewer_than_255_string_values_ok() {
             let srs = Series::new(
-                "A",
+                "A".into(),
                 (0..25)
                     .cycle()
                     .take(100)
@@ -710,7 +712,7 @@ mod test {
                 #[test]
                 fn $test_name() {
                     let srs = Series::new(
-                        "A",
+                        "A".into(),
                         ($min_val..$max_val).collect::<Vec<_>>(),
                     );
                     let colmd = series_to_colmd(&srs, None, false).unwrap();
@@ -741,7 +743,7 @@ mod test {
         #[test]
         fn bool_data_is_bool() {
             let srs = Series::new(
-                "A",
+                "A".into(),
                 (0..100).map(|x| x % 2 == 1).collect::<Vec<bool>>(),
             );
             let colmd = series_to_colmd(&srs, None, true).unwrap();

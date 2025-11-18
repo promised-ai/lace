@@ -262,7 +262,7 @@ macro_rules! srs_from_vec {
                 _ => None,
             }
         }).collect();
-        Series::new($name, xs)
+        Series::new($name.into(), xs)
     }};
 }
 
@@ -275,7 +275,7 @@ macro_rules! cat_srs_from_vec {
                 _ => None,
             })
             .collect();
-        Series::new($name, xs)
+        Series::new($name.into(), xs)
     }};
 }
 
@@ -320,7 +320,7 @@ macro_rules! srs_from_simulate {
                 _ => None,
             }
         }).collect();
-        Series::new($name, xs)
+        Series::new($name.into(), xs)
     }};
 }
 
@@ -335,7 +335,7 @@ macro_rules! cat_srs_from_simulate {
                 _ => None,
             })
             .collect();
-        Series::new($name, xs)
+        Series::new($name.into(), xs)
     }};
 }
 
