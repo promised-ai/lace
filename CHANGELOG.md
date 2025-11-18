@@ -9,13 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- *Prior version metadata is incompatible with this version*
 - Updated `rv` and `rand` dependencies
 - Removed all subcrates and collapsed into single `lace` crate
+- Categorical variables can take on more than 256 distinct values because
+  categorical data are now represented with `u32` instead of `u8`.
 
 ## [python-0.9.0] - 2025-11-19
 
 ### Changed
+- Prior version metadata is incompatible with this version
 - Updated to lace 0.9.0
+- Categorical variables can take on more than 256 distinct values
 
 ## [rust-0.8.0] - 2024-04-10
 

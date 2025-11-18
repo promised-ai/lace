@@ -2102,7 +2102,9 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
 name = "rv"
-version = "0.19.0"
+version = "0.19.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb89285b0862665a769f9e34fc308ed627be1ff149ea6b16ba245921782adcf6"
 dependencies = [
  "doc-comment",
  "itertools 0.14.0",

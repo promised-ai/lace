@@ -19,10 +19,7 @@ name = "lace"
 path = "src/lib.rs"
 
 [dependencies]
-rv = { path = "/Users/bax/Documents/redpoll/rv", features = [
-  "serde1",
-  "arraydist",
-] }
+rv = { version = "0.19.1", features = ["serde1", "arraydist"] }
 dirs = { version = "5", optional = true }
 enum_dispatch = "0.3.13"
 num = "0.4"
