@@ -1,10 +1,15 @@
-use lace_cc::state::State;
-use lace_codebook::Codebook;
-use lace_data::{Datum, SummaryStatistics};
-use lace_metadata::latest::Metadata;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::{interface::HasCodebook, HasData, HasStates, Oracle};
+use crate::cc::state::State;
+use crate::codebook::Codebook;
+use crate::data::Datum;
+use crate::data::SummaryStatistics;
+use crate::interface::HasCodebook;
+use crate::metadata::latest::Metadata;
+use crate::HasData;
+use crate::HasStates;
+use crate::Oracle;
 
 /// An oracle without data for sensitive data applications
 #[derive(Clone, Debug, Serialize, Deserialize)]

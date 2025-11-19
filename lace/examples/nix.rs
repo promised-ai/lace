@@ -1,12 +1,18 @@
-use lace_stats::rv::dist::{Gamma, Gaussian, InvGamma, ScaledInvChiSquared};
-use lace_stats::rv::traits::Rv;
-use lace_utils::mean_var;
-
-use plotly::layout::{Axis, GridPattern, Layout, LayoutGrid};
-use plotly::{Histogram, Plot};
+use lace::utils::mean_var;
+use plotly::layout::Axis;
+use plotly::layout::GridPattern;
+use plotly::layout::Layout;
+use plotly::layout::LayoutGrid;
+use plotly::Histogram;
+use plotly::Plot;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::InvGamma;
+use rv::dist::ScaledInvChiSquared;
+use rv::traits::Sampleable;
 
 fn main() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mean: f64 = 18429.39;
     let sigma: f64 = 28502.115;

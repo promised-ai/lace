@@ -1,6 +1,7 @@
-use lace_codebook::Codebook;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
+use crate::codebook::Codebook;
 use crate::error::IndexError;
 
 /// Trait defining an item that can be converted into a row index
@@ -91,7 +92,7 @@ impl RowIndex for String {
     }
 }
 
-impl<'a> RowIndex for &'a str {
+impl RowIndex for &str {
     fn row_ix(&self, codebook: &Codebook) -> Result<usize, IndexError> {
         codebook.row_index(self).ok_or_else(|| {
             IndexError::RowNameDoesNotExist {
@@ -197,7 +198,7 @@ impl ColumnIndex for String {
     }
 }
 
-impl<'a> ColumnIndex for &'a str {
+impl ColumnIndex for &str {
     fn col_ix(&self, codebook: &Codebook) -> Result<usize, IndexError> {
         codebook.column_index(self).ok_or_else(|| {
             IndexError::ColumnNameDoesNotExist {

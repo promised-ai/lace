@@ -3,39 +3,55 @@ mod data;
 pub mod error;
 pub mod update_handler;
 
-pub use builder::{BuildEngineError, EngineBuilder};
-pub use data::{
-    AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
-    SupportExtension, Value, WriteMode,
-};
-
 use std::collections::HashMap;
 use std::path::Path;
 
-use lace_cc::feature::{ColModel, Feature};
-use lace_cc::state::State;
-use lace_codebook::{Codebook, ColMetadataList};
-use lace_data::{Category, Datum, SummaryStatistics};
-use lace_metadata::latest::Metadata;
+pub use builder::BuildEngineError;
+pub use builder::EngineBuilder;
+use data::append_empty_columns;
+use data::insert_data_tasks;
+use data::maybe_add_categories;
+pub use data::AppendStrategy;
+pub use data::InsertDataActions;
+pub use data::InsertMode;
+pub use data::OverwriteMode;
+pub use data::Row;
+pub use data::SupportExtension;
+pub use data::Value;
+pub use data::WriteMode;
+use error::DataParseError;
+use error::InsertDataError;
+use error::NewEngineError;
+use error::RemoveDataError;
+use polars::frame::DataFrame;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-
-use crate::config::EngineUpdateConfig;
-use crate::data::DataSource;
-use crate::error::IndexError;
-use crate::index::{ColumnIndex, RowIndex};
-use crate::utils::post_process_datum;
-use crate::{HasData, HasStates, Oracle, TableIndex};
-use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
-use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
-use lace_metadata::SerializedType;
-use polars::frame::DataFrame;
+use serde::Deserialize;
+use serde::Serialize;
 
 use self::update_handler::UpdateHandler;
-
 use super::HasCodebook;
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Feature;
+use crate::cc::state::State;
+use crate::codebook::Codebook;
+use crate::codebook::ColMetadataList;
+use crate::config::EngineUpdateConfig;
+use crate::data::Category;
+use crate::data::DataSource;
+use crate::data::Datum;
+use crate::data::SummaryStatistics;
+use crate::error::IndexError;
+use crate::index::ColumnIndex;
+use crate::index::RowIndex;
+use crate::interface::oracle::utils::post_process_datum;
+use crate::metadata::latest::Metadata;
+use crate::metadata::SerializedType;
+use crate::HasData;
+use crate::HasStates;
+use crate::Oracle;
+use crate::TableIndex;
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -54,7 +70,7 @@ impl From<Oracle> for Engine {
             state_ids: (0..oracle.states.len()).collect(),
             states: oracle.states,
             codebook: oracle.codebook,
-            rng: Xoshiro256Plus::from_entropy(),
+            rng: Xoshiro256Plus::from_os_rng(),
         }
     }
 }
@@ -127,8 +143,10 @@ fn col_models_from_data_src<R: rand::Rng>(
 fn emit_prior_process<R: rand::Rng>(
     prior_process: crate::codebook::PriorProcess,
     rng: &mut R,
-) -> lace_stats::prior_process::Process {
-    use lace_stats::prior_process::{Dirichlet, PitmanYor, Process};
+) -> crate::stats::prior_process::Process {
+    use crate::stats::prior_process::Dirichlet;
+    use crate::stats::prior_process::PitmanYor;
+    use crate::stats::prior_process::Process;
     match prior_process {
         crate::codebook::PriorProcess::Dirichlet { alpha_prior } => {
             let inner = Dirichlet::from_prior(alpha_prior, rng);
@@ -212,11 +230,13 @@ impl Engine {
     }
 
     ///  Load a lacefile into an `Engine`.
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, lace_metadata::Error> {
-        let metadata = lace_metadata::load_metadata(path)?;
+    pub fn load<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<Self, crate::metadata::Error> {
+        let metadata = crate::metadata::load_metadata(path)?;
         metadata
             .try_into()
-            .map_err(|err| lace_metadata::Error::Other(format!("{err}")))
+            .map_err(|err| crate::metadata::Error::Other(format!("{err}")))
     }
 
     /// Delete n rows starting at index ix.
@@ -305,7 +325,7 @@ impl Engine {
     ) -> Result<(), InsertDataError> {
         // Handle the case when we have to convert the datum to a value that can
         // be understood by the state. States currently only hold categorical
-        // data as u8, so we have to convert from String or Bool.
+        // data as u32, so we have to convert from String or Bool.
         let datum = if let Datum::Categorical(ref cat) = datum {
             let ix: usize = self
                 .codebook
@@ -324,7 +344,7 @@ impl Engine {
                         InsertDataError::CategoryNotInValueMap(cat.clone())
                     })
                 })?;
-            Datum::Categorical(Category::U8(ix as u8))
+            Datum::Categorical(Category::UInt(ix as u32))
         } else {
             datum
         };
@@ -365,7 +385,7 @@ impl Engine {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::{OracleT, HasStates};
-    /// use lace_data::Datum;
+    /// use lace::data::Datum;
     /// use lace::{Row, Value, WriteMode};
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
@@ -377,15 +397,15 @@ impl Engine {
     ///         values: vec![
     ///             Value {
     ///                 col_ix: "flys".into(),
-    ///                 value: Datum::Categorical(1_u8.into()),
+    ///                 value: Datum::Categorical(1_u32.into()),
     ///             },
     ///             Value {
     ///                 col_ix: "hooves".into(),
-    ///                 value: Datum::Categorical(1_u8.into()),
+    ///                 value: Datum::Categorical(1_u32.into()),
     ///             },
     ///             Value {
     ///                 col_ix: "swims".into(),
-    ///                 value: Datum::Categorical(0_u8.into()),
+    ///                 value: Datum::Categorical(0_u32.into()),
     ///             },
     ///         ]
     ///     }
@@ -408,17 +428,17 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
-    /// use lace_stats::prior::csd::CsdHyper;
+    /// use lace::codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
+    /// use lace::stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
-    ///     ("bat", vec![("drinks+blood", Datum::Categorical(1_u8.into()))]).into(),
-    ///     ("beaver", vec![("drinks+blood", Datum::Categorical(0_u8.into()))]).into(),
+    ///     ("bat", vec![("drinks+blood", Datum::Categorical(1_u32.into()))]).into(),
+    ///     ("beaver", vec![("drinks+blood", Datum::Categorical(0_u32.into()))]).into(),
     /// ];
     ///
     /// // The partial codebook is required to define the data type and
@@ -431,7 +451,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: ValueMap::U8(2),
+    ///                 value_map: ValueMap::UInt(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -456,21 +476,21 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
-    /// use lace_stats::prior::csd::CsdHyper;
+    /// use lace::codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
+    /// use lace::stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![
-    ///             ("drinks+blood", Datum::Categorical(1_u8.into())),
+    ///             ("drinks+blood", Datum::Categorical(1_u32.into())),
     ///     ]).into(),
     ///     ("wolf", vec![
-    ///             ("drinks+blood", Datum::Categorical(1_u8.into())),
-    ///             ("howls+at+the+moon", Datum::Categorical(1_u8.into())),
+    ///             ("drinks+blood", Datum::Categorical(1_u32.into())),
+    ///             ("howls+at+the+moon", Datum::Categorical(1_u32.into())),
     ///     ]).into(),
     /// ];
     ///
@@ -485,7 +505,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: ValueMap::U8(2),
+    ///                 value_map: ValueMap::UInt(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -496,7 +516,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: ValueMap::U8(2),
+    ///                 value_map: ValueMap::UInt(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -524,7 +544,7 @@ impl Engine {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
@@ -534,11 +554,11 @@ impl Engine {
     /// let x_before = engine.datum("pig", "fierce").unwrap();
     ///
     /// // Turns out pigs are fierce.
-    /// assert_eq!(x_before, Datum::Categorical(1_u8.into()));
+    /// assert_eq!(x_before, Datum::Categorical(1_u32.into()));
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     // Inserting a 2 into a binary column
-    ///     ("pig", vec![("fierce", Datum::Categorical(2_u8.into()))]).into(),
+    ///     ("pig", vec![("fierce", Datum::Categorical(2_u32.into()))]).into(),
     /// ];
     ///
     /// let result = engine.insert_data(
@@ -552,18 +572,18 @@ impl Engine {
     /// // Make sure that the 2 exists in the table
     /// let x_after = engine.datum("pig", "fierce").unwrap();
     ///
-    /// assert_eq!(x_after, Datum::Categorical(2_u8.into()));
+    /// assert_eq!(x_after, Datum::Categorical(2_u32.into()));
     /// ```
     ///
     /// To add a category to a column with value_map
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::{Row, WriteMode};
     /// # use lace::OracleT;
     /// let mut engine = Example::Satellites.engine().unwrap();
-    /// use lace_codebook::{ColMetadata, ColType, ValueMap};
+    /// use lace::codebook::{ColMetadata, ColType, ValueMap};
     /// use std::collections::HashMap;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![(
@@ -683,13 +703,13 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// use lace::{TableIndex, OracleT};
-    /// use lace_data::Datum;
+    /// use lace::data::Datum;
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(
     ///     engine.datum("horse", "flys").unwrap(),
-    ///     Datum::Categorical(0_u8.into()),
+    ///     Datum::Categorical(0_u32.into()),
     /// );
     ///
     /// // Row and Column implement Into<TableIndex>
@@ -703,7 +723,7 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// # use lace::{TableIndex, OracleT, HasStates};
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
@@ -723,7 +743,7 @@ impl Engine {
     /// ```rust
     /// # use lace::examples::Example;
     /// # use lace::{TableIndex, OracleT, HasStates};
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
@@ -745,8 +765,11 @@ impl Engine {
     ) -> Result<(), RemoveDataError> {
         // We use hashset because btreeset doesn't have drain. we use btreeset,
         // becuase it maintains the order of elements.
-        use crate::interface::engine::data::{remove_cell, remove_col};
-        use std::collections::{BTreeSet, HashSet};
+        use std::collections::BTreeSet;
+        use std::collections::HashSet;
+
+        use crate::interface::engine::data::remove_cell;
+        use crate::interface::engine::data::remove_col;
 
         let codebook = self.codebook();
 
@@ -876,7 +899,7 @@ impl Engine {
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
-            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng))
             .collect();
 
         // rayon has a hard time doing self.states.par_iter().zip(..), so we
@@ -905,9 +928,9 @@ impl Engine {
         &self,
         path: P,
         ser_type: SerializedType,
-    ) -> Result<(), lace_metadata::Error> {
+    ) -> Result<(), crate::metadata::Error> {
         let metadata: Metadata = self.into();
-        lace_metadata::save_metadata(&metadata, path, ser_type)?;
+        crate::metadata::save_metadata(&metadata, path, ser_type)?;
         Ok(())
     }
 
@@ -962,7 +985,7 @@ impl Engine {
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
-            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng))
             .collect();
 
         let state_config = config.state_config();
@@ -1029,7 +1052,7 @@ impl Engine {
                                     (data, dataless_state)
                                 };
 
-                                lace_metadata::save_state(
+                                crate::metadata::save_state(
                                     &config.path,
                                     &dataless_state,
                                     state_ix,
@@ -1065,7 +1088,7 @@ impl Engine {
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
-            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng))
             .collect();
 
         self.states
@@ -1084,16 +1107,14 @@ impl Engine {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashSet,
-        path::PathBuf,
-        sync::{Arc, RwLock},
-        time::Duration,
-    };
-
-    use crate::update_handler::StateTimeout;
+    use std::collections::HashSet;
+    use std::path::PathBuf;
+    use std::sync::Arc;
+    use std::sync::RwLock;
+    use std::time::Duration;
 
     use super::*;
+    use crate::update_handler::StateTimeout;
 
     fn animals_csv() -> DataSource {
         let df = crate::codebook::data::read_csv(PathBuf::from(

@@ -1,23 +1,39 @@
-use super::error::{self, IndexError};
-use super::validation::{find_given_errors, find_value_conflicts};
-use super::{utils, RowSimilarityVariant};
-use crate::index::{
-    extract_col_pair, extract_colixs, extract_row_pair, ColumnIndex, RowIndex,
-};
-use crate::interface::oracle::error::SurprisalError;
-use crate::interface::oracle::{ConditionalEntropyType, MiComponents, MiType};
-use crate::interface::{CanOracle, Given};
-use lace_cc::feature::{FType, Feature};
-use lace_cc::state::{State, StateDiagnostics};
-use lace_consts::rv::misc::logsumexp;
-use lace_data::{Datum, SummaryStatistics};
-use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
-use lace_stats::rv::traits::Rv;
-use lace_stats::SampleError;
+use std::collections::BTreeSet;
+
 use rand::Rng;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::traits::Sampleable;
+use serde::Deserialize;
+use serde::Serialize;
+
+use super::error::IndexError;
+use super::error::{self};
+use super::utils;
+use super::validation::find_given_errors;
+use super::validation::find_value_conflicts;
+use super::RowSimilarityVariant;
+use crate::cc::feature::FType;
+use crate::cc::feature::Feature;
+use crate::cc::state::State;
+use crate::cc::state::StateDiagnostics;
+use crate::consts::rv::misc::LogSumExp;
+use crate::data::Datum;
+use crate::data::SummaryStatistics;
+use crate::index::extract_col_pair;
+use crate::index::extract_colixs;
+use crate::index::extract_row_pair;
+use crate::index::ColumnIndex;
+use crate::index::RowIndex;
+use crate::interface::oracle::error::SurprisalError;
+use crate::interface::oracle::ConditionalEntropyType;
+use crate::interface::oracle::MiComponents;
+use crate::interface::oracle::MiType;
+use crate::interface::CanOracle;
+use crate::interface::Given;
+use crate::stats::SampleError;
 
 macro_rules! col_indices_ok  {
     ($n_cols:expr, $col_ixs:expr, $($err_variant:tt)+) => {{
@@ -98,7 +114,7 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_cc::feature::FType;
+    /// # use lace::cc::feature::FType;
     /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -141,7 +157,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::SummaryStatistics;
+    /// use lace::data::SummaryStatistics;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -780,7 +796,7 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use lace::examples::Example;
-    /// # use lace_cc::feature::FType;
+    /// # use lace::cc::feature::FType;
     /// use lace::examples::animals::Column;
     /// use lace::OracleT;
     ///
@@ -1031,7 +1047,7 @@ pub trait OracleT: CanOracle {
         }
 
         // The target is a predictor, which means there is no left over entropy
-        if cols_x.iter().any(|&ix| ix == col_t) {
+        if cols_x.contains(&col_t) {
             return Ok(0.0);
         }
 
@@ -1176,12 +1192,12 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::Datum;
+    /// use lace::data::Datum;
     /// use lace::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let present = Datum::Categorical(1_u8.into());
+    /// let present = Datum::Categorical(1_u32.into());
     ///
     /// let s_pig = oracle.surprisal(
     ///     &present,
@@ -1284,13 +1300,13 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::Datum;
+    /// use lace::data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// let x = oracle.datum("pig", "fierce").unwrap();
     ///
-    /// assert_eq!(x, Datum::Categorical(1_u8.into()));
+    /// assert_eq!(x, Datum::Categorical(1_u32.into()));
     /// ```
     ///
     /// Getting data from the satellites dataset
@@ -1298,7 +1314,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
     /// let x = oracle.datum(
@@ -1354,14 +1370,14 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::Datum;
+    /// use lace::data::Datum;
     /// use lace::Given;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// let logp_swims = oracle.logp(
     ///     &["swims"],
-    ///     &[vec![Datum::Categorical(0_u8.into())], vec![Datum::Categorical(1_u8.into())]],
+    ///     &[vec![Datum::Categorical(0_u32.into())], vec![Datum::Categorical(1_u32.into())]],
     ///     &Given::<usize>::Nothing,
     ///     None,
     /// ).unwrap();
@@ -1369,11 +1385,11 @@ pub trait OracleT: CanOracle {
     /// let logp_swims_given_flippers = oracle.logp(
     ///     &["swims"],
     ///     &[
-    ///         vec![Datum::Categorical(0_u8.into())],
-    ///         vec![Datum::Categorical(1_u8.into())]
+    ///         vec![Datum::Categorical(0_u32.into())],
+    ///         vec![Datum::Categorical(1_u32.into())]
     ///     ],
     ///     &Given::Conditions(
-    ///         vec![("flippers", Datum::Categorical(1_u8.into()))]
+    ///         vec![("flippers", Datum::Categorical(1_u32.into()))]
     ///     ),
     ///     None,
     /// ).unwrap();
@@ -1402,7 +1418,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::Given;
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
@@ -1426,7 +1442,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::Given;
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
@@ -1487,9 +1503,7 @@ pub trait OracleT: CanOracle {
             })?;
 
         match state_ixs_opt {
-            Some(state_ixs) if state_ixs.is_empty() => {
-                Err(error::LogpError::NoStateIndices)
-            }
+            Some([]) => Err(error::LogpError::NoStateIndices),
             Some(state_ixs) => state_indices_ok!(
                 self.n_states(),
                 state_ixs,
@@ -1541,7 +1555,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let logp_scaled = oracle.logp_scaled(
     ///     &["swims"],
-    ///     &[vec![Datum::Categorical(0_u8.into())]],
+    ///     &[vec![Datum::Categorical(0_u32.into())]],
     ///     &Given::<usize>::Nothing,
     ///     None,
     /// ).unwrap()[0];
@@ -1576,9 +1590,7 @@ pub trait OracleT: CanOracle {
             })?;
 
         match state_ixs_opt {
-            Some(state_ixs) if state_ixs.is_empty() => {
-                Err(error::LogpError::NoStateIndices)
-            }
+            Some([]) => Err(error::LogpError::NoStateIndices),
             Some(state_ixs) => state_indices_ok!(
                 self.n_states(),
                 state_ixs,
@@ -1608,7 +1620,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     /// let xs = oracle.draw("pig", "fierce", 12, &mut rng).unwrap();
     ///
     /// assert_eq!(xs.len(), 12);
@@ -1671,16 +1683,16 @@ pub trait OracleT: CanOracle {
     /// # use lace::examples::Example;
     /// use lace::OracleT;
     /// use lace::Given;
-    /// use lace_data::Datum;
+    /// use lace::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     ///
     /// let given = Given::Conditions(
     ///     vec![
-    ///         ("fierce", Datum::Categorical(1_u8.into())),
-    ///         ("fast", Datum::Categorical(1_u8.into())),
+    ///         ("fierce", Datum::Categorical(1_u32.into())),
+    ///         ("fast", Datum::Categorical(1_u32.into())),
     ///     ]
     /// );
     ///
@@ -1768,7 +1780,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
-    /// use lace_data::Datum;
+    /// use lace::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1784,8 +1796,8 @@ pub trait OracleT: CanOracle {
     ///     true,
     /// ).unwrap();
     ///
-    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1_u8.into()));
-    /// assert_eq!(bear_swims.0, Datum::Categorical(1_u8.into()));
+    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1_u32.into()));
+    /// assert_eq!(bear_swims.0, Datum::Categorical(1_u32.into()));
     ///
     /// let dolphin_swims_unc = dolphin_swims.1.unwrap();
     /// let bear_swims_unc = bear_swims.1.unwrap();
@@ -1800,7 +1812,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::{Datum, Category};
+    /// # use lace::data::{Datum, Category};
     /// let oracle = Example::Satellites.oracle().unwrap();
     ///
     /// let (imp, _) = oracle.impute(
@@ -1815,7 +1827,7 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use lace::examples::Example;
     /// # use lace::OracleT;
-    /// # use lace_data::{Datum, Category};
+    /// # use lace::data::{Datum, Category};
     /// # let oracle = Example::Satellites.oracle().unwrap();
     /// let (imp, unc): (Datum, Option<f64>) = oracle.impute(
     ///     "X-Sat",
@@ -1842,7 +1854,7 @@ pub trait OracleT: CanOracle {
             FType::Categorical => {
                 let x = utils::categorical_impute(&states, row_ix, col_ix);
                 let cat =
-                    utils::u8_to_category(x, col_ix, self.codebook()).unwrap();
+                    utils::u32_to_category(x, col_ix, self.codebook()).unwrap();
                 Datum::Categorical(cat)
             }
             FType::Count => {
@@ -2040,8 +2052,9 @@ pub trait OracleT: CanOracle {
                 }
                 FType::Categorical => {
                     let x = utils::categorical_predict(&states, col_ix, &given);
-                    let cat = utils::u8_to_category(x, col_ix, self.codebook())
-                        .unwrap();
+                    let cat =
+                        utils::u32_to_category(x, col_ix, self.codebook())
+                            .unwrap();
                     Datum::Categorical(cat)
                 }
                 FType::Count => {
@@ -2080,7 +2093,9 @@ pub trait OracleT: CanOracle {
         given: &Given<GIx>,
         state_ixs_opt: Option<&[usize]>,
     ) -> Result<Variability, error::VariabilityError> {
-        use crate::stats::rv::traits::{Entropy, Variance};
+        use rv::traits::Entropy;
+        use rv::traits::Variance;
+
         use crate::stats::MixtureType;
 
         let states: Vec<&State> = if let Some(state_ixs) = state_ixs_opt {
@@ -2114,7 +2129,7 @@ pub trait OracleT: CanOracle {
                     .map(|(&w1, &w2)| w1 + w2)
                     .collect();
 
-                let z: f64 = logsumexp(&mm_weights);
+                let z: f64 = mm_weights.iter().logsumexp();
                 mm_weights.iter_mut().for_each(|w| *w = (*w - z).exp());
 
                 state.views[view_ix].ftrs[&col_ix].to_mixture(mm_weights)
@@ -2221,9 +2236,13 @@ pub trait OracleT: CanOracle {
                 .cell(row_ix, col_ix)
                 .to_f64_opt())
         } else if ftype.is_categorical() {
-            feature_err_arm!(self, col_ix, Categorical, u8, |row_ix, col_ix| {
-                self.cell(row_ix, col_ix).to_u8_opt()
-            })
+            feature_err_arm!(
+                self,
+                col_ix,
+                Categorical,
+                u32,
+                |row_ix, col_ix| { self.cell(row_ix, col_ix).to_u32_opt() }
+            )
         } else {
             panic!("Unsupported feature type");
         };
@@ -2316,7 +2335,7 @@ pub trait OracleT: CanOracle {
 
         let n_states = state_ixs.len();
 
-        let logps: Vec<f64> = state_ixs
+        let logp = state_ixs
             .iter()
             .map(|&ix| {
                 let state = &self.states()[ix];
@@ -2324,8 +2343,8 @@ pub trait OracleT: CanOracle {
                 let k = state.views[view_ix].asgn().asgn[row_ix];
                 state.views[view_ix].ftrs[&col_ix].cpnt_logp(&x, k)
             })
-            .collect();
-        let s = -logsumexp(&logps) + (n_states as f64).ln();
+            .logsumexp();
+        let s = -logp + (n_states as f64).ln();
         Some(s)
     }
 

@@ -1,15 +1,23 @@
 use std::convert::TryInto;
 
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use criterion::BatchSize;
 use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main};
-use rand::{Rng, SeedableRng};
+use lace::cc::state::Builder;
+use lace::codebook::Codebook;
+use lace::codebook::ColMetadata;
+use lace::codebook::ColMetadataList;
+use lace::codebook::ColType;
+use lace::data::Datum;
+use lace::Engine;
+use lace::Row;
+use lace::Value;
+use lace::WriteMode;
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-
-use lace::{Engine, Row, Value, WriteMode};
-use lace_cc::state::Builder;
-use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
-use lace_data::Datum;
 
 // build a one-state Engine
 fn build_engine(nrows: usize, ncols: usize) -> Engine {
@@ -62,14 +70,14 @@ fn build_engine(nrows: usize, ncols: usize) -> Engine {
 }
 
 fn build_rows(nrows: usize, ncols: usize) -> Vec<Row<String, String>> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     (0..nrows)
         .map(|row_ix| Row {
             row_ix: format!("{}", row_ix),
             values: (0..ncols)
                 .map(|col_ix| Value {
                     col_ix: format!("{}", col_ix),
-                    value: Datum::Continuous(rng.gen()),
+                    value: Datum::Continuous(rng.random()),
                 })
                 .collect(),
         })

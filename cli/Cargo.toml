@@ -1,10 +1,10 @@
 [package]
 name = "lace-cli"
 version = "0.8.0"
-authors = ["Promised AI"]
+authors = ["Redpoll"]
 edition = "2021"
 rust-version = "1.62.0"
-license = "BUSL-1.1"
+license = "MIT"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
 description = "A probabilistic cross-categorization engine"
@@ -17,7 +17,10 @@ name = "lace"
 path = "src/main.rs"
 
 [dependencies]
-lace = { path = "../lace", version = "0.8.0", features = ["formats", "ctrlc_handler"]}
+lace = { path = "../lace", version = "0.9.0", features = [
+  "formats",
+  "ctrlc_handler",
+] }
 clap = { version = "4.3.17", features = ["derive"] }
 env_logger = "0.10"
 serde_yaml = "0.9.4"

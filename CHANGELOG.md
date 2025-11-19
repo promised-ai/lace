@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [rust-0.9.0] - 2025-11-19
+
+### Changed
+
+- *Prior version metadata is incompatible with this version*
+- Updated `rv`, `polars`, and `rand` dependencies
+- Removed all subcrates and collapsed into single `lace` crate
+- Categorical variables can take on more than 256 distinct values because
+  categorical data are now represented with `u32` instead of `u8`.
+
+## [python-0.9.0] - 2025-11-19
+
+### Changed
+- Prior version metadata is incompatible with this version
+- Updated to lace 0.9.0
+- Categorical variables can take on more than 256 distinct values
+- Updated pyarrow to 22
+
 ## [rust-0.8.0] - 2024-04-10
 
 ### Added
@@ -295,16 +313,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [python-0.1.0] - 2023-04-24
 
 ### Added
-
-Initial release on [PyPi](https://pypi.org/)
+- Initial release on [PyPi](https://pypi.org/)
 
 ## [rust-0.1.0] - 2023-04-20
 
 ### Added
-
-Initial release on [crates.io](https://crates.io/)
+- Initial release on [crates.io](https://crates.io/)
 
 [unreleased]: https://github.com/promised-ai/lace/compare/python-0.8.0...HEAD
+[rust-0.9.0]: https://github.com/promised-ai/lace/compare/rust-0.8.0...rust-0.9.0
+[python-0.9.0]: https://github.com/promised-ai/lace/compare/python-0.8.0...python-0.9.0
 [rust-0.8.0]: https://github.com/promised-ai/lace/compare/rust-0.7.0...rust-0.8.0
 [python-0.8.0]: https://github.com/promised-ai/lace/compare/python-0.7.1...python-0.8.0
 [python-0.7.1]: https://github.com/promised-ai/lace/compare/python-0.7.0...python-0.7.1

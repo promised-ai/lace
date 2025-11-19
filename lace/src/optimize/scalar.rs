@@ -1,5 +1,7 @@
-use lace_utils::{argmin, sign};
 use num::Float;
+
+use crate::utils::argmin;
+use crate::utils::sign;
 
 /// The method by which to optimize
 pub enum Method {
@@ -248,14 +250,14 @@ where
                 b = x;
             }
 
-            if (fu <= fnfc) || (nfc - xf).abs() < std::f64::EPSILON {
+            if (fu <= fnfc) || (nfc - xf).abs() < f64::EPSILON {
                 fulc = nfc;
                 ffulc = fnfc;
                 nfc = x;
                 fnfc = fu;
             } else if (fu <= ffulc)
-                || (fulc - xf).abs() < std::f64::EPSILON
-                || (fulc - nfc).abs() < std::f64::EPSILON
+                || (fulc - xf).abs() < f64::EPSILON
+                || (fulc - nfc).abs() < f64::EPSILON
             {
                 fulc = x;
                 ffulc = fu;
@@ -300,8 +302,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     const TOL: f64 = 1E-8;
 

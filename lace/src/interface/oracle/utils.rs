@@ -1,30 +1,39 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
-use std::convert::{TryFrom, TryInto};
-use std::f64::{INFINITY, NEG_INFINITY};
-use std::fs::File;
+use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::hash::Hash;
-use std::io::Read;
-use std::path::Path;
 
-use crate::cc::feature::{ColModel, FType, Feature};
-use crate::cc::state::State;
-use crate::codebook::Codebook;
-use crate::stats::rv::dist::{
-    Bernoulli, Categorical, Gaussian, Mixture, Poisson,
-};
-use crate::stats::rv::traits::{Entropy, Mode, QuadBounds, Rv, Variance};
-use crate::stats::MixtureType;
-use lace_consts::rv::misc::logsumexp;
-use lace_data::{Category, Datum};
-use lace_utils::{argmax, transpose};
+use rv::dist::Bernoulli;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::dist::Poisson;
+use rv::traits::Entropy;
+use rv::traits::HasDensity;
+use rv::traits::Mode;
+use rv::traits::QuadBounds;
+use rv::traits::Sampleable;
+use rv::traits::Variance;
 
 use super::error::IndexError;
+use crate::cc::feature::ColModel;
+use crate::cc::feature::FType;
+use crate::cc::feature::Feature;
+use crate::cc::state::State;
+use crate::codebook::Codebook;
+use crate::consts::rv::misc::LogSumExp;
+use crate::data::Category;
+use crate::data::Datum;
 use crate::interface::Given;
-use crate::optimize::{fmin_bounded, fmin_brute};
+use crate::optimize::fmin_bounded;
+use crate::optimize::fmin_brute;
+use crate::stats::MixtureType;
+use crate::utils::argmax;
+use crate::utils::transpose;
 
-pub(crate) fn u8_to_category(
-    x: u8,
+pub(crate) fn u32_to_category(
+    x: u32,
     col_ix: usize,
     codebook: &Codebook,
 ) -> Option<Category> {
@@ -58,7 +67,7 @@ pub(crate) fn pre_process_datum(
 
         value_map
             .ix(&cat)
-            .map(|u| Datum::Categorical(Category::U8(u as u8)))
+            .map(|u| Datum::Categorical(Category::UInt(u as u32)))
             .ok_or(IndexError::CategoryIndexNotFound { col_ix, cat })
     } else {
         Ok(x)
@@ -83,10 +92,10 @@ pub(crate) fn post_process_datum(
     col_ix: usize,
     codebook: &Codebook,
 ) -> Datum {
-    if let Datum::Categorical(Category::U8(x_u8)) = x {
+    if let Datum::Categorical(Category::UInt(x_u32)) = x {
         codebook
             .value_map(col_ix)
-            .map(|map| map.category(x_u8 as usize))
+            .map(|map| map.category(x_u32 as usize))
             .map(Datum::Categorical)
             .unwrap_or(x)
     } else {
@@ -283,7 +292,7 @@ where
                 );
                 self.state_logps[i] = logp;
             });
-        let logp = logsumexp(&self.state_logps) - ln_n;
+        let logp = self.state_logps.iter().logsumexp() - ln_n;
         if self.scaled {
             // Geometric mean
             Some(logp / self.col_ixs.len() as f64)
@@ -316,7 +325,10 @@ where
     }
 }
 
-pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
+#[cfg(test)]
+pub fn load_states<P: AsRef<std::path::Path>>(filenames: Vec<P>) -> Vec<State> {
+    use std::fs::File;
+    use std::io::Read;
     filenames
         .iter()
         .map(|path| {
@@ -338,8 +350,8 @@ pub fn gen_sobol_samples(
     state: &State,
     n: usize,
 ) -> (Vec<Vec<Datum>>, f64) {
-    use lace_stats::seq::SobolSeq;
-    use lace_stats::QmcEntropy;
+    use crate::stats::seq::SobolSeq;
+    use crate::stats::QmcEntropy;
 
     let features: Vec<_> =
         col_ixs.iter().map(|&ix| state.feature(ix)).collect();
@@ -375,18 +387,6 @@ pub fn given_weights(
     states
         .iter()
         .map(|state| single_state_weights(state, col_ixs, given))
-        .collect()
-}
-
-#[inline]
-pub fn given_exp_weights(
-    states: &[&State],
-    col_ixs: &[usize],
-    given: &Given<usize>,
-) -> Vec<BTreeMap<usize, Vec<f64>>> {
-    states
-        .iter()
-        .map(|state| single_state_exp_weights(state, col_ixs, given))
         .collect()
 }
 
@@ -474,7 +474,7 @@ fn single_view_weights(
                     );
                 }
             }
-            let z = logsumexp(&weights);
+            let z = weights.iter().logsumexp();
             weights.iter_mut().for_each(|w| *w -= z);
         }
         Given::Nothing => (),
@@ -560,7 +560,7 @@ pub fn state_logp(
 
             // normalize view weights
             for weights in view_weights.values_mut() {
-                let logz = logsumexp(weights);
+                let logz = weights.iter().logsumexp();
                 weights.iter_mut().for_each(|w| *w -= logz);
             }
             vals.iter()
@@ -598,7 +598,10 @@ fn single_val_logp(
             );
         });
 
-    view_weights.values().map(|logps| logsumexp(logps)).sum()
+    view_weights
+        .values()
+        .map(|logps| logps.iter().logsumexp())
+        .sum()
 }
 pub fn state_likelihood(
     state: &State,
@@ -674,9 +677,10 @@ fn impute_bounds(states: &[&State], col_ix: usize) -> (f64, f64) {
     states
         .iter()
         .map(|state| state.impute_bounds(col_ix).unwrap())
-        .fold((INFINITY, NEG_INFINITY), |(min, max), (lower, upper)| {
-            (min.min(lower), max.max(upper))
-        })
+        .fold(
+            (f64::INFINITY, f64::NEG_INFINITY),
+            |(min, max), (lower, upper)| (min.min(lower), max.max(upper)),
+        )
 }
 
 pub fn continuous_impute(
@@ -697,11 +701,7 @@ pub fn continuous_impute(
     if cpnts.len() == 1 {
         cpnts[0].mu()
     } else {
-        let f = |x: f64| {
-            let logfs: Vec<f64> =
-                cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).collect();
-            -logsumexp(&logfs)
-        };
+        let f = |x: f64| -cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).logsumexp();
 
         let bounds = impute_bounds(states, col_ix);
         let n_grid = 100;
@@ -715,7 +715,7 @@ pub fn categorical_impute(
     states: &[&State],
     row_ix: usize,
     col_ix: usize,
-) -> u8 {
+) -> u32 {
     let cpnts: Vec<Categorical> = states
         .iter()
         .map(|state| {
@@ -728,18 +728,15 @@ pub fn categorical_impute(
 
     let k = cpnts[0].k();
     let fs: Vec<f64> = (0..k)
-        .map(|x| {
-            let logfs: Vec<f64> =
-                cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).collect();
-            logsumexp(&logfs)
-        })
+        .map(|x| cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).logsumexp())
         .collect();
-    argmax(&fs) as u8
+    argmax(&fs) as u32
 }
 
 pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
-    use lace_stats::rv::traits::Mean;
-    use lace_utils::MinMax;
+    use rv::traits::Mean;
+
+    use crate::utils::MinMax;
 
     let cpnts: Vec<Poisson> = states
         .iter()
@@ -817,8 +814,8 @@ where
             match (&state, (mode, std)) {
                 ((Some(m1), s1), (Some(m2), s2)) => {
                     if (m2 - *m1)
-                        > (m * s1.unwrap_or(INFINITY))
-                            .min(m * s2.unwrap_or(INFINITY))
+                        > (m * s1.unwrap_or(f64::INFINITY))
+                            .min(m * s2.unwrap_or(f64::INFINITY))
                     {
                         state = (mode, std);
                         Some(m2)
@@ -875,12 +872,13 @@ pub fn categorical_gaussian_entropy_dual(
     col_gauss: usize,
     states: &[State],
 ) -> f64 {
-    use crate::cc::feature::MissingNotAtRandom;
-    use lace_stats::rv::misc::{
-        gauss_legendre_quadrature_cached, gauss_legendre_table,
-    };
     use std::cell::RefCell;
     use std::collections::HashMap;
+
+    use rv::misc::gauss_legendre_quadrature_cached;
+    use rv::misc::gauss_legendre_table;
+
+    use crate::cc::feature::MissingNotAtRandom;
 
     // get a mixture model of the Gaussian component to compute the quad points
     let (dep_weight, gm_dep, gm_ind) =
@@ -889,14 +887,14 @@ pub fn categorical_gaussian_entropy_dual(
         dep_ind_col_mixtures!(states, col_cat, col_gauss, Categorical);
 
     // Get the number of values the categorical column support. Can never exceed
-    // u8::MAX (255).
+    // u32::MAX.
     let cat_k = match states[0].feature(col_cat) {
-        ColModel::Categorical(cm) => u8::try_from(cm.prior.k())
-            .expect("Categorical k exceeded u8 max value"),
+        ColModel::Categorical(cm) => u32::try_from(cm.prior.k())
+            .expect("Categorical k exceeded u32 max value"),
         ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
             if let ColModel::Categorical(cm) = &**fx {
-                u8::try_from(cm.prior.k())
-                    .expect("Categorical k exceeded u8 max value")
+                u32::try_from(cm.prior.k())
+                    .expect("Categorical k exceeded u32 max value")
             } else {
                 panic!("Expected MissingNotAtRandom Categorical")
             }
@@ -991,13 +989,11 @@ pub fn categorical_gaussian_entropy_dual(
                     });
                     // This does manually what state_logp does, but this is
                     // faster because it's less general
-                    let cpnts: Vec<f64> = dep_cat_fs
+                    let ln_f = dep_cat_fs
                         .iter()
                         .zip(ln_fys)
                         .map(|(w, g)| w + *g)
-                        .collect();
-
-                    let ln_f = logsumexp(&cpnts);
+                        .logsumexp();
 
                     // If we do not have independent components, we do not have
                     // to compute the weighted sum of the two scenarios, so we
@@ -1037,10 +1033,12 @@ pub fn categorical_gaussian_entropy_dual(
 
                 // add the weighted sums of the independent-columns mixture and
                 // the dependent-columns mixture
-                let ln_f = logsumexp(&[
+                let ln_f = [
                     dep_weight.ln() + dep_cpnt,
                     (1.0 - dep_weight).ln() + ind_cpnt,
-                ]);
+                ]
+                .iter()
+                .logsumexp();
 
                 ln_f * ln_f.exp()
             };
@@ -1099,15 +1097,15 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
                 .component(0, ix)
                 .try_into()
                 .expect("Unexpected column type");
-            cpnt.k() as u8
+            cpnt.k() as u32
         })
         .collect();
 
-    let vals: Vec<_> = lace_utils::CategoricalCartProd::new(ranges)
+    let vals: Vec<_> = crate::utils::CategoricalCartProd::new(ranges)
         .map(|mut xs| {
             let vals: Vec<_> = xs
                 .drain(..)
-                .map(|x| Datum::Categorical(Category::U8(x)))
+                .map(|x| Datum::Categorical(Category::UInt(x)))
                 .collect();
             vals
         })
@@ -1125,7 +1123,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(lps) - ln_n_states)
+        .map(|lps| lps.iter().logsumexp() - ln_n_states)
         .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
 }
 
@@ -1171,8 +1169,8 @@ pub fn categorical_entropy_dual(
     for i in 0..k_a {
         for j in 0..k_b {
             vals.push(vec![
-                Datum::Categorical(Category::U8(i as u8)),
-                Datum::Categorical(Category::U8(j as u8)),
+                Datum::Categorical(Category::UInt(i as u32)),
+                Datum::Categorical(Category::UInt(j as u32)),
             ]);
         }
     }
@@ -1210,7 +1208,8 @@ pub fn categorical_entropy_dual(
 
 // Finds the first x such that
 fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
-    use lace_stats::rv::traits::{Cdf, Mean};
+    use rv::traits::Cdf;
+    use rv::traits::Mean;
 
     let lower_threshold = (1.0 - mass) / 2.0;
     let upper_threshold = mass - (1.0 - mass) / 2.0;
@@ -1302,7 +1301,7 @@ pub fn count_entropy_dual(col_a: usize, col_b: usize, states: &[State]) -> f64 {
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(lps) - ln_n_states)
+        .map(|lps| lps.iter().logsumexp() - ln_n_states)
         .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
 }
 
@@ -1353,7 +1352,7 @@ pub fn continuous_predict(
                     .map(|(&w1, &w2)| w1 + w2)
                     .collect();
 
-                let z: f64 = logsumexp(&mm_weights);
+                let z: f64 = mm_weights.iter().logsumexp();
                 mm_weights.iter_mut().for_each(|w| *w = (*w - z).exp());
 
                 match state.views[view_ix].ftrs[&col_ix].to_mixture(mm_weights)
@@ -1412,16 +1411,16 @@ pub fn categorical_predict(
     states: &[&State],
     col_ix: usize,
     given: &Given<usize>,
-) -> u8 {
+) -> u32 {
     use crate::cc::feature::MissingNotAtRandom;
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let state_weights = state_weights(states, &col_ixs, given);
 
-    let f = |x: u8| {
+    let f = |x: u32| {
         let y: Vec<Vec<Datum>> =
-            vec![vec![Datum::Categorical(Category::U8(x))]];
-        let scores: Vec<f64> = states
+            vec![vec![Datum::Categorical(Category::UInt(x))]];
+        states
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
@@ -1434,15 +1433,14 @@ pub fn categorical_predict(
                     false,
                 )[0]
             })
-            .collect();
-        logsumexp(&scores)
+            .logsumexp()
     };
 
-    let k: u8 = match states[0].feature(col_ix) {
-        ColModel::Categorical(ftr) => ftr.prior.k() as u8,
+    let k: u32 = match states[0].feature(col_ix) {
+        ColModel::Categorical(ftr) => ftr.prior.k() as u32,
         ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
             if let ColModel::Categorical(ref ftr) = **fx {
-                ftr.prior.k() as u8
+                ftr.prior.k() as u32
             } else {
                 panic!("FType mismatch for categorical MNAR prediction")
             }
@@ -1451,7 +1449,7 @@ pub fn categorical_predict(
     };
 
     let fs: Vec<f64> = (0..k).map(f).collect();
-    argmax(&fs) as u8
+    argmax(&fs) as u32
 }
 
 pub fn count_predict(
@@ -1465,7 +1463,7 @@ pub fn count_predict(
 
     let ln_fx = |x: u32| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Count(x)]];
-        let scores: Vec<f64> = states
+        states
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
@@ -1478,8 +1476,7 @@ pub fn count_predict(
                     false,
                 )[0]
             })
-            .collect();
-        logsumexp(&scores)
+            .logsumexp()
     };
 
     let (lower, upper) = {
@@ -1513,7 +1510,7 @@ macro_rules! predunc_arm {
                 let mut mixture: Mixture<$cpnt_type> =
                     state.feature_as_mixture($col_ix).into();
 
-                let z = logsumexp(&weights);
+                let z = weights.iter().logsumexp();
 
                 let new_weights =
                     weights.iter().map(|w| (w - z).exp()).collect();
@@ -1569,7 +1566,7 @@ pub(crate) fn mnar_uncertainty(
                     let mut weights =
                         single_view_weights(state, view_ix, given);
                     // exp and normalize the weights so they sum to 1
-                    let z = logsumexp(&weights);
+                    let z = weights.iter().logsumexp();
                     weights
                         .drain(..)
                         .map(|ln_w| (ln_w - z).exp())
@@ -1676,8 +1673,9 @@ pub fn impute_uncertainty(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
+
+    use super::*;
 
     const TOL: f64 = 1E-8;
 
@@ -1723,7 +1721,7 @@ mod tests {
 
         let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k);
         for i in 0..k {
-            vals.push(vec![Datum::Categorical((i as u8).into())]);
+            vals.push(vec![Datum::Categorical((i as u32).into())]);
         }
 
         let logps: Vec<Vec<f64>> = states
@@ -1744,7 +1742,7 @@ mod tests {
 
         transpose(&logps)
             .iter()
-            .map(|lps| logsumexp(lps) - ln_n_states)
+            .map(|lps| lps.iter().logsumexp() - ln_n_states)
             .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
     }
 
@@ -1767,7 +1765,7 @@ mod tests {
         let target = {
             let mut unnormed_targets =
                 vec![-2.857_054_917_013_031_5, -16.598_938_533_204_67];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             unnormed_targets.iter_mut().for_each(|w| *w -= z);
             unnormed_targets
         };
@@ -1857,7 +1855,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-3.158_958_368_120_129, -1.926_578_447_516_985];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights_0[0], targets[0], epsilon = TOL);
@@ -1867,7 +1865,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-4.095_863_302_766_923, -0.417_781_136_933_142_9];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights_1[0], targets[0], epsilon = TOL);
@@ -1913,7 +1911,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-5.669_175_767_690_254, -9.304_554_786_193_446];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights_0[0], targets[0], epsilon = TOL);
@@ -1941,7 +1939,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-5.669_175_767_690_254, -9.304_554_786_193_446];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights[&0][0], targets[0], epsilon = TOL);
@@ -1951,7 +1949,7 @@ mod tests {
         {
             let unnormed_targets =
                 vec![-4.095_863_302_766_923, -0.417_781_136_933_142_9];
-            let z = logsumexp(&unnormed_targets);
+            let z = unnormed_targets.iter().logsumexp();
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
             assert_relative_eq!(weights[&1][0], targets[0], epsilon = TOL);
@@ -2189,21 +2187,21 @@ mod tests {
     #[test]
     fn single_state_categorical_impute_1() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_impute(&[&state], 0, 0);
+        let x: u32 = categorical_impute(&[&state], 0, 0);
         assert_eq!(x, 2);
     }
 
     #[test]
     fn single_state_categorical_impute_2() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_impute(&[&state], 2, 0);
+        let x: u32 = categorical_impute(&[&state], 2, 0);
         assert_eq!(x, 0);
     }
 
     #[test]
     fn single_state_categorical_predict_1() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_predict(&[&state], 0, &Given::Nothing);
+        let x: u32 = categorical_predict(&[&state], 0, &Given::Nothing);
         assert_eq!(x, 2);
     }
 

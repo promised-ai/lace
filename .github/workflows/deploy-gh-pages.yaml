@@ -37,7 +37,7 @@ jobs:
 
       - name: Install mdBook
         run: |
-          cargo install mdbook
+          cargo install mdbook --version ^0.4
 
       - name: Setup Pages
         id: pages
@@ -48,7 +48,7 @@ jobs:
 
       - name: Upload artifact
         if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }} # Don't bother uploading the artifact unless we're on master
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ./html
 

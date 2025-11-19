@@ -9,13 +9,14 @@
 
 #[cfg(feature = "formats")]
 mod requires_formats {
-    use clap::Parser;
-    use rand::{Rng, SeedableRng};
-    use rand_distr::Uniform;
     use std::io;
-    use tempfile::NamedTempFile;
 
+    use clap::Parser;
     use lace::prelude::*;
+    use rand::Rng;
+    use rand::SeedableRng;
+    use rand_distr::Uniform;
+    use tempfile::NamedTempFile;
 
     #[derive(Debug, Parser)]
     struct Opt {
@@ -40,7 +41,7 @@ mod requires_formats {
         fileout: &mut W,
         rng: &mut R,
     ) -> io::Result<(Vec<f64>, Vec<f64>)> {
-        let unif = Uniform::new(-1.0, 1.0);
+        let unif = Uniform::new(-1.0, 1.0).unwrap();
 
         let mut n_collected: usize = 0;
         let mut xs = Vec::with_capacity(n);
@@ -68,8 +69,11 @@ mod requires_formats {
         ys_sim: Vec<f64>,
     ) {
         use plotly::common::Mode;
-        use plotly::layout::{GridPattern, Layout, LayoutGrid};
-        use plotly::{Plot, Scatter};
+        use plotly::layout::GridPattern;
+        use plotly::layout::Layout;
+        use plotly::layout::LayoutGrid;
+        use plotly::Plot;
+        use plotly::Scatter;
 
         let trace1 =
             Scatter::new(xs_in, ys_in).name("Input").mode(Mode::Markers);
@@ -100,7 +104,7 @@ mod requires_formats {
 
         // generate csv data
         println!("Generating data");
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut f = NamedTempFile::new().unwrap();
         let (xs_in, ys_in) =
             gen_ring(opt.n, opt.scale, opt.width, &mut f, &mut rng).unwrap();
@@ -108,7 +112,7 @@ mod requires_formats {
 
         // generate codebook
         println!("Generating codebook");
-        let codebook = lace_codebook::data::codebook_from_csv(
+        let codebook = lace::codebook::data::codebook_from_csv(
             f.path(),
             None,
             None,
@@ -124,7 +128,7 @@ mod requires_formats {
             codebook,
             DataSource::Csv(f.path().into()),
             0,
-            rand_xoshiro::Xoshiro256Plus::from_entropy(),
+            rand_xoshiro::Xoshiro256Plus::from_os_rng(),
         )
         .unwrap();
 

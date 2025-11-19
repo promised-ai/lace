@@ -2,7 +2,8 @@
 use std::time::Duration;
 
 use lace::examples::Example;
-use lace::update_handler::{ProgressBar, Timeout};
+use lace::update_handler::ProgressBar;
+use lace::update_handler::Timeout;
 use lace::EngineUpdateConfig;
 
 fn main() {

@@ -274,10 +274,4 @@ You can monitor the progress of the training using diagnostic plots
 
 ## License
 
-Lace is licensed under the Business Source License v1.1, which restricts commercial use. See `LICENSE` for full details.
-
-If you would like a license for use in commercial please contact `lace@redpoll.ai`
-
-## Academic use
-
-Lace is free for academic use. Please cite lace according the the `CITATION.cff` metadata.
+Lace is licensed under the MIT licenses as of v0.9.0.

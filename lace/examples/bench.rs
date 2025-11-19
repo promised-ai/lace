@@ -4,7 +4,8 @@ fn main() {
 
     use lace::bencher::Bencher;
     use lace::prelude::*;
-    use lace_utils::{mean, std};
+    use lace::utils::mean;
+    use lace::utils::std;
 
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -16,7 +17,7 @@ fn main() {
     let coltype = ColType::Categorical {
         k: 3,
         hyper: None,
-        value_map: lace_codebook::ValueMap::U8(3),
+        value_map: lace::codebook::ValueMap::UInt(3),
         prior: None,
     };
 
@@ -41,7 +42,7 @@ fn main() {
         .n_iters(1)
         .n_runs(20);
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let result = bencher.run(&mut rng);
 

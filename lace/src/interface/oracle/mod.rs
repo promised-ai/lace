@@ -4,20 +4,24 @@ mod traits;
 pub mod utils;
 mod validation;
 
-pub use dataless::DatalessOracle;
-pub use traits::{OracleT, Variability};
-
 use std::path::Path;
 
-use lace_cc::state::State;
-use lace_codebook::Codebook;
-use lace_data::{DataStore, Datum, SummaryStatistics};
-use lace_metadata::latest::Metadata;
-use serde::{Deserialize, Serialize};
-
-use crate::{Engine, HasData, HasStates};
+pub use dataless::DatalessOracle;
+use serde::Deserialize;
+use serde::Serialize;
+pub use traits::OracleT;
+pub use traits::Variability;
 
 use super::HasCodebook;
+use crate::cc::state::State;
+use crate::codebook::Codebook;
+use crate::data::DataStore;
+use crate::data::Datum;
+use crate::data::SummaryStatistics;
+use crate::metadata::latest::Metadata;
+use crate::Engine;
+use crate::HasData;
+use crate::HasStates;
 
 /// Mutual Information Type
 #[derive(
@@ -163,11 +167,13 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .lace file
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, lace_metadata::Error> {
-        let metadata = lace_metadata::load_metadata(path)?;
+    pub fn load<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<Self, crate::metadata::Error> {
+        let metadata = crate::metadata::load_metadata(path)?;
         metadata
             .try_into()
-            .map_err(|err| lace_metadata::Error::Other(format!("{err}")))
+            .map_err(|err| crate::metadata::Error::Other(format!("{err}")))
     }
 }
 
@@ -204,18 +210,26 @@ impl HasCodebook for Oracle {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::Given;
-    use crate::{Oracle, OracleT};
-    use approx::*;
-    use lace_cc::feature::{FType, Feature};
-    use lace_codebook::{ColMetadata, ColType};
-    use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
-    use lace_stats::rv::traits::Rv;
-    use lace_stats::MixtureType;
-    use rand::Rng;
     use std::collections::BTreeMap;
     use std::path::Path;
+
+    use approx::*;
+    use rand::Rng;
+    use rv::dist::Categorical;
+    use rv::dist::Gaussian;
+    use rv::dist::Mixture;
+    use rv::traits::HasDensity;
+    use rv::traits::Sampleable;
+
+    use super::*;
+    use crate::cc::feature::FType;
+    use crate::cc::feature::Feature;
+    use crate::codebook::ColMetadata;
+    use crate::codebook::ColType;
+    use crate::stats::MixtureType;
+    use crate::Given;
+    use crate::Oracle;
+    use crate::OracleT;
 
     fn dummy_codebook_from_state(state: &State) -> Codebook {
         Codebook {
@@ -236,7 +250,7 @@ mod tests {
                             FType::Categorical => ColType::Categorical {
                                 k: 4,
                                 hyper: None,
-                                value_map: lace_codebook::ValueMap::U8(4),
+                                value_map: crate::codebook::ValueMap::UInt(4),
                                 prior: None,
                             },
                             FType::Count => ColType::Count {
@@ -416,7 +430,7 @@ mod tests {
         };
 
         for x in 0..4 {
-            let y = Datum::Categorical((x as u8).into());
+            let y = Datum::Categorical((x as u32).into());
             let logp_mm = mm.ln_f(&(x as usize));
             let logp_or = oracle
                 .logp(&[2], &[vec![y]], &Given::<usize>::Nothing, None)
@@ -428,7 +442,7 @@ mod tests {
     #[test]
     fn mixture_and_oracle_logp_equivalence_gaussian() {
         let oracle = get_oracle_from_yaml();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let mm: Mixture<Gaussian> = {
             let mixtures: Vec<_> = oracle
@@ -444,7 +458,7 @@ mod tests {
 
         for _ in 0..1000 {
             let x: f64 = {
-                let u: f64 = rng.gen();
+                let u: f64 = rng.random();
                 u * 3.0
             };
             let y = Datum::Continuous(x);
@@ -489,7 +503,7 @@ mod tests {
                     };
                     for val in 0..2 {
                         let logp_mm = mm.ln_f(&(val as usize));
-                        let datum = Datum::Categorical((val as u8).into());
+                        let datum = Datum::Categorical((val as u32).into());
                         let logp_or = oracle
                             .logp(
                                 &[col_ix],
@@ -612,7 +626,7 @@ mod tests {
             given: &Given<usize>,
             n: usize,
             states_ixs_opt: Option<Vec<usize>>,
-            mut rng: &mut impl Rng,
+            rng: &mut impl Rng,
         ) -> Vec<Vec<Datum>> {
             let state_ixs: Vec<usize> = match states_ixs_opt {
                 Some(state_ixs) => state_ixs,
@@ -627,7 +641,7 @@ mod tests {
             (0..n)
                 .map(|_| {
                     // choose a random state
-                    let draw_ix: usize = state_ixer.draw(&mut rng);
+                    let draw_ix: usize = state_ixer.draw(rng);
                     let state = states[draw_ix];
 
                     // for each view
@@ -639,7 +653,7 @@ mod tests {
                         let component_ixer =
                             Categorical::from_ln_weights(view_weights.clone())
                                 .unwrap();
-                        let k = component_ixer.draw(&mut rng);
+                        let k = component_ixer.draw(rng);
                         cpnt_ixs.insert(*view_ix, k);
                     }
 
@@ -649,8 +663,7 @@ mod tests {
                     col_ixs.iter().for_each(|col_ix| {
                         let view_ix = state.asgn().asgn[*col_ix];
                         let k = cpnt_ixs[&view_ix];
-                        let x =
-                            state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
+                        let x = state.views[view_ix].ftrs[col_ix].draw(k, rng);
                         xs.push(x);
                     });
                     utils::post_process_row(xs, col_ixs, oracle.codebook())
@@ -663,9 +676,10 @@ mod tests {
             given: &Given<usize>,
             state_ixs_opt: Option<Vec<usize>>,
         ) {
-            use crate::examples::Example;
             use rand::SeedableRng;
             use rand_xoshiro::Xoshiro256Plus;
+
+            use crate::examples::Example;
 
             let n: usize = 100;
             let oracle = Example::Satellites.oracle().unwrap();

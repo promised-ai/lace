@@ -4,21 +4,30 @@ mod given;
 mod metadata;
 mod oracle;
 
-pub use engine::{
-    update_handler, AppendStrategy, BuildEngineError, Engine, EngineBuilder,
-    InsertDataActions, InsertMode, OverwriteMode, Row, SupportExtension, Value,
-    WriteMode,
-};
-use lace_codebook::Codebook;
-pub use lace_metadata::latest::Metadata;
-pub use oracle::utils;
-
-pub use oracle::{
-    ConditionalEntropyType, DatalessOracle, MiComponents, MiType, Oracle,
-    OracleT, RowSimilarityVariant, Variability,
-};
-
+pub use engine::update_handler;
+pub use engine::AppendStrategy;
+pub use engine::BuildEngineError;
+pub use engine::Engine;
+pub use engine::EngineBuilder;
+pub use engine::InsertDataActions;
+pub use engine::InsertMode;
+pub use engine::OverwriteMode;
+pub use engine::Row;
+pub use engine::SupportExtension;
+pub use engine::Value;
+pub use engine::WriteMode;
 pub use given::Given;
+pub use oracle::ConditionalEntropyType;
+pub use oracle::DatalessOracle;
+pub use oracle::MiComponents;
+pub use oracle::MiType;
+pub use oracle::Oracle;
+pub use oracle::OracleT;
+pub use oracle::RowSimilarityVariant;
+pub use oracle::Variability;
+
+use crate::codebook::Codebook;
+pub use crate::metadata::latest::Metadata;
 
 pub mod error {
     pub use super::engine::error::*;
@@ -26,8 +35,9 @@ pub mod error {
     pub use super::oracle::error::*;
 }
 
-use lace_cc::state::State;
-use lace_data::{Datum, SummaryStatistics};
+use crate::cc::state::State;
+use crate::data::Datum;
+use crate::data::SummaryStatistics;
 
 /// Returns references to crosscat states
 pub trait HasStates {

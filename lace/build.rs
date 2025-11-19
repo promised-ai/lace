@@ -1,5 +1,6 @@
 use core::panic;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
 const DATASET_NAMES: [&str; 2] = ["animals", "satellites"];
 

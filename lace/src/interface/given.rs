@@ -1,22 +1,27 @@
+use std::collections::HashSet;
+use std::convert::TryInto;
+use std::hash::Hash;
+
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::codebook::Codebook;
 use crate::error::IndexError;
 use crate::index::ColumnIndex;
 use crate::interface::oracle::utils;
 use crate::Datum;
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::convert::TryInto;
-use std::hash::Hash;
 
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Hash)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum Given<Ix: ColumnIndex> {
     /// The conditions in `(column_id, value)` tuples. The tuple
     /// `(11, Datum::Continuous(2.3))` indicates that we wish to condition on
     /// the value of column 11 being 2.3.
     Conditions(Vec<(Ix, Datum)>),
     /// The absence of conditioning observations
+    #[default]
     Nothing,
 }
 
@@ -26,14 +31,14 @@ impl<Ix: ColumnIndex> Given<Ix> {
     /// # Example
     ///
     /// ```
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::Given;
     /// let nothing_given = Given::<usize>::Nothing;
     ///
     /// assert!(nothing_given.is_nothing());
     ///
     /// let something_given = Given::Conditions(
-    ///     vec![(1, Datum::Categorical(1_u8.into()))]
+    ///     vec![(1, Datum::Categorical(1_u32.into()))]
     /// );
     ///
     /// assert!(!something_given.is_nothing());
@@ -47,14 +52,14 @@ impl<Ix: ColumnIndex> Given<Ix> {
     /// # Example
     ///
     /// ```
-    /// # use lace_data::Datum;
+    /// # use lace::data::Datum;
     /// # use lace::Given;
     /// let nothing_given = Given::<usize>::Nothing;
     ///
     /// assert!(!nothing_given.is_conditions());
     ///
     /// let something_given = Given::Conditions(
-    ///     vec![(1, Datum::Categorical(1_u8.into()))]
+    ///     vec![(1, Datum::Categorical(1_u32.into()))]
     /// );
     ///
     /// assert!(something_given.is_conditions());
@@ -91,12 +96,6 @@ impl<Ix: ColumnIndex> Given<Ix> {
     }
 }
 
-impl<Ix: ColumnIndex> Default for Given<Ix> {
-    fn default() -> Self {
-        Self::Nothing
-    }
-}
-
 ///
 ///
 /// # Example
@@ -105,11 +104,11 @@ impl<Ix: ColumnIndex> Default for Given<Ix> {
 /// # use lace::Given;
 /// # use lace::error::IntoGivenError;
 /// use std::convert::TryInto;
-/// use lace_data::Datum;
+/// use lace::Datum;
 ///
 /// let conditions_good = vec![
-///     (0_usize, Datum::Categorical(0_u8.into())),
-///     (1_usize, Datum::Categorical(0_u8.into())),
+///     (0_usize, Datum::Categorical(0_u32.into())),
+///     (1_usize, Datum::Categorical(0_u32.into())),
 /// ];
 ///
 /// let given_good: Result<Given<usize>, IntoGivenError> = conditions_good.try_into();
@@ -117,8 +116,8 @@ impl<Ix: ColumnIndex> Default for Given<Ix> {
 ///
 /// // duplicate indices
 /// let conditions_bad = vec![
-///     (0_usize, Datum::Categorical(0_u8.into())),
-///     (0_usize, Datum::Categorical(0_u8.into())),
+///     (0_usize, Datum::Categorical(0_u32.into())),
+///     (0_usize, Datum::Categorical(0_u32.into())),
 /// ];
 /// let given_bad: Result<Given<usize>, IntoGivenError> = conditions_bad.try_into();
 ///

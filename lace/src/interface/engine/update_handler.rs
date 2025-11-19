@@ -1,15 +1,17 @@
-use std::{
-    collections::HashMap,
-    sync::{mpsc::Sender, Arc, Mutex, RwLock},
-    thread::JoinHandle,
-    time::{Duration, Instant},
-};
-
+use std::collections::HashMap;
 #[cfg(feature = "ctrlc_handler")]
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
+#[cfg(feature = "ctrlc_handler")]
+use std::sync::atomic::Ordering;
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::RwLock;
+use std::thread::JoinHandle;
+use std::time::Duration;
+use std::time::Instant;
 
-use lace_cc::state::State;
-
+use crate::cc::state::State;
 use crate::EngineUpdateConfig;
 
 /// Custom state inspector for `Engine::update`.
@@ -350,8 +352,9 @@ impl UpdateHandler for StateTimeout {
 impl UpdateHandler for () {}
 
 /// Add a progress bar to the output
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub enum ProgressBar {
+    #[default]
     UnInitialized,
     Initialized {
         sender: Arc<Mutex<Sender<(usize, f64)>>>,
@@ -361,12 +364,6 @@ pub enum ProgressBar {
 
 impl ProgressBar {
     pub fn new() -> Self {
-        Self::UnInitialized
-    }
-}
-
-impl Default for ProgressBar {
-    fn default() -> Self {
         Self::UnInitialized
     }
 }

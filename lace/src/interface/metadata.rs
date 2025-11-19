@@ -1,13 +1,15 @@
 use std::convert::TryFrom;
 
-use lace_cc::state::State;
-use lace_data::DataStore;
-use lace_metadata::latest;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
-use crate::{DatalessOracle, Engine, Oracle};
+use crate::cc::state::State;
+use crate::data::DataStore;
+use crate::metadata::latest;
+use crate::DatalessOracle;
+use crate::Engine;
+use crate::Oracle;
 
 impl From<Engine> for latest::Metadata {
     fn from(mut engine: Engine) -> Self {
@@ -89,7 +91,7 @@ impl TryFrom<latest::Metadata> for Engine {
             })
             .collect();
 
-        let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_entropy);
+        let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_os_rng);
 
         Ok(Self {
             state_ids: md.state_ids,
@@ -182,8 +184,12 @@ mod tests {
 
     #[test]
     fn engine_can_update_data_after() {
-        use crate::{InsertMode, OverwriteMode, Row, Value, WriteMode};
-        use lace_data::Datum;
+        use crate::data::Datum;
+        use crate::InsertMode;
+        use crate::OverwriteMode;
+        use crate::Row;
+        use crate::Value;
+        use crate::WriteMode;
 
         let engine_1 = Example::Animals.engine().unwrap();
         let serialized_1 = serde_yaml::to_string(&engine_1).unwrap();
@@ -194,7 +200,7 @@ mod tests {
             row_ix: "wolf".into(),
             values: vec![Value {
                 col_ix: "swims".into(),
-                value: Datum::Categorical(1_u8.into()),
+                value: Datum::Categorical(1_u32.into()),
             }],
         }];
 

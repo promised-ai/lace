@@ -1,6 +1,6 @@
+use lace::cc::alg::ColAssignAlg;
+use lace::cc::alg::RowAssignAlg;
 use pyo3::prelude::*;
-
-use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
 
 /// A column reassignment MCMC kernel
 #[pyclass]
@@ -99,7 +99,7 @@ impl StateTransition {
         Self(lace::cc::transition::StateTransition::FeaturePriors)
     }
 
-    ///
+    /// Update the component model parameters
     #[staticmethod]
     fn component_parameters() -> Self {
         Self(lace::cc::transition::StateTransition::ComponentParams)

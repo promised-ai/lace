@@ -286,7 +286,7 @@ jobs:
 
       - name: Install mdBook
         run: |
-          cargo install mdbook
+          cargo install mdbook --version ^0.4
 
       - name: Configure the book in test mode and build
         working-directory: book

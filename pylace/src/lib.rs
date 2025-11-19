@@ -9,21 +9,37 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use df::{DataFrameLike, PyDataFrame, PySeries};
+use df::DataFrameLike;
+use df::PyDataFrame;
+use df::PySeries;
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
 use lace::prelude::ColMetadataList;
-use lace::{Datum, EngineUpdateConfig, FType, HasStates, OracleT, TableIndex};
-use polars::prelude::{DataFrame, NamedFrom, Series};
+use lace::Datum;
+use lace::EngineUpdateConfig;
+use lace::FType;
+use lace::HasStates;
+use lace::OracleT;
+use lace::StateDiagnostics;
+use lace::TableIndex;
+use metadata::Codebook;
+use metadata::CodebookBuilder;
+use polars::prelude::DataFrame;
+use polars::prelude::NamedFrom;
+use polars::prelude::Series;
 use pyo3::create_exception;
-use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::PyIndexError;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyList, PyType};
+use pyo3::types::PyBytes;
+use pyo3::types::PyDict;
+use pyo3::types::PyList;
+use pyo3::types::PyType;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{Deserialize, Serialize};
-
-use metadata::{Codebook, CodebookBuilder};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::update_handler::PyUpdateHandler;
 use crate::utils::*;
@@ -87,7 +103,7 @@ impl CoreEngine {
         let rng = if let Some(seed) = rng_seed {
             Xoshiro256Plus::seed_from_u64(seed)
         } else {
-            Xoshiro256Plus::from_entropy()
+            Xoshiro256Plus::from_os_rng()
         };
 
         let mut engine = lace::Engine::new(
@@ -118,8 +134,7 @@ impl CoreEngine {
         let (engine, rng) = {
             let mut engine = lace::Engine::load(path)
                 .map_err(|e| EngineLoadError::new_err(e.to_string()))?;
-            let rng = Xoshiro256Plus::from_rng(&mut engine.rng)
-                .map_err(|e| EngineLoadError::new_err(e.to_string()))?;
+            let rng = Xoshiro256Plus::from_rng(&mut engine.rng);
             (engine, rng)
         };
         Ok(Self {
@@ -140,6 +155,15 @@ impl CoreEngine {
     /// Seed the random number generator
     fn seed(&mut self, rng_seed: u64) {
         self.rng = Xoshiro256Plus::seed_from_u64(rng_seed);
+    }
+
+    /// Drops the data and diagnostics
+    fn low_mem_mode(&mut self) {
+        self.engine.states.iter_mut().for_each(|state| {
+            state.take_data();
+            let mut diag = StateDiagnostics::default();
+            std::mem::swap(&mut state.diagnostics, &mut diag);
+        });
     }
 
     /// Return a copy of the engine
@@ -195,7 +219,7 @@ impl CoreEngine {
         let (row_ixs, col_ixs) = ixs.ixs(&self.engine.codebook)?;
 
         let index = polars::series::Series::new(
-            "index",
+            "index".into(),
             row_ixs
                 .iter()
                 .map(|ix| ix.1.clone())
@@ -366,7 +390,7 @@ impl CoreEngine {
         self.engine
             .depprob_pw(&pairs)
             .map_err(to_pyerr)
-            .map(|xs| PySeries(Series::new("depprob", xs)))
+            .map(|xs| PySeries(Series::new("depprob".into(), xs)))
     }
 
     /// Mutual information
@@ -377,12 +401,12 @@ impl CoreEngine {
         n_mc_samples: usize,
         mi_type: &str,
     ) -> PyResult<PySeries> {
-        let pairs = list_to_pairs(&col_pairs, &self.col_indexer)?;
+        let pairs = list_to_pairs(col_pairs, &self.col_indexer)?;
         let mi_type = utils::str_to_mitype(mi_type)?;
         self.engine
             .mi_pw(&pairs, n_mc_samples, mi_type)
             .map_err(to_pyerr)
-            .map(|xs| PySeries(Series::new("mi", xs)))
+            .map(|xs| PySeries(Series::new("mi".into(), xs)))
     }
 
     /// Row similarity
@@ -458,7 +482,7 @@ impl CoreEngine {
             self.engine.rowsim_pw::<_, usize>(&pairs, None, variant)
         }
         .map_err(to_pyerr)
-        .map(|xs| PySeries(Series::new("rowsim", xs)))
+        .map(|xs| PySeries(Series::new("rowsim".into(), xs)))
     }
 
     #[pyo3(signature=(fn_name, pairs, fn_kwargs=None))]
@@ -495,20 +519,18 @@ impl CoreEngine {
             let mut a = Vec::with_capacity(pairs.len());
             let mut b = Vec::with_capacity(pairs.len());
 
-            utils::pairs_list_iter(pairs, indexer)
-                .map(|res| {
-                    let (ix_a, ix_b) = res?;
-                    let name_a = indexer.to_name[&ix_a].clone();
-                    let name_b = indexer.to_name[&ix_b].clone();
-                    a.push(name_a);
-                    b.push(name_b);
+            utils::pairs_list_iter(pairs, indexer).try_for_each(|res| {
+                let (ix_a, ix_b) = res?;
+                let name_a = indexer.to_name[&ix_a].clone();
+                let name_b = indexer.to_name[&ix_b].clone();
+                a.push(name_a);
+                b.push(name_b);
 
-                    Ok::<(), PyErr>(())
-                })
-                .collect::<PyResult<()>>()?;
+                Ok::<(), PyErr>(())
+            })?;
 
-            let a = Series::new("A", a);
-            let b = Series::new("B", b);
+            let a = Series::new("A".into(), a);
+            let b = Series::new("B".into(), b);
 
             polars::prelude::df!(
                 "A" => a,
@@ -656,7 +678,7 @@ impl CoreEngine {
             .map_err(to_pyerr)?;
 
         if logps.len() > 1 {
-            Ok(DataFrameLike::Series(Series::new("logp", logps)))
+            Ok(DataFrameLike::Series(Series::new("logp".into(), logps)))
         } else {
             Ok(DataFrameLike::Float(logps[0]))
         }
@@ -684,7 +706,10 @@ impl CoreEngine {
         );
 
         if logps.len() > 1 {
-            Ok(DataFrameLike::Series(Series::new("logp_scaled", logps)))
+            Ok(DataFrameLike::Series(Series::new(
+                "logp_scaled".into(),
+                logps,
+            )))
         } else {
             Ok(DataFrameLike::Float(logps[0]))
         }
@@ -740,10 +765,10 @@ impl CoreEngine {
                         ftype,
                         &self.engine.codebook,
                     )?;
-                    df.with_column(Series::new("index", row_names))
+                    df.with_column(Series::new("index".into(), row_names))
                         .map_err(to_pyerr)?;
                     df.with_column(vals_srs.0).map_err(to_pyerr)?;
-                    df.with_column(Series::new("surprisal", surps))
+                    df.with_column(Series::new("surprisal".into(), surps))
                         .map_err(to_pyerr)?;
                     Ok(PyDataFrame(df))
                 }
@@ -764,7 +789,7 @@ impl CoreEngine {
                             })
                     })?;
                     let mut df = DataFrame::default();
-                    df.with_column(Series::new("surprisal", surps))
+                    df.with_column(Series::new("surprisal".into(), surps))
                         .map_err(to_pyerr)?;
                     Ok(PyDataFrame(df))
                 }
@@ -800,14 +825,14 @@ impl CoreEngine {
 
             let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
             let mut df = DataFrame::default();
-            let index = Series::new("index", row_names);
+            let index = Series::new("index".into(), row_names);
             let values = utils::vec_to_srs(
                 values,
                 col_ix,
                 ftype,
                 &self.engine.codebook,
             )?;
-            let surps = Series::new("surprisal", surps);
+            let surps = Series::new("surprisal".into(), surps);
 
             df.with_column(index).map_err(to_pyerr)?;
             df.with_column(values.0).map_err(to_pyerr)?;
@@ -908,12 +933,12 @@ impl CoreEngine {
                 ftype,
                 &self.engine.codebook,
             )?;
-            let index = Series::new("index", row_names);
+            let index = Series::new("index".into(), row_names);
             df.with_column(index).map_err(to_pyerr)?;
             df.with_column(values_srs.0).map_err(to_pyerr)?;
 
             if !uncs.is_empty() {
-                let uncs_srs = Series::new("uncertainty", uncs);
+                let uncs_srs = Series::new("uncertainty".into(), uncs);
                 df.with_column(uncs_srs).map_err(to_pyerr)?;
             }
             df
@@ -1064,8 +1089,9 @@ impl CoreEngine {
         save_path: Option<PathBuf>,
         update_handler: Option<PyObject>,
     ) -> PyResult<()> {
-        use lace::update_handler::Timeout;
         use std::time::Duration;
+
+        use lace::update_handler::Timeout;
 
         let config = match transitions {
             Some(mut trns) => {
@@ -1089,7 +1115,7 @@ impl CoreEngine {
         };
 
         let timeout = {
-            let secs = timeout.unwrap_or(std::u64::MAX);
+            let secs = timeout.unwrap_or(u64::MAX);
             Timeout::new(Duration::from_secs(secs))
         };
 
@@ -1153,7 +1179,7 @@ impl CoreEngine {
         let row_names = df_vals.row_names.ok_or_else(|| {
             PyValueError::new_err("Provided dataframe has no index (row names)")
         })?;
-        (self.engine.n_rows()..).zip(row_names.iter()).map(
+        (self.engine.n_rows()..).zip(row_names.iter()).try_for_each(
             |(ix, name)| {
                 if self.row_indexer.to_ix.contains_key(name)  {
                     Err(PyValueError::new_err(
@@ -1165,7 +1191,7 @@ impl CoreEngine {
                     Ok(())
                 }
             },
-        ).collect::<PyResult<()>>()?;
+        )?;
 
         let data = parts_to_insert_values(
             df_vals.col_names,
@@ -1215,7 +1241,7 @@ impl CoreEngine {
             .collect::<PyResult<Vec<_>>>()?;
 
         let mut df = polars::frame::DataFrame::empty();
-        let index = polars::series::Series::new("index", remove);
+        let index = polars::series::Series::new("index".into(), remove);
         df.with_column(index).map_err(to_pyerr)?;
 
         for col_ix in 0..self.engine.n_cols() {
@@ -1240,7 +1266,7 @@ impl CoreEngine {
             .remove_data(
                 row_idxs
                     .into_iter()
-                    .map(|idx| TableIndex::Row(idx))
+                    .map(TableIndex::Row)
                     .collect::<Vec<TableIndex<usize, usize>>>(),
             )
             .map_err(to_pyerr)?;
@@ -1381,7 +1407,7 @@ impl CoreEngine {
                     PyIndexError::new_err(msg)
                 })
                 .map(|vm| match vm {
-                    Vm::U8(k) => (0..*k as u64)
+                    Vm::UInt(k) => (0..*k as u64)
                         .map(|ix| ix.into_py(py))
                         .collect::<Vec<_>>(),
                     Vm::Bool => vec![false.into_py(py), true.into_py(py)],
@@ -1429,7 +1455,7 @@ impl CoreEngine {
 #[pyfunction]
 pub fn infer_srs_metadata(
     srs: PySeries,
-    cat_cutoff: u8,
+    cat_cutoff: u32,
     no_hypers: bool,
 ) -> PyResult<metadata::ColumnMetadata> {
     lace::codebook::data::series_to_colmd(&srs.0, Some(cat_cutoff), no_hypers)

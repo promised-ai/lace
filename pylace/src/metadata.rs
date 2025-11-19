@@ -1,19 +1,28 @@
-use crate::df::PyDataFrame;
+use std::path::PathBuf;
+
 use lace::codebook::data::df_to_codebook;
-use lace::codebook::{ColMetadata, ColMetadataList, ColType, RowNameList};
+use lace::codebook::ColMetadata;
+use lace::codebook::ColMetadataList;
+use lace::codebook::ColType;
+use lace::codebook::RowNameList;
+use lace::rv::dist::Beta;
+use lace::rv::dist::Gamma;
+use lace::rv::dist::Gaussian;
+use lace::rv::dist::InvGamma;
+use lace::rv::dist::NormalInvChiSquared;
+use lace::rv::dist::SymmetricDirichlet;
 use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
 use lace::stats::prior::pg::PgHyper;
-use lace::stats::rv::dist::{
-    Beta, Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
-};
 use polars::prelude::DataFrame;
-use pyo3::exceptions::{PyIOError, PyIndexError};
-use pyo3::exceptions::{PyKeyError, PyValueError};
+use pyo3::exceptions::PyIOError;
+use pyo3::exceptions::PyIndexError;
+use pyo3::exceptions::PyKeyError;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use std::path::PathBuf;
 
+use crate::df::PyDataFrame;
 use crate::utils::to_pyerr;
 
 macro_rules! newtype_json_repr {
@@ -249,7 +258,7 @@ impl ValueMapIterator {
                     Some(s.into_py(slf.py()))
                 }
             }
-            Vm::U8(k) => {
+            Vm::UInt(k) => {
                 if slf.ix >= k {
                     None
                 } else {
@@ -279,7 +288,7 @@ impl ValueMap {
     #[classmethod]
     #[pyo3(signature = (k))]
     pub fn int(_cls: &Bound<PyType>, k: usize) -> Self {
-        Self(lace::codebook::ValueMap::U8(k))
+        Self(lace::codebook::ValueMap::UInt(k))
     }
 
     /// Create a map from strings
@@ -310,7 +319,7 @@ impl ValueMap {
     pub fn __repr__(&self) -> String {
         use lace::codebook::ValueMap as Vm;
         match self.0 {
-            Vm::U8(k) => format!("ValueMap (UInt, k={k})"),
+            Vm::UInt(k) => format!("ValueMap (UInt, k={k})"),
             Vm::String(ref inner) => {
                 let k = inner.len();
                 let cats = (0..k)
@@ -401,7 +410,7 @@ impl ColumnMetadata {
                 prior: prior.map(|pr| pr.0),
                 value_map: value_map
                     .map(|pr| pr.0)
-                    .unwrap_or_else(|| lace::codebook::ValueMap::U8(k)),
+                    .unwrap_or_else(|| lace::codebook::ValueMap::UInt(k)),
             },
             notes: None,
             missing_not_at_random: false,
@@ -484,7 +493,7 @@ impl ColumnMetadata {
 enum CodebookMethod {
     Path(PathBuf),
     Inferred {
-        cat_cutoff: Option<u8>,
+        cat_cutoff: Option<u32>,
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         no_hypers: bool,
@@ -687,7 +696,7 @@ impl Codebook {
 #[pyo3(signature = (df, cat_cutoff=None, no_hypers=false))]
 pub fn codebook_from_df(
     df: PyDataFrame,
-    cat_cutoff: Option<u8>,
+    cat_cutoff: Option<u32>,
     no_hypers: bool,
 ) -> PyResult<Codebook> {
     CodebookBuilder {
@@ -722,7 +731,7 @@ impl CodebookBuilder {
     #[pyo3(signature = (cat_cutoff=None, state_prior_process=None, view_prior_process=None, use_hypers=true))]
     fn infer(
         _cls: &Bound<PyType>,
-        cat_cutoff: Option<u8>,
+        cat_cutoff: Option<u32>,
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         use_hypers: bool,

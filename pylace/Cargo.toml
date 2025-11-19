@@ -1,23 +1,22 @@
 [package]
 name = "pylace"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2021"
-license = "BUSL-1.1"
+license = "MIT"
 
 [lib]
 name = "lace"
 crate-type = ["cdylib"]
 
 [dependencies]
-lace = { path = "../lace", version="0.8.0" }
-lace_utils = { path = "../lace/lace_utils", version="0.3.0" }
-rand = "0.8.5"
-rand_xoshiro = "0.6.0"
+lace = { path = "../lace", version = "0.9.0" }
+rand = { version = "0.9" }
+rand_xoshiro = "0.7.0"
 pyo3 = { version = "0.21", features = ["extension-module"] }
 serde_json = "1.0.91"
 serde_yaml = "0.9.17"
-polars = "0.36"
-polars-arrow = "0.36.2"
+polars = "0.52.0"
+polars-arrow = "0.52.0"
 serde = { version = "1.0.196", features = ["derive"] }
 bincode = "1.3.3"
 

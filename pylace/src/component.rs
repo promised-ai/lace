@@ -1,4 +1,7 @@
-use lace::stats::rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
+use lace::rv::dist::Bernoulli;
+use lace::rv::dist::Categorical;
+use lace::rv::dist::Gaussian;
+use lace::rv::dist::Poisson;
 use lace::stats::MixtureType;
 use pyo3::prelude::*;
 

@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
-use lace_cc::state::State;
-use lace_data::Datum;
-
-use crate::error::{GivenError, LogpError};
+use crate::cc::state::State;
+use crate::data::Datum;
+use crate::error::GivenError;
+use crate::error::LogpError;
 use crate::Given;
 
 // Given a set of target indices on which to condition, determine whether
@@ -93,7 +93,7 @@ pub(crate) trait Mnar {
     fn not_mnar(&self) -> bool;
 }
 
-impl Mnar for lace_cc::feature::ColModel {
+impl Mnar for crate::cc::feature::ColModel {
     fn is_mnar(&self) -> bool {
         matches!(self, Self::MissingNotAtRandom(_))
     }
@@ -148,14 +148,16 @@ pub fn find_value_conflicts(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::error::IndexError;
-    use crate::interface::utils::load_states;
-    use crate::interface::{HasStates, Oracle};
-    use lace_cc::feature::FType;
-    use lace_codebook::Codebook;
-    use lace_data::DataStore;
     use std::path::Path;
+
+    use super::*;
+    use crate::cc::feature::FType;
+    use crate::codebook::Codebook;
+    use crate::data::DataStore;
+    use crate::error::IndexError;
+    use crate::interface::oracle::utils::load_states;
+    use crate::interface::HasStates;
+    use crate::interface::Oracle;
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {
         let states = load_states(filenames);
@@ -188,7 +190,7 @@ mod tests {
         let oracle = get_entropy_oracle_from_yaml();
         let conditions = Given::Conditions(vec![
             (1, Datum::Continuous(1.2)),
-            (3, Datum::Categorical(0_u8.into())),
+            (3, Datum::Categorical(0_u32.into())),
         ]);
         assert!(find_given_errors(&[0, 2], &oracle.states()[0], &conditions)
             .is_ok());
@@ -225,7 +227,7 @@ mod tests {
         let oracle = get_entropy_oracle_from_yaml();
         let conditions = Given::Conditions(vec![
             (1, Datum::Continuous(1.2)),
-            (4, Datum::Categorical(0_u8.into())),
+            (4, Datum::Categorical(0_u32.into())),
         ]);
         let res = find_given_errors(&[0, 2], &oracle.states()[0], &conditions);
         let err = GivenError::IndexError(IndexError::ColumnIndexOutOfBounds {

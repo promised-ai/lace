@@ -33,6 +33,6 @@ abstract: >-
 keywords:
   - Bayesian
   - Machine Learning
-license: BUSL-1.1
-version: 0.8.0
-date-released: '2024-02-07'
+license: MIT
+version: 0.9.0
+date-released: '2025-11-19'

@@ -126,7 +126,7 @@ class Codebook:
                 }
               },
               "value_map": {
-                "u8": 2
+                "u_int": 2
               },
               "prior": null
             }
@@ -152,7 +152,7 @@ class Codebook:
               "k": 3,
               "hyper": null,
               "value_map": {
-                "u8": 3
+                "u_int": 3
               },
               "prior": null
             }
@@ -206,7 +206,7 @@ class Codebook:
               "k": 2,
               "hyper": null,
               "value_map": {
-                "u8": 2
+                "u_int": 2
               },
               "prior": null
             }

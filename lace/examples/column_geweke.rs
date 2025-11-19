@@ -1,17 +1,17 @@
+use lace::cc::feature::geweke::ColumnGewekeSettings;
+use lace::geweke::*;
 use lace::prelude::*;
-use lace_geweke::*;
-use lace_stats::prior_process::Builder as AssignmentBuilder;
-use lace_stats::rv::dist::{
-    Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
-};
-
-use lace_cc::feature::geweke::ColumnGewekeSettings;
+use lace::stats::prior_process::Builder as AssignmentBuilder;
+use rv::dist::Categorical;
+use rv::dist::Gaussian;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::SymmetricDirichlet;
 
 type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
-type CategoricalColumn = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
+type CategoricalColumn = Column<u32, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn main() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // The column model uses an assignment as its setting. We'll draw a
     // 50-length assignment from the prior.

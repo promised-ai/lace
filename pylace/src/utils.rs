@@ -1,23 +1,37 @@
 use std::collections::HashMap;
 use std::ffi::c_long;
 
-use lace::codebook::{Codebook, ValueMap};
+use lace::codebook::Codebook;
+use lace::codebook::ValueMap;
 use lace::prelude::ColType;
-use lace::{ColumnIndex, Datum, FType, Given, OracleT, RowIndex};
-use lace_utils::is_index_col;
+use lace::utils::is_index_col;
+use lace::ColumnIndex;
+use lace::Datum;
+use lace::FType;
+use lace::Given;
+use lace::OracleT;
+use lace::RowIndex;
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
-use pyo3::exceptions::{
-    PyIndexError, PyRuntimeError, PyTypeError, PyValueError,
-};
+use pyo3::exceptions::PyIndexError;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{
-    PyAny, PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyTuple,
-};
-use serde::{Deserialize, Serialize};
+use pyo3::types::PyAny;
+use pyo3::types::PyBool;
+use pyo3::types::PyDict;
+use pyo3::types::PyInt;
+use pyo3::types::PyList;
+use pyo3::types::PySlice;
+use pyo3::types::PyString;
+use pyo3::types::PyTuple;
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::df::{PyDataFrame, PySeries};
+use crate::df::PyDataFrame;
+use crate::df::PySeries;
 
 #[derive(FromPyObject, Clone, Debug)]
 pub enum IntOrString {
@@ -156,7 +170,7 @@ impl<'s> TableIndex<'s> {
                 let row_ixs = codebook
                     .row_names
                     .iter()
-                    .map(|(a, b)| (a, b.clone()))
+                    .map(|(a, b)| (a, b.to_string()))
                     .collect();
 
                 let col_ixs = ixs.col_ixs(codebook)?;
@@ -248,7 +262,7 @@ macro_rules! srs_from_vec {
                 _ => None,
             }
         }).collect();
-        Series::new($name, xs)
+        Series::new($name.into(), xs)
     }};
 }
 
@@ -261,7 +275,7 @@ macro_rules! cat_srs_from_vec {
                 _ => None,
             })
             .collect();
-        Series::new($name, xs)
+        Series::new($name.into(), xs)
     }};
 }
 
@@ -281,7 +295,7 @@ pub(crate) fn vec_to_srs(
             let repr = CategoricalRepr::from_codebook(col_ix, codebook);
             match repr {
                 CategoricalRepr::Int => {
-                    Ok(cat_srs_from_vec!(values, name, u8, U8))
+                    Ok(cat_srs_from_vec!(values, name, u32, UInt))
                 }
                 CategoricalRepr::String => {
                     Ok(cat_srs_from_vec!(values, name, String, String))
@@ -306,7 +320,7 @@ macro_rules! srs_from_simulate {
                 _ => None,
             }
         }).collect();
-        Series::new($name, xs)
+        Series::new($name.into(), xs)
     }};
 }
 
@@ -321,7 +335,7 @@ macro_rules! cat_srs_from_simulate {
                 _ => None,
             })
             .collect();
-        Series::new($name, xs)
+        Series::new($name.into(), xs)
     }};
 }
 
@@ -347,7 +361,7 @@ pub(crate) fn simulate_to_df(
                 let repr = CategoricalRepr::from_codebook(*col_ix, codebook);
                 match repr {
                     CategoricalRepr::Int => {
-                        Ok(cat_srs_from_simulate!(values, i, name, u8, U8))
+                        Ok(cat_srs_from_simulate!(values, i, name, u32, UInt))
                     }
                     CategoricalRepr::String => Ok(cat_srs_from_simulate!(
                         values, i, name, String, String
@@ -399,8 +413,8 @@ impl Indexer {
             .iter()
             .enumerate()
             .for_each(|(ix, col_md)| {
-                to_ix.insert(col_md.name.clone(), ix);
-                to_name.insert(ix, col_md.name.clone());
+                to_ix.insert(col_md.name.to_string(), ix);
+                to_name.insert(ix, col_md.name.to_string());
             });
 
         Self { to_ix, to_name }
@@ -410,8 +424,8 @@ impl Indexer {
         let mut to_ix: HashMap<String, usize> = HashMap::new();
         let mut to_name: HashMap<usize, String> = HashMap::new();
         codebook.row_names.iter().for_each(|(ix, name)| {
-            to_ix.insert(name.clone(), ix);
-            to_name.insert(ix, name.clone());
+            to_ix.insert(name.to_string(), ix);
+            to_name.insert(ix, name.to_string());
         });
 
         Self { to_ix, to_name }
@@ -486,7 +500,7 @@ impl CategoricalRepr {
         if let Some(value_map) = codebook.value_map(col_ix) {
             match value_map {
                 ValueMap::String(_) => CategoricalRepr::String,
-                ValueMap::U8(_) => CategoricalRepr::Int,
+                ValueMap::UInt(_) => CategoricalRepr::Int,
                 ValueMap::Bool => CategoricalRepr::Bool,
             }
         } else {
@@ -500,7 +514,7 @@ pub(crate) fn datum_to_value(datum: Datum) -> PyResult<Py<PyAny>> {
     Python::with_gil(|py| match datum {
         Datum::Continuous(x) => Ok(x.to_object(py)),
         Datum::Count(x) => Ok(x.to_object(py)),
-        Datum::Categorical(Category::U8(x)) => Ok(x.to_object(py)),
+        Datum::Categorical(Category::UInt(x)) => Ok(x.to_object(py)),
         Datum::Categorical(Category::Bool(x)) => Ok(x.to_object(py)),
         Datum::Categorical(Category::String(x)) => Ok(x.to_object(py)),
         Datum::Missing => Ok(NONE.to_object(py)),
@@ -518,8 +532,8 @@ fn pyany_to_category(val: &Bound<PyAny>) -> PyResult<lace::Category> {
 
     match name.as_ref() {
         "int" => {
-            let x = val.downcast::<PyInt>()?.extract::<u8>()?;
-            Ok(Category::U8(x))
+            let x = val.downcast::<PyInt>()?.extract::<u32>()?;
+            Ok(Category::UInt(x))
         }
         "bool" => {
             let x = val.downcast::<PyBool>()?.extract::<bool>()?;
@@ -530,8 +544,8 @@ fn pyany_to_category(val: &Bound<PyAny>) -> PyResult<lace::Category> {
             Ok(Category::String(x))
         }
         "numpy.int64" | "numpy.int32" | "numpy.int16" | "numpy.int8" => {
-            let x = val.call_method("__int__", (), None)?.extract::<u8>()?;
-            Ok(Category::U8(x))
+            let x = val.call_method("__int__", (), None)?.extract::<u32>()?;
+            Ok(Category::UInt(x))
         }
         _ => Err(PyErr::new::<PyValueError, _>(format!(
             "Cannot convert {name} into Category"
@@ -764,7 +778,7 @@ fn df_to_values(
                         let mut index_col_names = list
                             .iter()
                             .map(|s| s.extract::<String>())
-                            .map(|s| {
+                            .flat_map(|s| {
                                 s.map(|s| {
                                     if is_index_col(&s) {
                                         Some(s)
@@ -774,7 +788,6 @@ fn df_to_values(
                                 })
                                 .transpose()
                             })
-                            .flatten()
                             .collect::<PyResult<Vec<String>>>()?;
 
                         if index_col_names.is_empty() {

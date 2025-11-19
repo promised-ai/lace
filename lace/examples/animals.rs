@@ -1,11 +1,12 @@
 // Determine the most predictable variables by using a predictor search for
 // the set of N most predictive variables
-use lace::examples::animals::Column;
-use lace::examples::Example;
-use lace::prelude::*;
 use std::convert::TryInto;
 use std::io;
 use std::io::prelude::*;
+
+use lace::examples::animals::Column;
+use lace::examples::Example;
+use lace::prelude::*;
 
 // Get this many predictors
 const N: usize = 8;

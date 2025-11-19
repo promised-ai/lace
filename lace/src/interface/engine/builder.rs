@@ -1,11 +1,12 @@
-use lace_codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
 use super::error::NewEngineError;
 use super::Engine;
-use crate::data::{DataSource, DefaultCodebookError};
+use crate::codebook::Codebook;
+use crate::data::DataSource;
+use crate::data::DefaultCodebookError;
 
 const DEFAULT_NSTATES: usize = 8;
 const DEFAULT_ID_OFFSET: usize = 0;
@@ -83,7 +84,7 @@ impl EngineBuilder {
         let id_offset = self.id_offset.unwrap_or(DEFAULT_ID_OFFSET);
         let rng = match self.seed {
             Some(s) => Xoshiro256Plus::seed_from_u64(s),
-            None => Xoshiro256Plus::from_entropy(),
+            None => Xoshiro256Plus::from_os_rng(),
         };
 
         let codebook = match self.codebook {
@@ -108,18 +109,23 @@ impl EngineBuilder {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+    use std::path::Path;
+    use std::path::PathBuf;
+
+    use maplit::btreeset;
+    use polars::prelude::CsvReadOptions;
+    use polars::prelude::DataFrame;
+
     use super::*;
     use crate::codebook::ReadError;
-    use maplit::btreeset;
-    use polars::prelude::DataFrame;
-    use std::path::Path;
-    use std::{collections::BTreeSet, path::PathBuf};
 
     fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
-        use polars::prelude::{CsvReader, SerReader};
-        let df = CsvReader::from_path(path.as_ref())?
-            .infer_schema(Some(1000))
-            .has_header(true)
+        use polars::prelude::SerReader;
+        let df = CsvReadOptions::default()
+            .with_infer_schema_length(Some(1000))
+            .with_has_header(true)
+            .try_into_reader_with_file_path(Some(path.as_ref().into()))?
             .finish()?;
         Ok(df)
     }

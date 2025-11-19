@@ -1,19 +1,27 @@
-use approx::*;
-
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use lace::cc::feature::{ColModel, Column, FType};
+use approx::*;
+use lace::cc::feature::ColModel;
+use lace::cc::feature::Column;
+use lace::cc::feature::FType;
 use lace::cc::state::State;
 use lace::codebook::Codebook;
+use lace::data::DataStore;
+use lace::data::SparseContainer;
 use lace::error::IndexError;
 use lace::stats::prior::nix::NixHyper;
-use lace::{Given, Oracle, OracleT};
-use lace_data::{DataStore, SparseContainer};
-use lace_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
-use lace_stats::rv::traits::{Cdf, Rv};
+use lace::Given;
+use lace::Oracle;
+use lace::OracleT;
 use rand::Rng;
+use rv::dist::Gamma;
+use rv::dist::Gaussian;
+use rv::dist::Mixture;
+use rv::dist::NormalInvChiSquared;
+use rv::traits::Cdf;
+use rv::traits::Sampleable;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
@@ -35,8 +43,8 @@ fn gen_all_gauss_state<R: Rng>(
     for i in 0..n_cols {
         ftrs.push(gen_col(i, n_rows, &mut rng));
     }
-    let process = lace_stats::prior_process::Process::Dirichlet(
-        lace_stats::prior_process::Dirichlet::from_prior(
+    let process = lace::stats::prior_process::Process::Dirichlet(
+        lace::stats::prior_process::Dirichlet::from_prior(
             Gamma::default(),
             &mut rng,
         ),
@@ -60,7 +68,8 @@ fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
 }
 
 fn dummy_codebook_from_state(state: &State) -> Codebook {
-    use lace::codebook::{ColMetadata, ColType};
+    use lace::codebook::ColMetadata;
+    use lace::codebook::ColType;
 
     Codebook {
         table_name: "my_table".into(),
@@ -81,7 +90,7 @@ fn dummy_codebook_from_state(state: &State) -> Codebook {
                         FType::Categorical => ColType::Categorical {
                             k: 2,
                             hyper: None,
-                            value_map: lace_codebook::ValueMap::U8(2),
+                            value_map: lace::codebook::ValueMap::UInt(2),
                             prior: None,
                         },
                         FType::Count => ColType::Count {
@@ -123,7 +132,7 @@ fn get_oracle_from_yaml() -> Oracle {
 fn gen_oracle(n_states: usize) -> Oracle {
     let n_rows = 20;
     let n_cols = 10;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let states: Vec<State> = (0..n_states)
         .map(|_| gen_all_gauss_state(n_rows, n_cols, &mut rng))
         .collect();
@@ -248,9 +257,10 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod rowsim {
-            use super::*;
             use lace::error::RowSimError;
             use lace::RowSimilarityVariant;
+
+            use super::*;
 
             #[test]
             fn values() {
@@ -670,14 +680,17 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod simulate {
+            use lace::data::Datum;
+            use lace::error::GivenError;
+            use lace::error::IndexError;
+            use lace::error::SimulateError;
+
             use super::*;
-            use lace::error::{GivenError, IndexError, SimulateError};
-            use lace_data::Datum;
 
             #[test]
             fn simulate_single_col_without_given_size_check() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let xs = oracle
                     .simulate(
@@ -696,7 +709,7 @@ macro_rules! oracle_test {
             #[test]
             fn simulate_single_col_without_given_single_state_ks() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 // flaky test. try 5 times.
                 let ks_pass = (0..5)
@@ -727,9 +740,7 @@ macro_rules! oracle_test {
                         let target = Mixture::uniform(vec![g1, g2]).unwrap();
 
                         let (_, ks_p) =
-                            lace_stats::rv::misc::ks_test(&xs, |x| {
-                                target.cdf(&x)
-                            });
+                            rv::misc::ks_test(&xs, |x| target.cdf(&x));
 
                         ks_p
                     })
@@ -741,7 +752,7 @@ macro_rules! oracle_test {
             #[test]
             fn simulate_multi_col_without_given_size_check() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let xs = oracle
                     .simulate(
@@ -760,7 +771,7 @@ macro_rules! oracle_test {
             #[test]
             fn no_targets_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let targets: &[usize] = &[];
                 let result = oracle.simulate(
@@ -777,7 +788,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_targets_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[3_usize],
@@ -801,7 +812,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_state_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[2_usize],
@@ -823,7 +834,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_state_indices_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[2],
@@ -845,7 +856,7 @@ macro_rules! oracle_test {
             #[test]
             fn no_state_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[2],
@@ -861,7 +872,7 @@ macro_rules! oracle_test {
             #[test]
             fn same_col_in_target_and_given_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[2],
@@ -882,13 +893,13 @@ macro_rules! oracle_test {
             #[test]
             fn wrong_datum_type_for_col_in_given_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[1],
                     &Given::Conditions(vec![(
                         2,
-                        Datum::Categorical(1_u8.into()),
+                        Datum::Categorical(1_u32.into()),
                     )]),
                     14,
                     None,
@@ -910,13 +921,13 @@ macro_rules! oracle_test {
             #[test]
             fn oob_condition_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let result = oracle.simulate(
                     &[1],
                     &Given::Conditions(vec![(
                         4,
-                        Datum::Categorical(1_u8.into()),
+                        Datum::Categorical(1_u32.into()),
                     )]),
                     14,
                     None,
@@ -937,7 +948,7 @@ macro_rules! oracle_test {
             #[test]
             fn simulate_n_zero_returns_empty_vec() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 let xs = oracle
                     .simulate(&[1], &Given::<usize>::Nothing, 0, None, &mut rng)
@@ -949,9 +960,11 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod mi {
-            use super::*;
-            use lace::error::{IndexError, MiError};
+            use lace::error::IndexError;
+            use lace::error::MiError;
             use lace::MiType;
+
+            use super::*;
 
             #[test]
             fn oob_first_col_index_causes_error() {
@@ -996,8 +1009,10 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod entropy {
+            use lace::error::EntropyError;
+            use lace::error::IndexError;
+
             use super::*;
-            use lace::error::{EntropyError, IndexError};
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1053,8 +1068,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod info_prop {
-            use super::*;
             use lace::error::InfoPropError;
+
+            use super::*;
 
             #[test]
             fn oob_target_index_causes_error() {
@@ -1168,8 +1184,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod feature_error {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1187,8 +1204,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod summarize {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1206,9 +1224,10 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod conditional_entropy {
-            use super::*;
             use lace::error::ConditionalEntropyError;
             use lace::ConditionalEntropyType;
+
+            use super::*;
 
             #[test]
             fn oob_target_col_index_causes_error() {
@@ -1406,9 +1425,11 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod surprisal {
+            use lace::data::Datum;
+            use lace::error::IndexError;
+            use lace::error::SurprisalError;
+
             use super::*;
-            use lace::error::{IndexError, SurprisalError};
-            use lace_data::Datum;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1446,7 +1467,7 @@ macro_rules! oracle_test {
 
                 assert_eq!(
                     oracle.surprisal(
-                        &Datum::Categorical(1_u8.into()),
+                        &Datum::Categorical(1_u32.into()),
                         1,
                         0,
                         None
@@ -1462,8 +1483,10 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod self_surprisal {
+            use lace::error::IndexError;
+            use lace::error::SurprisalError;
+
             use super::*;
-            use lace::error::{IndexError, SurprisalError};
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1498,8 +1521,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod datum {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1530,13 +1554,14 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod draw {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_row_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 assert_eq!(
                     oracle.draw(4, 1, 10, &mut rng),
@@ -1550,7 +1575,7 @@ macro_rules! oracle_test {
             #[test]
             fn oob_col_index_causes_error() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 assert_eq!(
                     oracle.draw(1, 3, 10, &mut rng),
@@ -1564,7 +1589,7 @@ macro_rules! oracle_test {
             #[test]
             fn no_samples_returns_empty_vec() {
                 let oracle = $oracle_gen;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
 
                 assert!(oracle.draw(1, 2, 0, &mut rng).unwrap().is_empty());
             }
@@ -1572,8 +1597,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod impute {
-            use super::*;
             use lace::error::IndexError;
+
+            use super::*;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1604,10 +1630,13 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod predict {
-            use super::*;
-            use lace::error::{GivenError, IndexError, PredictError};
+            use lace::data::Datum;
+            use lace::error::GivenError;
+            use lace::error::IndexError;
+            use lace::error::PredictError;
             use lace::Given;
-            use lace_data::Datum;
+
+            use super::*;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1653,7 +1682,7 @@ macro_rules! oracle_test {
                         1,
                         &Given::Conditions(vec![(
                             0,
-                            Datum::Categorical(1_u8.into())
+                            Datum::Categorical(1_u32.into())
                         )]),
                         false,
                         None,
@@ -1688,10 +1717,13 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod logp {
-            use super::*;
-            use lace::error::{GivenError, IndexError, LogpError};
+            use lace::data::Datum;
+            use lace::error::GivenError;
+            use lace::error::IndexError;
+            use lace::error::LogpError;
             use lace::Given;
-            use lace_data::Datum;
+
+            use super::*;
 
             #[test]
             fn oob_target_index_causes_error() {
@@ -1861,7 +1893,7 @@ macro_rules! oracle_test {
                         vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
                         vec![
                             Datum::Continuous(4.3),
-                            Datum::Categorical(1_u8.into()),
+                            Datum::Categorical(1_u32.into()),
                         ],
                     ],
                     &Given::<usize>::Nothing,
@@ -1937,7 +1969,7 @@ macro_rules! oracle_test {
                     ],
                     &Given::Conditions(vec![(
                         2,
-                        Datum::Categorical(1_u8.into()),
+                        Datum::Categorical(1_u32.into()),
                     )]),
                     None,
                 );
@@ -2001,14 +2033,16 @@ mod oracle {
 
 #[cfg(test)]
 mod dataless {
-    use super::*;
     use lace::DatalessOracle;
+
+    use super::*;
     oracle_test!(DatalessOracle::from(get_oracle_from_yaml()));
 }
 
 #[cfg(test)]
 mod engine {
-    use super::*;
     use lace::Engine;
+
+    use super::*;
     oracle_test!(Engine::from(get_oracle_from_yaml()));
 }

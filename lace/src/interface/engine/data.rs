@@ -1,23 +1,34 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryInto;
-use std::f64::NEG_INFINITY;
 
 use indexmap::IndexSet;
-use lace_cc::feature::{ColModel, Column, FType};
-use lace_codebook::ColType;
-use lace_codebook::ValueMapExtension;
-use lace_codebook::{Codebook, ValueMap};
-use lace_codebook::{ColMetadataList, ValueMapExtensionError};
-use lace_data::SparseContainer;
-use lace_data::{Category, Datum};
-use lace_stats::rv::data::CategoricalSuffStat;
-use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
-use serde::{Deserialize, Serialize};
+use rv::data::CategoricalSuffStat;
+use rv::dist::Categorical;
+use rv::dist::SymmetricDirichlet;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::error::InsertDataError;
-
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Column;
+use crate::cc::feature::FType;
+use crate::codebook::Codebook;
+use crate::codebook::ColMetadataList;
+use crate::codebook::ColType;
+use crate::codebook::ValueMap;
+use crate::codebook::ValueMapExtension;
+use crate::codebook::ValueMapExtensionError;
+use crate::data::Category;
+use crate::data::Datum;
+use crate::data::SparseContainer;
 use crate::interface::HasCodebook;
-use crate::{ColumnIndex, Engine, HasStates, OracleT, RowIndex};
+use crate::ColumnIndex;
+use crate::Engine;
+use crate::HasStates;
+use crate::OracleT;
+use crate::RowIndex;
 
 /// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -50,8 +61,10 @@ pub enum InsertMode {
 /// Defines the behavior of the data table when new rows are appended
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum AppendStrategy {
     /// New rows will be appended and the rest of the table will be unchanged
+    #[default]
     None,
     /// If `n` rows are added, the top `n` rows will be removed
     Window,
@@ -63,12 +76,6 @@ pub enum AppendStrategy {
         /// The index to remove data from
         trench_ix: usize,
     },
-}
-
-impl Default for AppendStrategy {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 /// Defines how/where data may be inserted, which day may and may not be
@@ -168,18 +175,18 @@ impl<C: ColumnIndex> From<(C, Datum)> for Value<C> {
 /// ```
 /// # use lace::Row;
 /// use lace::Value;
-/// use lace_data::Datum;
+/// use lace::data::Datum;
 ///
 /// let row = Row::<&str, &str> {
 ///     row_ix: "vampire",
 ///     values: vec![
 ///         Value {
 ///             col_ix: "sucks_blood",
-///             value: Datum::Categorical(1_u8.into()),
+///             value: Datum::Categorical(1_u32.into()),
 ///         },
 ///         Value {
 ///             col_ix: "drinks_wine",
-///             value: Datum::Categorical(0_u8.into()),
+///             value: Datum::Categorical(0_u32.into()),
 ///         },
 ///     ],
 /// };
@@ -191,12 +198,12 @@ impl<C: ColumnIndex> From<(C, Datum)> for Value<C> {
 ///
 /// ```
 /// # use lace::Row;
-/// # use lace_data::Datum;
+/// # use lace::data::Datum;
 /// let row: Row<&str, &str>  = (
 ///     "vampire",
 ///     vec![
-///         ("sucks_blood", Datum::Categorical(1_u8.into())),
-///         ("drinks_wine", Datum::Categorical(0_u8.into())),
+///         ("sucks_blood", Datum::Categorical(1_u32.into())),
+///         ("drinks_wine", Datum::Categorical(0_u32.into())),
 ///     ]
 /// ).into();
 ///
@@ -422,7 +429,7 @@ fn col_ix_from_lookup(
             .ok_or_else(|| {
                 InsertDataError::NewColumnNotInColumnMetadata(col.to_owned())
             })
-            .map(|col| *col),
+            .copied(),
         None => Err(InsertDataError::NewColumnNotInColumnMetadata(
             String::from(col),
         )),
@@ -743,10 +750,10 @@ pub(crate) fn maybe_add_categories<R: RowIndex, C: ColumnIndex>(
                                     };
                                     Ok(())
                                 },
-                                (Datum::Categorical(Category::U8(x)), ValueMap::U8(old_max)) => {
-                                    if *old_max as u8 <= *x {
-                                        let ext_max = extended_value_map.entry(col_ix).or_insert_with(ValueMapExtension::new_u8);
-                                        ext_max.extend(Category::U8(*x)).map_err(
+                                (Datum::Categorical(Category::UInt(x)), ValueMap::UInt(old_max)) => {
+                                    if *old_max as u32 <= *x {
+                                        let ext_max = extended_value_map.entry(col_ix).or_insert_with(ValueMapExtension::new_uint);
+                                        ext_max.extend(Category::UInt(*x)).map_err(
                                             |e| match e {
                                                 ValueMapExtensionError::ExtensionOfDifferingType(a, b) => {
                                                     InsertDataError::WrongCategoryAndType(a, b, col_name.to_string())
@@ -867,7 +874,7 @@ fn incr_column_categories(
 
                     cpnt.fx = Categorical::new_unchecked({
                         let mut ln_weights = cpnt.fx.ln_weights().clone();
-                        ln_weights.resize(n_cats_req, NEG_INFINITY);
+                        ln_weights.resize(n_cats_req, f64::NEG_INFINITY);
                         ln_weights
                     });
                 })
@@ -932,7 +939,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
             match &colmd.coltype {
                 ColType::Continuous { hyper, prior } => new_col_arm!(
                     Continuous,
-                    lace_stats::prior::nix::NixHyper,
+                    crate::stats::prior::nix::NixHyper,
                     NoGaussianHyperForNewColumn,
                     colmd,
                     hyper,
@@ -944,7 +951,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 ),
                 ColType::Count { hyper, prior } => new_col_arm!(
                     Count,
-                    lace_stats::prior::pg::PgHyper,
+                    crate::stats::prior::pg::PgHyper,
                     NoPoissonHyperForNewColumn,
                     colmd,
                     hyper,
@@ -957,7 +964,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 ColType::Categorical {
                     k, hyper, prior, ..
                 } => {
-                    let data: SparseContainer<u8> =
+                    let data: SparseContainer<u32> =
                         SparseContainer::all_missing(n_rows);
 
                     let id = i + n_cols;
@@ -972,7 +979,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                             Ok(ColModel::Categorical(column))
                         }
                         (None, Some(pr)) => {
-                            use lace_stats::prior::csd::CsdHyper;
+                            use crate::stats::prior::csd::CsdHyper;
                             let mut column = Column::new(
                                 id,
                                 data,
@@ -1067,13 +1074,14 @@ pub(crate) fn check_if_removes_row(
 
 #[cfg(test)]
 mod tests {
-    use crate::data::data_source;
+    use rand::SeedableRng;
 
     use super::*;
-
-    use lace_codebook::{ColMetadata, ColType, ValueMap};
-    use lace_stats::prior::csd::CsdHyper;
-    use rand::SeedableRng;
+    use crate::codebook::ColMetadata;
+    use crate::codebook::ColType;
+    use crate::codebook::ValueMap;
+    use crate::data::data_source;
+    use crate::stats::prior::csd::CsdHyper;
 
     #[cfg(feature = "examples")]
     mod requiring_examples {
@@ -1088,11 +1096,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "does+taxes".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                 ],
             };
@@ -1117,11 +1125,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "does+taxes".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                 ],
             };
@@ -1132,7 +1140,7 @@ mod tests {
                     k: 2,
                     hyper: None,
                     prior: None,
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::UInt(2),
                 },
                 notes: None,
                 missing_not_at_random: false,
@@ -1162,11 +1170,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "swims".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                 ],
             };
@@ -1186,11 +1194,11 @@ mod tests {
                     values: vec![
                         IndexValue {
                             col_ix: 36,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                         IndexValue {
                             col_ix: 34,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                     ]
                 }]
@@ -1205,11 +1213,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "swims".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                 ],
             };
@@ -1230,11 +1238,11 @@ mod tests {
                     values: vec![
                         IndexValue {
                             col_ix: 36,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                         IndexValue {
                             col_ix: 34,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                     ]
                 }]
@@ -1249,11 +1257,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "swims".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                 ],
             };
@@ -1263,11 +1271,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "smart".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "hunter".into(),
-                        value: Datum::Categorical(0_u8.into()),
+                        value: Datum::Categorical(0_u32.into()),
                     },
                 ],
             };
@@ -1291,11 +1299,11 @@ mod tests {
                         values: vec![
                             IndexValue {
                                 col_ix: 36,
-                                value: Datum::Categorical(1_u8.into())
+                                value: Datum::Categorical(1_u32.into())
                             },
                             IndexValue {
                                 col_ix: 34,
-                                value: Datum::Categorical(1_u8.into())
+                                value: Datum::Categorical(1_u32.into())
                             },
                         ]
                     },
@@ -1304,11 +1312,11 @@ mod tests {
                         values: vec![
                             IndexValue {
                                 col_ix: 80,
-                                value: Datum::Categorical(1_u8.into())
+                                value: Datum::Categorical(1_u32.into())
                             },
                             IndexValue {
                                 col_ix: 58,
-                                value: Datum::Categorical(0_u8.into())
+                                value: Datum::Categorical(0_u32.into())
                             },
                         ]
                     }
@@ -1324,11 +1332,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "swims".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                 ],
             };
@@ -1338,11 +1346,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "smart".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "hunter".into(),
-                        value: Datum::Categorical(0_u8.into()),
+                        value: Datum::Categorical(0_u32.into()),
                     },
                 ],
             };
@@ -1365,11 +1373,11 @@ mod tests {
                         values: vec![
                             IndexValue {
                                 col_ix: 36,
-                                value: Datum::Categorical(1_u8.into())
+                                value: Datum::Categorical(1_u32.into())
                             },
                             IndexValue {
                                 col_ix: 34,
-                                value: Datum::Categorical(1_u8.into())
+                                value: Datum::Categorical(1_u32.into())
                             },
                         ]
                     },
@@ -1378,11 +1386,11 @@ mod tests {
                         values: vec![
                             IndexValue {
                                 col_ix: 80,
-                                value: Datum::Categorical(1_u8.into())
+                                value: Datum::Categorical(1_u32.into())
                             },
                             IndexValue {
                                 col_ix: 58,
-                                value: Datum::Categorical(0_u8.into())
+                                value: Datum::Categorical(0_u32.into())
                             },
                         ]
                     }
@@ -1399,7 +1407,7 @@ mod tests {
                     k: 2,
                     hyper: None,
                     prior: None,
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::UInt(2),
                 },
                 notes: None,
                 missing_not_at_random: false,
@@ -1410,11 +1418,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "dances".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                 ],
             };
@@ -1436,11 +1444,11 @@ mod tests {
                     values: vec![
                         IndexValue {
                             col_ix: 85,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                         IndexValue {
                             col_ix: 34,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                     ]
                 }]
@@ -1457,7 +1465,7 @@ mod tests {
                     k: 2,
                     hyper: None,
                     prior: None,
-                    value_map: ValueMap::U8(2),
+                    value_map: ValueMap::UInt(2),
                 },
                 notes: None,
                 missing_not_at_random: false,
@@ -1469,11 +1477,11 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "dances".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(0_u8.into()),
+                        value: Datum::Categorical(0_u32.into()),
                     },
                 ],
             };
@@ -1497,11 +1505,11 @@ mod tests {
                     values: vec![
                         IndexValue {
                             col_ix: 85,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                         IndexValue {
                             col_ix: 34,
-                            value: Datum::Categorical(0_u8.into())
+                            value: Datum::Categorical(0_u32.into())
                         },
                     ]
                 }]
@@ -1518,7 +1526,7 @@ mod tests {
                         k: 2,
                         hyper: None,
                         prior: None,
-                        value_map: ValueMap::U8(2),
+                        value_map: ValueMap::UInt(2),
                     },
                     notes: None,
                     missing_not_at_random: false,
@@ -1529,7 +1537,7 @@ mod tests {
                         k: 2,
                         hyper: None,
                         prior: None,
-                        value_map: ValueMap::U8(2),
+                        value_map: ValueMap::UInt(2),
                     },
                     notes: None,
                     missing_not_at_random: false,
@@ -1542,15 +1550,15 @@ mod tests {
                 values: vec![
                     Value {
                         col_ix: "flys".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                     Value {
                         col_ix: "eats+figs".into(),
-                        value: Datum::Categorical(0_u8.into()),
+                        value: Datum::Categorical(0_u32.into()),
                     },
                     Value {
                         col_ix: "dances".into(),
-                        value: Datum::Categorical(1_u8.into()),
+                        value: Datum::Categorical(1_u32.into()),
                     },
                 ],
             };
@@ -1573,15 +1581,15 @@ mod tests {
                     values: vec![
                         IndexValue {
                             col_ix: 34,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                         IndexValue {
                             col_ix: 86,
-                            value: Datum::Categorical(0_u8.into())
+                            value: Datum::Categorical(0_u32.into())
                         },
                         IndexValue {
                             col_ix: 85,
-                            value: Datum::Categorical(1_u8.into())
+                            value: Datum::Categorical(1_u32.into())
                         },
                     ]
                 }]
@@ -1618,7 +1626,7 @@ mod tests {
                 k: 3,
                 hyper: None,
                 prior: None,
-                value_map: ValueMap::U8(3),
+                value_map: ValueMap::UInt(3),
             },
             notes: None,
             missing_not_at_random: false,
@@ -1635,12 +1643,12 @@ mod tests {
         let n_cats_before = match &codebook.col_metadata[2].coltype {
             ColType::Categorical {
                 k,
-                value_map: ValueMap::U8(3),
+                value_map: ValueMap::UInt(3),
                 ..
             } => *k,
             ColType::Categorical { value_map, .. } => {
                 panic!(
-                    "starting value_map should have been U8(3), was {:?}",
+                    "starting value_map should have been U32(3), was {:?}",
                     value_map
                 );
             }
@@ -1649,8 +1657,8 @@ mod tests {
 
         assert_eq!(n_cats_before, 3);
 
-        let mut extension = ValueMapExtension::new_u8();
-        extension.extend(Category::U8(3)).unwrap();
+        let mut extension = ValueMapExtension::new_uint();
+        extension.extend(Category::UInt(3)).unwrap();
 
         let result = incr_category_in_codebook(&mut codebook, 2, &extension);
         result.unwrap();
@@ -1658,11 +1666,11 @@ mod tests {
         let n_cats_after = match &codebook.col_metadata[2].coltype {
             ColType::Categorical {
                 k,
-                value_map: ValueMap::U8(4),
+                value_map: ValueMap::UInt(4),
                 ..
             } => *k,
             ColType::Categorical { value_map, .. } => {
-                panic!("value_map should be U8(4), was: {:?}", value_map)
+                panic!("value_map should be U32(4), was: {:?}", value_map)
             }
             _ => panic!("should've been categorical"),
         };

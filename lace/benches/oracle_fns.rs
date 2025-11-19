@@ -1,8 +1,12 @@
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main};
+use lace::data::Datum;
 use lace::examples::Example;
-use lace::{Given, Oracle, OracleT};
-use lace_data::Datum;
+use lace::Given;
+use lace::Oracle;
+use lace::OracleT;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -154,7 +158,7 @@ fn bench_surprisal(c: &mut Criterion) {
     c.bench_function("oracle surprisal", |b| {
         let oracle = get_oracle();
         b.iter(|| {
-            let x = black_box(Datum::Categorical(lace::Category::U8(0)));
+            let x = black_box(Datum::Categorical(lace::Category::UInt(0)));
             let _res = oracle.surprisal(&x, 13, 12, None);
         })
     });
@@ -181,18 +185,18 @@ fn bench_datum(c: &mut Criterion) {
 fn bench_logp(c: &mut Criterion) {
     c.bench_function("oracle logp", |b| {
         let given = Given::Conditions(vec![
-            (0, Datum::Categorical(lace::Category::U8(1))),
-            (2, Datum::Categorical(lace::Category::U8(0))),
+            (0, Datum::Categorical(lace::Category::UInt(1))),
+            (2, Datum::Categorical(lace::Category::UInt(0))),
         ]);
         let col_ixs = black_box(vec![3, 4]);
         let vals = vec![
             vec![
-                Datum::Categorical(lace::Category::U8(0)),
-                Datum::Categorical(lace::Category::U8(0)),
+                Datum::Categorical(lace::Category::UInt(0)),
+                Datum::Categorical(lace::Category::UInt(0)),
             ],
             vec![
-                Datum::Categorical(lace::Category::U8(1)),
-                Datum::Categorical(lace::Category::U8(1)),
+                Datum::Categorical(lace::Category::UInt(1)),
+                Datum::Categorical(lace::Category::UInt(1)),
             ],
         ];
         let oracle = get_oracle();
@@ -215,8 +219,8 @@ fn bench_draw(c: &mut Criterion) {
 fn bench_simulate(c: &mut Criterion) {
     c.bench_function("oracle simulate", |b| {
         let given = Given::Conditions(vec![
-            (0, Datum::Categorical(lace::Category::U8(1))),
-            (2, Datum::Categorical(lace::Category::U8(0))),
+            (0, Datum::Categorical(lace::Category::UInt(1))),
+            (2, Datum::Categorical(lace::Category::UInt(0))),
         ]);
         let col_ixs = black_box(vec![3, 4]);
         let oracle = get_oracle();
@@ -239,8 +243,8 @@ fn bench_impute(c: &mut Criterion) {
 fn bench_predict(c: &mut Criterion) {
     c.bench_function("oracle predict", |b| {
         let given = Given::Conditions(vec![
-            (0, Datum::Categorical(lace::Category::U8(1))),
-            (2, Datum::Categorical(lace::Category::U8(0))),
+            (0, Datum::Categorical(lace::Category::UInt(1))),
+            (2, Datum::Categorical(lace::Category::UInt(0))),
         ]);
         let oracle = get_oracle();
         b.iter(|| {
@@ -253,7 +257,7 @@ fn bench_predict_continuous(c: &mut Criterion) {
     c.bench_function("oracle predict continuous", |b| {
         let given = Given::Conditions(vec![(
             4,
-            Datum::Categorical(lace::Category::U8(3)),
+            Datum::Categorical(lace::Category::UInt(3)),
         )]);
         let oracle = get_satellites_oracle();
         b.iter(|| {

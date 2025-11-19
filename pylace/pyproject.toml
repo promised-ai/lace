@@ -8,41 +8,40 @@ version = "0.8.0"
 description = "A probabalistic programming ML tool for science"
 requires-python = ">=3.8"
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Science/Research",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
-    "Programming Language :: Rust",
-    "Topic :: Scientific/Engineering",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Programming Language :: Rust",
+  "Topic :: Scientific/Engineering",
 ]
-license = { text="BUSL-1.1" }
+license = { text = "MIT" }
 authors = [
-  { name="Baxter Eaves", email="bax@redpoll.ai"},
-  { name="Michael Schmidt", email="schmidt@redpoll.ai"},
+  { name = "Baxter Eaves", email = "bax@redpoll.ai" },
+  { name = "Michael Schmidt", email = "schmidt@redpoll.ai" },
 ]
 maintainers = [
-  { name="Baxter Eaves", email="bax@redpoll.ai"},
-  { name="Michael Schmidt", email="schmidt@redpoll.ai"},
-  { name="Ken Swanson", email="ken.swanson@redpoll.ai" }
+  { name = "Baxter Eaves", email = "bax@redpoll.ai" },
+  { name = "Michael Schmidt", email = "schmidt@redpoll.ai" },
 ]
 
 dependencies = [
-    'numpy ~= 1.26',
-    'matplotlib ~= 3.8',
-    'seaborn ~= 0.13',
-    'pandas ~= 2.2',
-    'polars ~= 0.20',
-    'scipy ~= 1.11',
-    'plotly ~= 5.18',
-    'tqdm ~= 4.66',
-    'pyarrow ~= 15.0'
+  'numpy ~= 1.26',
+  'matplotlib ~= 3.8',
+  'seaborn ~= 0.13',
+  'pandas ~= 2.2',
+  'polars ~= 0.20',
+  'scipy ~= 1.11',
+  'plotly ~= 5.18',
+  'tqdm ~= 4.66',
+  'pyarrow ~= 22.0',
 ]
 
 [project.urls]
@@ -51,15 +50,9 @@ Repository = "https://github.com/promised-ai/lace"
 [tool.mypy]
 files = ["lace"]
 strict = true
-enable_error_code = [
-    "redundant-expr",
-    "truthy-bool",
-    "ignore-without-code",
-]
+enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code"]
 
-disable_error_code = [
-    "empty-body",
-]
+disable_error_code = ["empty-body"]
 
 [[tool.mypy.overrides]]
 module = ["lace.core.*"]
@@ -76,19 +69,19 @@ fix = true
 allowed-confusables = ["ρ", "α"]
 
 select = [
-  "E", # pycodestyle
-  "W", # pycodestyle
-  "F", # Pyflakes
-  "B", # flake8-bugbear
-  "C4", # flake8-comprehensions
-  "D", # flake8-docstrings
-  "I", # isort
+  "E",   # pycodestyle
+  "W",   # pycodestyle
+  "F",   # Pyflakes
+  "B",   # flake8-bugbear
+  "C4",  # flake8-comprehensions
+  "D",   # flake8-docstrings
+  "I",   # isort
   "SIM", # flake8-simplify
   "TCH", # flake8-type-checking
   "TID", # flake8-tidy-imports
-  "Q", # flake8-quotes
-  "UP", # pyupgrade
-  "PT", # flake8-pytest-style
+  "Q",   # flake8-quotes
+  "UP",  # pyupgrade
+  "PT",  # flake8-pytest-style
   "RUF", # Ruff-specific rules
 ]
 

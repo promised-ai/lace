@@ -1,12 +1,18 @@
 use std::convert::TryInto;
 
-use lace::{AppendStrategy, Engine, HasData, HasStates, WriteMode};
-use lace_cc::state::Builder;
-use lace_codebook::{Codebook, ColMetadata, ColType};
-use lace_data::Datum;
-use lace_stats::prior::nix::NixHyper;
-
-use rand::{Rng, SeedableRng};
+use lace::cc::state::Builder;
+use lace::codebook::Codebook;
+use lace::codebook::ColMetadata;
+use lace::codebook::ColType;
+use lace::data::Datum;
+use lace::stats::prior::nix::NixHyper;
+use lace::AppendStrategy;
+use lace::Engine;
+use lace::HasData;
+use lace::HasStates;
+use lace::WriteMode;
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 fn assert_rows_eq(row_a: &[Datum], row_b: &[Datum]) {
@@ -88,7 +94,7 @@ fn gen_engine() -> Engine {
     Engine {
         states,
         state_ids: vec![0, 1, 2, 3],
-        rng: Xoshiro256Plus::from_entropy(),
+        rng: Xoshiro256Plus::from_os_rng(),
         codebook,
     }
 }
@@ -97,7 +103,7 @@ fn gen_engine() -> Engine {
 fn stream_insert_all_data() {
     let mut engine = gen_engine();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mode = WriteMode {
         append_strategy: AppendStrategy::Window,
@@ -109,7 +115,7 @@ fn stream_insert_all_data() {
             format!("{}", i),
             (0..14)
                 .map(|j| {
-                    let x = Datum::Continuous(rng.gen());
+                    let x = Datum::Continuous(rng.random());
                     (format!("{}", j), x)
                 })
                 .collect::<Vec<(String, Datum)>>(),
@@ -125,7 +131,7 @@ fn stream_insert_all_data() {
 fn trench_insert_all_data() {
     let mut engine = gen_engine();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mode = WriteMode {
         append_strategy: AppendStrategy::Trench {
@@ -146,7 +152,7 @@ fn trench_insert_all_data() {
             format!("{}", ix),
             (0..14)
                 .map(|j| {
-                    let x = Datum::Continuous(rng.gen());
+                    let x = Datum::Continuous(rng.random());
                     (format!("{}", j), x)
                 })
                 .collect::<Vec<(String, Datum)>>(),

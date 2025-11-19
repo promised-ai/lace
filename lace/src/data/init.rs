@@ -43,17 +43,28 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
-use crate::codebook::{Codebook, ColType};
-use crate::error::DataParseError;
-use lace_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
-use lace_codebook::{CodebookError, ValueMap};
-use lace_data::{Container, SparseContainer};
-use lace_stats::prior::csd::CsdHyper;
-use lace_stats::prior::nix::NixHyper;
-use lace_stats::prior::pg::PgHyper;
-use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
-use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;
+
+use polars::prelude::DataFrame;
+use polars::prelude::Series;
+use rv::dist::Gamma;
+use rv::dist::NormalInvChiSquared;
+use rv::dist::SymmetricDirichlet;
+
+use crate::cc::feature::ColModel;
+use crate::cc::feature::Column;
+use crate::cc::feature::Feature;
+use crate::cc::feature::MissingNotAtRandom;
+use crate::codebook::Codebook;
+use crate::codebook::CodebookError;
+use crate::codebook::ColType;
+use crate::codebook::ValueMap;
+use crate::data::Container;
+use crate::data::SparseContainer;
+use crate::error::DataParseError;
+use crate::stats::prior::csd::CsdHyper;
+use crate::stats::prior::nix::NixHyper;
+use crate::stats::prior::pg::PgHyper;
 
 fn continuous_col_model<R: rand::Rng>(
     id: usize,
@@ -139,26 +150,26 @@ fn categorical_col_model<R: rand::Rng>(
     mut rng: &mut R,
 ) -> Result<ColModel, CodebookError> {
     use polars::datatypes::DataType;
-    let xs: Vec<Option<u8>> = match (value_map, srs.dtype()) {
+    let xs: Vec<Option<u32>> = match (value_map, srs.dtype()) {
         (ValueMap::String(map), DataType::String) => {
             crate::codebook::data::series_to_opt_strings!(srs)
                 .iter()
-                .map(|val| val.as_ref().map(|s| map.ix(s).unwrap() as u8))
+                .map(|val| val.as_ref().map(|s| map.ix(s).unwrap() as u32))
                 .collect()
         }
-        (ValueMap::U8(_), dt) if is_categorical_int_dtype(dt) => {
-            crate::codebook::data::series_to_opt_vec!(srs, u8)
+        (ValueMap::UInt(_), dt) if is_categorical_int_dtype(dt) => {
+            crate::codebook::data::series_to_opt_vec!(srs, u32)
         }
         (ValueMap::Bool, DataType::Boolean) => srs
             .bool()?
             .into_iter()
             .map(|maybe_bool| {
-                maybe_bool.map(|b| ValueMap::Bool.ix(&b.into()).unwrap() as u8)
+                maybe_bool.map(|b| ValueMap::Bool.ix(&b.into()).unwrap() as u32)
             })
             .collect(),
         _ => {
             return Err(CodebookError::UnsupportedDataType {
-                col_name: srs.name().to_owned(),
+                col_name: srs.name().to_string(),
                 dtype: srs.dtype().clone(),
             })
         }
@@ -184,9 +195,13 @@ fn categorical_col_model<R: rand::Rng>(
 
 pub fn df_to_col_models<R: rand::Rng>(
     codebook: Codebook,
-    df: DataFrame,
+    mut df: DataFrame,
     rng: &mut R,
 ) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
+    // If you don't do the re chunk polars will panic because they thought
+    // a panic, rather than an error, was the best way to handle failing in
+    // functions that assume that data is re-chunked.
+    df.rechunk_mut();
     if !codebook.col_metadata.is_empty() && df.is_empty() {
         return Err(DataParseError::ColumnMetadataSuppliedForEmptyData);
     }
@@ -202,7 +217,7 @@ pub fn df_to_col_models<R: rand::Rng>(
         let mut id_cols = df
             .get_column_names()
             .iter()
-            .filter(|&name| lace_utils::is_index_col(name))
+            .filter(|&name| crate::utils::is_index_col(name))
             .map(|name| name.to_string())
             .collect::<Vec<String>>();
 
@@ -219,7 +234,7 @@ pub fn df_to_col_models<R: rand::Rng>(
         let mut srss: HashMap<&str, &Series> = df
             .get_columns()
             .iter()
-            .map(|srs| (srs.name(), srs))
+            .map(|col| (col.name().as_str(), col.as_materialized_series()))
             .collect();
         srss.remove(id_col.as_str())
             .ok_or(DataParseError::NoIDColumn)?;
@@ -268,8 +283,8 @@ pub fn df_to_col_models<R: rand::Rng>(
 
             // If missing not at random, convert the column type
             if colmd.missing_not_at_random {
-                use lace_stats::rv::dist::Beta;
                 use polars::prelude::DataType;
+                use rv::dist::Beta;
                 col_model.map(|cm| {
                     ColModel::MissingNotAtRandom(MissingNotAtRandom {
                         present: {
@@ -282,7 +297,7 @@ pub fn df_to_col_models<R: rand::Rng>(
                                         !(matches!(dtype, DataType::Null)
                                             || matches!(
                                                 dtype,
-                                                DataType::Unknown
+                                                DataType::Unknown(_)
                                             ))
                                     })
                                     .collect::<Vec<bool>>(),
@@ -311,9 +326,10 @@ pub fn df_to_col_models<R: rand::Rng>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::*;
     use indoc::indoc;
+
+    use super::*;
 
     fn str_to_tempfile(data: &str) -> tempfile::NamedTempFile {
         use std::io::Write;
@@ -371,12 +387,12 @@ mod tests {
 
         let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let file = str_to_tempfile(csv_data);
         let (_, col_models) = df_to_col_models(
             codebook,
-            lace_codebook::data::read_csv(file.path()).unwrap(),
+            crate::codebook::data::read_csv(file.path()).unwrap(),
             &mut rng,
         )
         .unwrap();
@@ -425,7 +441,7 @@ mod tests {
                       pr_alpha:
                         shape: 1.2
                         scale: 3.4
-                    value_map: !u8 2
+                    value_map: !u_int 2
                 missing_not_at_random: false
             row_names:
               - 0
@@ -440,12 +456,12 @@ mod tests {
 
         let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let file = str_to_tempfile(csv_data);
         let (_, col_models) = df_to_col_models(
             codebook,
-            lace_codebook::data::read_csv(file.path()).unwrap(),
+            crate::codebook::data::read_csv(file.path()).unwrap(),
             &mut rng,
         )
         .unwrap();
