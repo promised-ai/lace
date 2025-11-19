@@ -1,6 +1,5 @@
 use polars::frame::DataFrame;
 use polars::prelude::ArrayRef;
-use polars::prelude::ArrowField;
 use polars::prelude::CompatLevel;
 use polars::prelude::PolarsError;
 use polars::series::Series;
@@ -162,26 +161,34 @@ impl<'a> FromPyObject<'a> for PyDataFrame {
 
 /// Arrow array to Python.
 pub(crate) fn to_py_array(
-    array: ArrayRef,
+    array: Box<dyn polars_arrow::array::Array>,
     py: Python,
     pyarrow: &Bound<PyModule>,
 ) -> PyResult<PyObject> {
-    let schema = Box::new(ffi::export_field_to_c(&ArrowField::new(
-        "".into(),
-        array.dtype().clone(),
-        true,
-    )));
-    let array = Box::new(ffi::export_array_to_c(array));
+    use polars_arrow::datatypes::Field;
+    use polars_arrow::ffi::export_array_to_c;
+    use polars_arrow::ffi::export_field_to_c;
 
-    let schema_ptr: *const ffi::ArrowSchema = &*schema;
-    let array_ptr: *const ffi::ArrowArray = &*array;
+    // Build schema
+    let dtype = array.dtype().clone();
+    let field = Field::new("".into(), dtype, true);
 
-    let array = pyarrow.getattr("Array")?.call_method1(
-        "_import_from_c",
-        (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
-    )?;
+    // Export to C Arrow
+    let schema = Box::new(export_field_to_c(&field));
+    let array = Box::new(export_array_to_c(array));
+    let schema_ptr: *const polars_arrow::ffi::ArrowSchema = &*schema;
+    let array_ptr: *const polars_arrow::ffi::ArrowArray = &*array;
 
-    Ok(array.to_object(py))
+    let py_array = pyarrow
+        .getattr("Array")
+        .expect("get_attr failed")
+        .call_method1(
+            "_import_from_c",
+            (array_ptr as usize, schema_ptr as usize),
+        )
+        .expect("call_method failed");
+
+    Ok(py_array.to_object(py))
 }
 
 // TODO: When https://github.com/PyO3/pyo3/issues/1813 is solved, implement a

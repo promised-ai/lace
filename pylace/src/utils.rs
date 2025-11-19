@@ -778,7 +778,7 @@ fn df_to_values(
                         let mut index_col_names = list
                             .iter()
                             .map(|s| s.extract::<String>())
-                            .map(|s| {
+                            .flat_map(|s| {
                                 s.map(|s| {
                                     if is_index_col(&s) {
                                         Some(s)
@@ -788,7 +788,6 @@ fn df_to_values(
                                 })
                                 .transpose()
                             })
-                            .flatten()
                             .collect::<PyResult<Vec<String>>>()?;
 
                         if index_col_names.is_empty() {

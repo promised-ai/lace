@@ -401,7 +401,7 @@ impl CoreEngine {
         n_mc_samples: usize,
         mi_type: &str,
     ) -> PyResult<PySeries> {
-        let pairs = list_to_pairs(&col_pairs, &self.col_indexer)?;
+        let pairs = list_to_pairs(col_pairs, &self.col_indexer)?;
         let mi_type = utils::str_to_mitype(mi_type)?;
         self.engine
             .mi_pw(&pairs, n_mc_samples, mi_type)
@@ -519,17 +519,15 @@ impl CoreEngine {
             let mut a = Vec::with_capacity(pairs.len());
             let mut b = Vec::with_capacity(pairs.len());
 
-            utils::pairs_list_iter(pairs, indexer)
-                .map(|res| {
-                    let (ix_a, ix_b) = res?;
-                    let name_a = indexer.to_name[&ix_a].clone();
-                    let name_b = indexer.to_name[&ix_b].clone();
-                    a.push(name_a);
-                    b.push(name_b);
+            utils::pairs_list_iter(pairs, indexer).try_for_each(|res| {
+                let (ix_a, ix_b) = res?;
+                let name_a = indexer.to_name[&ix_a].clone();
+                let name_b = indexer.to_name[&ix_b].clone();
+                a.push(name_a);
+                b.push(name_b);
 
-                    Ok::<(), PyErr>(())
-                })
-                .collect::<PyResult<()>>()?;
+                Ok::<(), PyErr>(())
+            })?;
 
             let a = Series::new("A".into(), a);
             let b = Series::new("B".into(), b);
@@ -1117,7 +1115,7 @@ impl CoreEngine {
         };
 
         let timeout = {
-            let secs = timeout.unwrap_or(std::u64::MAX);
+            let secs = timeout.unwrap_or(u64::MAX);
             Timeout::new(Duration::from_secs(secs))
         };
 
@@ -1181,7 +1179,7 @@ impl CoreEngine {
         let row_names = df_vals.row_names.ok_or_else(|| {
             PyValueError::new_err("Provided dataframe has no index (row names)")
         })?;
-        (self.engine.n_rows()..).zip(row_names.iter()).map(
+        (self.engine.n_rows()..).zip(row_names.iter()).try_for_each(
             |(ix, name)| {
                 if self.row_indexer.to_ix.contains_key(name)  {
                     Err(PyValueError::new_err(
@@ -1193,7 +1191,7 @@ impl CoreEngine {
                     Ok(())
                 }
             },
-        ).collect::<PyResult<()>>()?;
+        )?;
 
         let data = parts_to_insert_values(
             df_vals.col_names,
@@ -1268,7 +1266,7 @@ impl CoreEngine {
             .remove_data(
                 row_idxs
                     .into_iter()
-                    .map(|idx| TableIndex::Row(idx))
+                    .map(TableIndex::Row)
                     .collect::<Vec<TableIndex<usize, usize>>>(),
             )
             .map_err(to_pyerr)?;

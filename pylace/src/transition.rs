@@ -99,7 +99,7 @@ impl StateTransition {
         Self(lace::cc::transition::StateTransition::FeaturePriors)
     }
 
-    ///
+    /// Update the component model parameters
     #[staticmethod]
     fn component_parameters() -> Self {
         Self(lace::cc::transition::StateTransition::ComponentParams)

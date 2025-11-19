@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prior version metadata is incompatible with this version
 - Updated to lace 0.9.0
 - Categorical variables can take on more than 256 distinct values
+- Updated pyarrow to 22
 
 ## [rust-0.8.0] - 2024-04-10
 
