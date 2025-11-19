@@ -18,9 +18,6 @@ explanation of the parameters in the [codebook](/codebook-ref.md#continuous)
 
 ### Categorical data
 
-> **Note:** For categorical columns, lace currently supports up to 256
-> unique values.
-
 Categorical columns are modeled as mixtures of [categorical
 distributions](https://en.wikipedia.org/wiki/Categorical_distribution). Find an
 explanation of the parameters in the [codebook](/codebook-ref.md#categorical). 
