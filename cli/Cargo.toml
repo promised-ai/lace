@@ -1,7 +1,7 @@
 [package]
 name = "lace-cli"
 version = "0.8.0"
-authors = ["Promised AI"]
+authors = ["Redpoll"]
 edition = "2021"
 rust-version = "1.62.0"
 license = "MIT"

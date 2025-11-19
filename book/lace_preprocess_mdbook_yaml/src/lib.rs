@@ -12,12 +12,12 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct ViewPriorProcess {
-    pub view_prior_process: lace_codebook::PriorProcess,
+    pub view_prior_process: lace::codebook::PriorProcess,
 }
 
 #[derive(Deserialize)]
 struct StatePriorProcess {
-    pub state_prior_process: lace_codebook::PriorProcess,
+    pub state_prior_process: lace::codebook::PriorProcess,
 }
 
 fn check_deserialize_yaml<T>(input: &str) -> anyhow::Result<()>
@@ -68,8 +68,8 @@ fn check_deserialize_dyn(input: &str, type_name: &str, format: &str) -> anyhow::
         [
             ViewPriorProcess,
             StatePriorProcess,
-            lace_codebook::ColMetadata,
-            lace_codebook::ColMetadataList
+            lace::codebook::ColMetadata,
+            lace::codebook::ColMetadataList
         ]
     )
 }
