@@ -27,7 +27,7 @@ let rows = vec![Row {
     row_ix: String::from("pig"),
     values: vec![Value {
         col_ix: String::from("fierce"),
-        value: Datum::Categorical(lace::Category::U8(0)),
+        value: Datum::Categorical(lace::Category::UInt(0)),
     }],
 }];
 
@@ -80,15 +80,15 @@ let tribble = vec![Row {
     values: vec![
         Value {
             col_ix: String::from("fierce"),
-            value: Datum::Categorical(lace::Category::U8(1)),
+            value: Datum::Categorical(lace::Category::UInt(1)),
         },
         Value {
             col_ix: String::from("meatteeth"),
-            value: Datum::Categorical(lace::Category::U8(0)),
+            value: Datum::Categorical(lace::Category::UInt(0)),
         },
         Value {
             col_ix: String::from("furry"),
-            value: Datum::Categorical(lace::Category::U8(1)),
+            value: Datum::Categorical(lace::Category::UInt(1)),
         },
     ],
 }];
