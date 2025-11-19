@@ -195,9 +195,13 @@ fn categorical_col_model<R: rand::Rng>(
 
 pub fn df_to_col_models<R: rand::Rng>(
     codebook: Codebook,
-    df: DataFrame,
+    mut df: DataFrame,
     rng: &mut R,
 ) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
+    // If you don't do the re chunk polars will panic because they thought
+    // a panic, rather than an error, was the best way to handle failing in
+    // functions that assume that data is re-chunked.
+    df.rechunk_mut();
     if !codebook.col_metadata.is_empty() && df.is_empty() {
         return Err(DataParseError::ColumnMetadataSuppliedForEmptyData);
     }
