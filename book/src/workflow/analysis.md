@@ -119,7 +119,7 @@ animals.predict("swims", given={'flippers': 1})
 animals.predict(
     "swims",
     &Given::Conditions(vec![
-        ("flippers", Datum::Categorical(lace::Category::U8(1)))
+        ("flippers", Datum::Categorical(lace::Category::UInt(1)))
     ]),
     true,
     None,
@@ -148,8 +148,8 @@ animals.predict("swims", given={'flippers': 1, 'water': 1})
 animals.predict(
     "swims",
     &Given::Conditions(vec![
-        ("flippers", Datum::Categorical(lace::Category::U8(1))),
-        ("water", Datum::Categorical(lace::Category::U8(1))),
+        ("flippers", Datum::Categorical(lace::Category::UInt(1))),
+        ("water", Datum::Categorical(lace::Category::UInt(1))),
     ]),
     true,
     None,
@@ -178,8 +178,8 @@ animals.predict("swims", given={'flippers': 1, 'water': 0})
 animals.predict(
     "swims",
     &Given::Conditions(vec![
-        ("flippers", Datum::Categorical(lace::Category::U8(1))),
-        ("water", Datum::Categorical(lace::Category::U8(0))),
+        ("flippers", Datum::Categorical(lace::Category::UInt(1))),
+        ("water", Datum::Categorical(lace::Category::UInt(0))),
     ]),
     true,
     None,
@@ -214,12 +214,12 @@ animals.logp(
 animals.logp(
     &["swims"],
     &[
-        vec![Datum::Categorical(lace::Category::U8(0))],
-        vec![Datum::Categorical(lace::Category::U8(1))],
+        vec![Datum::Categorical(lace::Category::UInt(0))],
+        vec![Datum::Categorical(lace::Category::UInt(1))],
     ],
     &Given::Conditions(vec![
-        ("flippers", Datum::Categorical(lace::Category::U8(1))),
-        ("water", Datum::Categorical(lace::Category::U8(0))),
+        ("flippers", Datum::Categorical(lace::Category::UInt(1))),
+        ("water", Datum::Categorical(lace::Category::UInt(0))),
     ]),
     None,
 )

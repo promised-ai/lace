@@ -112,23 +112,24 @@ We first initialize a new `Engine`:
 ```rust,noplayground
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use polars::prelude::{CsvReader, SerReader};
+use polars::prelude::{CsvReadOptions, SerReader};
 use lace::prelude::*;
 use lace::examples::Example;
 
 // Load an example file
 let paths = Example::Satellites.paths().unwrap();
-let df = CsvReader::from_path(paths.data)
-    .unwrap()
-    .has_header(true)
-    .finish()
-    .unwrap();
+let df = CsvReadOptions::default()
+  .with_has_header(true)
+  .try_into_reader_with_file_path(Some(paths.data))
+  .unwrap()
+  .finish()
+  .unwrap();
 
 // Create the default codebook
 let codebook = Codebook::from_df(&df, None, None, None, false).unwrap();
 
 // Build an rng
-let rng = Xoshiro256Plus::from_entropy();
+let rng = Xoshiro256Plus::from_os_rng();
 
 // This initializes 32 states from the prior
 let mut engine = Engine::new(

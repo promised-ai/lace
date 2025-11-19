@@ -36,17 +36,18 @@ codebook = Codebook.from_df("satellites", df)
 ```
 
 ```rust,noplayground
-use polars::prelude::{CsvReader, SerReader};
+use polars::prelude::{CsvReadOptions, SerReader};
 use lace::codebook::Codebook;
 use lace::examples::Example;
 
 // Load an example file
 let paths = Example::Satellites.paths().unwrap();
-let df = CsvReader::from_path(paths.data)
-    .unwrap()
-    .has_header(true)
-    .finish()
-    .unwrap();
+let df = CsvReadOptions::default()
+  .with_has_header(true)
+  .try_into_reader_with_file_path(Some(paths.data))
+  .unwrap()
+  .finish()
+  .unwrap();
 
 // Create the default codebook
 let codebook = Codebook::from_df(&df, None, None, None, false).unwrap();
