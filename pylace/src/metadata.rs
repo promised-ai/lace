@@ -553,6 +553,7 @@ pub struct Codebook(pub(crate) lace::codebook::Codebook);
 #[pymethods]
 impl Codebook {
     #[new]
+    #[allow(clippy::field_reassign_with_default)]
     pub fn new(table_name: String) -> Self {
         let mut codebook = lace::codebook::Codebook::default();
         codebook.table_name = table_name;

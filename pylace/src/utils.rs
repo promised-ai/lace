@@ -161,6 +161,7 @@ pub enum TableIndex<'s> {
 impl<'s> TableIndex<'s> {
     /// Returns a row index vector and a column index vector whose Cartesian
     /// product is a sub-table
+    #[allow(clippy::type_complexity)]
     pub(crate) fn ixs(
         &self,
         codebook: &Codebook,
