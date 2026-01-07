@@ -21,6 +21,7 @@ use pyo3::exceptions::PyKeyError;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
+use pyo3::IntoPyObjectExt;
 
 use crate::df::PyDataFrame;
 use crate::utils::to_pyerr;
@@ -246,7 +247,7 @@ impl ValueMapIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Py<PyAny>> {
         use lace::codebook::ValueMap as Vm;
         match slf.inner {
             Vm::String(ref map) => {
@@ -255,25 +256,25 @@ impl ValueMapIterator {
                 } else {
                     let s = map.category(slf.ix);
                     slf.ix += 1;
-                    Some(s.into_py(slf.py()))
+                    s.into_py_any(slf.py()).ok()
                 }
             }
             Vm::UInt(k) => {
                 if slf.ix >= k {
                     None
                 } else {
-                    let c = slf.ix.into_py(slf.py());
+                    let c = slf.ix.into_py_any(slf.py());
                     slf.ix += 1;
-                    Some(c)
+                    c.ok()
                 }
             }
             Vm::Bool => {
                 if slf.ix == 0 {
                     slf.ix += 1;
-                    Some(false.into_py(slf.py()))
+                    false.into_py_any(slf.py()).ok()
                 } else if slf.ix == 1 {
                     slf.ix += 1;
-                    Some(true.into_py(slf.py()))
+                    true.into_py_any(slf.py()).ok()
                 } else {
                     None
                 }

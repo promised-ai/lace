@@ -36,6 +36,7 @@ use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
 use pyo3::types::PyType;
+use pyo3::IntoPyObjectExt;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::Deserialize;
@@ -325,18 +326,10 @@ impl CoreEngine {
 
         let mixture = self.engine.states[state_ix].feature_as_mixture(col_ix);
         match ComponentParams::from(mixture) {
-            ComponentParams::Bernoulli(params) => {
-                Ok(params.into_py(py).into_bound(py))
-            }
-            ComponentParams::Categorical(params) => {
-                Ok(params.into_py(py).into_bound(py))
-            }
-            ComponentParams::Gaussian(params) => {
-                Ok(params.into_py(py).into_bound(py))
-            }
-            ComponentParams::Poisson(params) => {
-                Ok(params.into_py(py).into_bound(py))
-            }
+            ComponentParams::Bernoulli(params) => params.into_pyobject(py),
+            ComponentParams::Categorical(params) => params.into_pyobject(py),
+            ComponentParams::Gaussian(params) => params.into_pyobject(py),
+            ComponentParams::Poisson(params) => params.into_pyobject(py),
         }
     }
 
@@ -987,9 +980,9 @@ impl CoreEngine {
                     PyErr::new::<PyValueError, _>(format!("{err}"))
                 })?;
             let value = datum_to_value(pred)?;
-            Python::with_gil(|py| {
-                let unc = unc.into_py(py);
-                Ok((value, unc).into_py(py))
+            Python::attach(|py| {
+                let unc = unc.into_pyobject(py)?;
+                (value, unc).into_py_any(py)
             })
         } else {
             let (pred, _) = self
@@ -1087,7 +1080,7 @@ impl CoreEngine {
         checkpoint: Option<usize>,
         transitions: Option<Vec<transition::StateTransition>>,
         save_path: Option<PathBuf>,
-        update_handler: Option<PyObject>,
+        update_handler: Option<Py<PyAny>>,
     ) -> PyResult<()> {
         use std::time::Duration;
 
@@ -1119,7 +1112,7 @@ impl CoreEngine {
             Timeout::new(Duration::from_secs(secs))
         };
 
-        py.allow_threads(|| {
+        py.detach(|| {
             if let Some(update_handler) = update_handler {
                 self.engine
                     .update(
@@ -1398,7 +1391,7 @@ impl CoreEngine {
     ) -> PyResult<Vec<pyo3::Py<PyAny>>> {
         use lace::codebook::ValueMap as Vm;
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.engine
                 .codebook
                 .value_map(col_ix)
@@ -1408,30 +1401,36 @@ impl CoreEngine {
                 })
                 .map(|vm| match vm {
                     Vm::UInt(k) => (0..*k as u64)
-                        .map(|ix| ix.into_py(py))
+                        .map(|ix| ix.into_py_any(py).unwrap())
                         .collect::<Vec<_>>(),
-                    Vm::Bool => vec![false.into_py(py), true.into_py(py)],
+                    Vm::Bool => {
+                        vec![
+                            false.into_py_any(py).unwrap(),
+                            true.into_py_any(py).unwrap(),
+                        ]
+                    }
                     Vm::String(cm) => (0..cm.len())
-                        .map(|ix| cm.category(ix).into_py(py))
+                        .map(|ix| cm.category(ix).into_py_any(py).unwrap())
                         .collect::<Vec<_>>(),
                 })
         })
     }
 
-    pub fn __setstate__(
+    pub fn __setstate__<'py>(
         &mut self,
-        py: Python,
-        state: PyObject,
+        state: Bound<'py, PyBytes>,
     ) -> PyResult<()> {
-        let s = state.extract::<&PyBytes>(py)?;
-        *self = bincode::deserialize(s.as_bytes()).map_err(|e| {
+        *self = bincode::deserialize(state.as_bytes()).map_err(|e| {
             PyValueError::new_err(format!("Cannot Deserialize CoreEngine: {e}"))
         })?;
         Ok(())
     }
 
-    pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
-        Ok(PyBytes::new_bound(
+    pub fn __getstate__<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Bound<'py, PyBytes>> {
+        PyBytes::new(
             py,
             &bincode::serialize(&self).map_err(|e| {
                 PyValueError::new_err(format!(
@@ -1439,7 +1438,8 @@ impl CoreEngine {
                 ))
             })?,
         )
-        .to_object(py))
+        .into_pyobject(py)
+        .map_err(PyErr::from)
     }
 
     pub fn __getnewargs__(&self) -> PyResult<(PyDataFrame,)> {
@@ -1488,10 +1488,7 @@ fn core(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<update_handler::PyEngineUpdateConfig>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
-    m.add("EngineLoadError", py.get_type_bound::<EngineLoadError>())?;
-    m.add(
-        "EngineUpdateError",
-        py.get_type_bound::<EngineUpdateError>(),
-    )?;
+    m.add("EngineLoadError", py.get_type::<EngineLoadError>())?;
+    m.add("EngineUpdateError", py.get_type::<EngineUpdateError>())?;
     Ok(())
 }
