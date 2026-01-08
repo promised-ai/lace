@@ -15,12 +15,14 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
   "Programming Language :: Rust",
   "Topic :: Scientific/Engineering",
 ]
-license = { text = "MIT" }
+license = "MIT"
 authors = [
   { name = "Baxter Eaves", email = "bax@redpoll.ai" },
   { name = "Michael Schmidt", email = "schmidt@redpoll.ai" },
@@ -146,4 +148,15 @@ dev = [
   "mypy ~= 1.0",
   "ruff ~= 0.0",
   "vermin ~= 1.8",
+  "kaleido ~= 1.2",
+  "ipython >= 8, < 10",
+  "nbformat >= 4.2.0",
+]
+docs = [
+  "commonmark ~= 0.9",
+  "mock ~= 1.0",
+  "pillow ~= 10.2",
+  "recommonmark ~= 0.5",
+  "sphinx-rtd-theme ~= 1.2",
+  "sphinx ~= 6.2",
 ]

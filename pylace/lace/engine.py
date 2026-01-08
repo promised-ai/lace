@@ -1395,7 +1395,7 @@ class Engine:
         ...     "Apogee_km",
         ...     "Eccentricity",
         ... ]
-        >>> engine.df.filter(pl.col("ID") == "Intelsat 903")[cols].melt()
+        >>> engine.df.filter(pl.col("ID") == "Intelsat 903")[cols].unpivot()
         shape: (5, 2)
         ┌────────────────┬────────────────────┐
         │ variable       ┆ value              │
@@ -2376,7 +2376,7 @@ class Engine:
 
         fn = self.pairwise_fn(fn_name, indices, **fn_kwargs)
 
-        df = fn.pivot(values=fn_name, index="A", columns="B")
+        df = fn.pivot(values=fn_name, index="A", on="B")
         df, linkage = utils.hcluster(df, method=linkage_method)
 
         if not no_plot:

@@ -131,13 +131,13 @@ impl<'py> IntoPyObject<'py> for DataFrameLike {
 #[derive(Clone)]
 pub struct PySeries(pub Series);
 
-fn array_to_rust<'py>(obj: Bound<'py, PyAny>) -> PyResult<ArrayRef> {
+fn array_to_rust(obj: &Bound<PyAny>) -> PyResult<ArrayRef> {
     // prepare a pointer to receive the Array struct
     let array = Box::new(ffi::ArrowArray::empty());
     let schema = Box::new(ffi::ArrowSchema::empty());
 
-    let array_ptr = &*array as *const ffi::ArrowArray;
-    let schema_ptr = &*schema as *const ffi::ArrowSchema;
+    let array_ptr = &raw const *array;
+    let schema_ptr = &raw const *schema;
 
     // make the conversion through PyArrow's private API
     // this changes the pointer's memory and is thus unsafe. In particular,
@@ -167,8 +167,8 @@ impl<'a, 'py> FromPyObject<'a, 'py> for PySeries {
         let name = PlSmallStr::from(name.str()?.to_str()?);
 
         let arr = obj.call_method0("to_arrow")?;
-        let arr = array_to_rust(arr)?;
-        Ok(PySeries(
+        let arr = array_to_rust(&arr)?;
+        Ok(Self(
             Series::try_from((name, arr)).map_err(DataFrameError::from)?,
         ))
     }
@@ -194,12 +194,12 @@ impl<'a, 'py> FromPyObject<'a, 'py> for PyDataFrame {
             let s = pyseries.extract::<PySeries>()?.0;
             columns.push(s.into());
         }
-        Ok(PyDataFrame(DataFrame::new(columns).unwrap()))
+        Ok(Self(DataFrame::new(columns).unwrap()))
     }
 }
 
 /// Arrow array to Python.
-pub(crate) fn to_py_array<'py>(
+fn to_py_array<'py>(
     array: Box<dyn polars_arrow::array::Array>,
     py: Python<'py>,
     pyarrow: &Bound<'py, PyModule>,
@@ -215,19 +215,15 @@ pub(crate) fn to_py_array<'py>(
     // Export to C Arrow
     let schema = Box::new(export_field_to_c(&field));
     let array = Box::new(export_array_to_c(array));
-    let schema_ptr: *const polars_arrow::ffi::ArrowSchema = &*schema;
-    let array_ptr: *const polars_arrow::ffi::ArrowArray = &*array;
+    let schema_ptr: *const polars_arrow::ffi::ArrowSchema = &raw const *schema;
+    let array_ptr: *const polars_arrow::ffi::ArrowArray = &raw const *array;
 
-    let py_array = pyarrow
-        .getattr("Array")
-        .expect("get_attr failed")
-        .call_method1(
-            "_import_from_c",
-            (array_ptr as usize, schema_ptr as usize),
-        )
-        .expect("call_method failed");
+    let py_array = pyarrow.getattr("Array")?.call_method1(
+        "_import_from_c",
+        (array_ptr as usize, schema_ptr as usize),
+    )?;
 
-    Ok(py_array.into_pyobject(py).expect("Infalliable"))
+    py_array.into_pyobject(py).map_err(Into::into)
 }
 
 impl<'py> IntoPyObject<'py> for PySeries {

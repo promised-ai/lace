@@ -42,21 +42,21 @@ def diagnostics(
 
     >>> from lace.examples import Satellites
     >>> from lace.plot import diagnostics
-    >>> diagnostics(Satellites(), log_x=True).show()  # doctest:+ELLIPSIS
+    >>> diagnostics(Satellites(), log_x=True).show() # doctest: +ELLIPSIS
     {...}
 
     """
     diag = engine.diagnostics(name)
     step = np.arange(diag.shape[0])
 
-    mean = diag.mean(axis=1).rename("mean")
+    mean = diag.select(mean=pl.mean_horizontal(pl.all()))
 
     df = (
         diag.with_columns(mean)
         .with_columns(pl.Series("step", step))
-        .melt(
-            value_vars=[c for c in diag.columns if name in c],
-            id_vars=["step"],
+        .unpivot(
+            on=[c for c in diag.columns if name in c],
+            index="step",
             value_name=name,
             variable_name="state",
         )
@@ -124,7 +124,7 @@ def prediction_uncertainty(
     ...     "Period_minutes",
     ...     given={"Class_of_Orbit": "GEO"},
     ... )
-    >>> fig.show()  # doctest:+ELLIPSIS
+    >>> fig.show() # doctest:+ELLIPSIS
     {...}
 
     Narrow down the range for visualization
@@ -147,7 +147,7 @@ def prediction_uncertainty(
     ...     "Class_of_Orbit",
     ...     given={"Period_minutes": 1326.0},
     ... )
-    >>> fig.show()  # doctest:+ELLIPSIS
+    >>> fig.show() # doctest:+ELLIPSIS
     {...}
 
     """
@@ -449,7 +449,6 @@ def state(
                     rotation=90,
                 )
 
-        max(row_asgn) + 1
         cat_counts = np.bincount(row_asgn)
         cat_ixs = np.argsort(cat_counts)[::-1]
 

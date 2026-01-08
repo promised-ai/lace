@@ -3,6 +3,7 @@ name = "pylace"
 version = "0.9.0"
 edition = "2021"
 license = "MIT"
+rust-version = "1.89.0"
 
 [lib]
 name = "lace"
@@ -18,11 +19,13 @@ serde_yaml = "0.9.17"
 polars = "0.52.0"
 polars-arrow = "0.52.0"
 serde = { version = "1.0.196", features = ["derive"] }
-bincode = "1.3.3"
+bincode = "1.3"
 
 [package.metadata.maturin]
 name = "lace.core"
 
 [lints.clippy]
+doc_link_with_quotes = "allow"
 pedantic = { level = "deny", priority = -1 }
 nursery = { level = "deny", priority = -1 }
+doc_markdown = "allow"

@@ -143,6 +143,6 @@ impl UpdateHandler for PyUpdateHandler {
     }
 
     fn finalize(&mut self) {
-        call_pyhandler_noret!(self, "finalize",)
+        call_pyhandler_noret!(self, "finalize",);
     }
 }
