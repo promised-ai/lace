@@ -1,10 +1,10 @@
 [build-system]
-requires = ["maturin>=1.0,<2"]
+requires = ["maturin>=1.0,<2", "setuptools >= 77"]
 build-backend = "maturin"
 
 [project]
 name = "pylace"
-version = "0.9.0"
+version = "0.10.0"
 description = "A probabalistic programming ML tool for science"
 requires-python = ">=3.10,<3.15"
 classifiers = [
@@ -155,7 +155,7 @@ dev = [
 docs = [
   "commonmark ~= 0.9",
   "mock ~= 1.0",
-  "pillow ~= 10.2",
+  "pillow ~= 12.1",
   "recommonmark ~= 0.5",
   "sphinx-rtd-theme ~= 1.2",
   "sphinx ~= 6.2",
