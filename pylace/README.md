@@ -47,10 +47,10 @@ engine.predict('Class_of_Orbit', given={'Period_minutes': 1436.0})
 
 ## Tests
 
-To run tests, use `pytest`
+To run all tests (including doctests) tests, use `pytest`
 
 ```console
-$ pytest -x
+$ uv run pytest --cov=lace --doctest-modules .
 ```
 
 To run doctets:

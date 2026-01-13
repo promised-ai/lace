@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [python-0.10.0] - 2026-01-12
+
+### Changed
+- Updated PyO3 rust dependency to version 0.27; this avoids a security issue in the last version and also allows compiling for python 3.13 and 3.14.
+- Updated dependencies and widened version bounds for python dependencies (thanks @hippalectryon-0).
+
+### Added
+- Added pedantic clippy lints and addressed the code to match.
+- Widened tests to account for graphical code as well (though the output of the graphs is not tested).
+
+
 ## [rust-0.9.0] - 2025-11-19
 
 ### Changed
@@ -321,6 +332,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release on [crates.io](https://crates.io/)
 
 [unreleased]: https://github.com/promised-ai/lace/compare/python-0.8.0...HEAD
+[python-0.10.0]: https://github.com/promised-ai/lace/compare/python-0.9.0...python-0.10.0
 [rust-0.9.0]: https://github.com/promised-ai/lace/compare/rust-0.8.0...rust-0.9.0
 [python-0.9.0]: https://github.com/promised-ai/lace/compare/python-0.8.0...python-0.9.0
 [rust-0.8.0]: https://github.com/promised-ai/lace/compare/rust-0.7.0...rust-0.8.0
