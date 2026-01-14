@@ -5,17 +5,18 @@ sphinx:
   configuration: pylace/docs/source/conf.py
 
 build:
-  # readdocs master now includes a rust toolchain
-  os: "ubuntu-22.04"
+  os: "ubuntu-lts-latest"
   tools:
-    python: "3.10"
+    python: "3.14"
   jobs:
     pre_create_environment:
       - asdf install rust latest
       - asdf global rust latest
+      - asdf plugin add uv
+      - asdf install uv latest
+      - asdf global uv latest
+    create_environment:
+      - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
 
-python:
-  install:
-    - requirements: pylace/docs/requirements.txt
-    - method: pip
-      path: pylace
+    install:
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --group docs --project pylace

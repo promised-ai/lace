@@ -10,16 +10,16 @@ use pyo3::exceptions::PyIOError;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::types::PyAnyMethods;
+use pyo3::types::PyList;
 use pyo3::types::PyModule;
+use pyo3::types::PyStringMethods;
 use pyo3::Bound;
 use pyo3::FromPyObject;
-use pyo3::IntoPy;
+use pyo3::IntoPyObject;
 use pyo3::PyAny;
 use pyo3::PyErr;
-use pyo3::PyObject;
 use pyo3::PyResult;
 use pyo3::Python;
-use pyo3::ToPyObject;
 
 #[derive(Debug)]
 pub struct DataFrameError(PolarsError);
@@ -31,7 +31,7 @@ impl From<PolarsError> for DataFrameError {
 }
 
 impl std::convert::From<DataFrameError> for PyErr {
-    fn from(err: DataFrameError) -> PyErr {
+    fn from(err: DataFrameError) -> Self {
         match &err.0 {
             PolarsError::ComputeError(err) => {
                 ComputeError::new_err(err.to_string())
@@ -84,8 +84,9 @@ pub enum DataFrameLike {
     String(String),
 }
 
-impl IntoPy<PyObject> for DataFrameLike {
-    fn into_py(self, py: Python<'_>) -> PyObject {
+/*
+impl IntoPy<Py<PyAny>> for DataFrameLike {
+    fn into_py(self, py: Python<'_>) -> Py<PyAny> {
         match self {
             Self::DataFrame(inner) => PyDataFrame(inner).into_py(py),
             Self::Series(inner) => PySeries(inner).into_py(py),
@@ -96,18 +97,47 @@ impl IntoPy<PyObject> for DataFrameLike {
         }
     }
 }
+*/
+
+impl<'py> IntoPyObject<'py> for DataFrameLike {
+    type Target = PyAny;
+    type Output = Bound<'py, Self::Target>;
+    type Error = PyErr;
+
+    fn into_pyobject(
+        self,
+        py: Python<'py>,
+    ) -> Result<Self::Output, Self::Error> {
+        match self {
+            Self::DataFrame(inner) => PyDataFrame(inner).into_pyobject(py),
+            Self::Series(inner) => PySeries(inner).into_pyobject(py),
+            Self::Float(inner) => {
+                Ok(inner.into_pyobject(py).expect("Infalliable").into_any())
+            }
+            Self::UInt(inner) => {
+                Ok(inner.into_pyobject(py).expect("Infalliable").into_any())
+            }
+            Self::Int(inner) => {
+                Ok(inner.into_pyobject(py).expect("Infalliable").into_any())
+            }
+            Self::String(inner) => {
+                Ok(inner.into_pyobject(py).expect("Infalliable").into_any())
+            }
+        }
+    }
+}
 
 #[repr(transparent)]
 #[derive(Clone)]
 pub struct PySeries(pub Series);
 
-fn array_to_rust(obj: &PyAny) -> PyResult<ArrayRef> {
+fn array_to_rust(obj: &Bound<PyAny>) -> PyResult<ArrayRef> {
     // prepare a pointer to receive the Array struct
     let array = Box::new(ffi::ArrowArray::empty());
     let schema = Box::new(ffi::ArrowSchema::empty());
 
-    let array_ptr = &*array as *const ffi::ArrowArray;
-    let schema_ptr = &*schema as *const ffi::ArrowSchema;
+    let array_ptr = &raw const *array;
+    let schema_ptr = &raw const *schema;
 
     // make the conversion through PyArrow's private API
     // this changes the pointer's memory and is thus unsafe. In particular,
@@ -126,45 +156,54 @@ fn array_to_rust(obj: &PyAny) -> PyResult<ArrayRef> {
     }
 }
 
-impl<'a> FromPyObject<'a> for PySeries {
-    fn extract(ob: &'a PyAny) -> PyResult<Self> {
+impl<'a, 'py> FromPyObject<'a, 'py> for PySeries {
+    fn extract(
+        obj: pyo3::Borrowed<'a, 'py, PyAny>,
+    ) -> Result<Self, Self::Error> {
         use polars::prelude::PlSmallStr;
-        let ob = ob.call_method0("rechunk")?;
+        let obj = obj.call_method0("rechunk")?;
 
-        let name = ob.getattr("name")?;
+        let name = obj.getattr("name")?;
         let name = PlSmallStr::from(name.str()?.to_str()?);
 
-        let arr = ob.call_method0("to_arrow")?;
-        let arr = array_to_rust(arr)?;
-        Ok(PySeries(
+        let arr = obj.call_method0("to_arrow")?;
+        let arr = array_to_rust(&arr)?;
+        Ok(Self(
             Series::try_from((name, arr)).map_err(DataFrameError::from)?,
         ))
     }
+
+    type Error = PyErr;
 }
 
 #[repr(transparent)]
 pub struct PyDataFrame(pub DataFrame);
 
-impl<'a> FromPyObject<'a> for PyDataFrame {
-    fn extract(ob: &'a PyAny) -> PyResult<Self> {
-        let series = ob.call_method0("get_columns")?;
-        let n = ob.getattr("width")?.extract::<usize>()?;
+impl<'a, 'py> FromPyObject<'a, 'py> for PyDataFrame {
+    type Error = PyErr;
+
+    fn extract(
+        obj: pyo3::Borrowed<'a, 'py, PyAny>,
+    ) -> Result<Self, Self::Error> {
+        let series: Bound<'_, PyList> =
+            obj.call_method0("get_columns")?.cast_into()?;
+        let n: usize = obj.getattr("width")?.extract::<usize>()?;
         let mut columns = Vec::with_capacity(n);
-        for pyseries in series.iter()? {
+        for pyseries in series.try_iter()? {
             let pyseries = pyseries?;
             let s = pyseries.extract::<PySeries>()?.0;
             columns.push(s.into());
         }
-        Ok(PyDataFrame(DataFrame::new(columns).unwrap()))
+        Ok(Self(DataFrame::new(columns).unwrap()))
     }
 }
 
 /// Arrow array to Python.
-pub(crate) fn to_py_array(
+fn to_py_array<'py>(
     array: Box<dyn polars_arrow::array::Array>,
-    py: Python,
-    pyarrow: &Bound<PyModule>,
-) -> PyResult<PyObject> {
+    py: Python<'py>,
+    pyarrow: &Bound<'py, PyModule>,
+) -> PyResult<Bound<'py, PyAny>> {
     use polars_arrow::datatypes::Field;
     use polars_arrow::ffi::export_array_to_c;
     use polars_arrow::ffi::export_field_to_c;
@@ -176,56 +215,61 @@ pub(crate) fn to_py_array(
     // Export to C Arrow
     let schema = Box::new(export_field_to_c(&field));
     let array = Box::new(export_array_to_c(array));
-    let schema_ptr: *const polars_arrow::ffi::ArrowSchema = &*schema;
-    let array_ptr: *const polars_arrow::ffi::ArrowArray = &*array;
+    let schema_ptr: *const polars_arrow::ffi::ArrowSchema = &raw const *schema;
+    let array_ptr: *const polars_arrow::ffi::ArrowArray = &raw const *array;
 
-    let py_array = pyarrow
-        .getattr("Array")
-        .expect("get_attr failed")
-        .call_method1(
-            "_import_from_c",
-            (array_ptr as usize, schema_ptr as usize),
-        )
-        .expect("call_method failed");
+    let py_array = pyarrow.getattr("Array")?.call_method1(
+        "_import_from_c",
+        (array_ptr as usize, schema_ptr as usize),
+    )?;
 
-    Ok(py_array.to_object(py))
+    py_array.into_pyobject(py).map_err(Into::into)
 }
 
-// TODO: When https://github.com/PyO3/pyo3/issues/1813 is solved, implement a
-// failable version.
-impl IntoPy<PyObject> for PySeries {
-    fn into_py(self, py: Python<'_>) -> PyObject {
+impl<'py> IntoPyObject<'py> for PySeries {
+    type Target = PyAny;
+    type Output = Bound<'py, Self::Target>;
+    type Error = PyErr;
+
+    fn into_pyobject(
+        self,
+        py: Python<'py>,
+    ) -> Result<Self::Output, Self::Error> {
         let s = self.0.rechunk();
         let name = s.name().as_str();
-        let arr = s.to_arrow(0, CompatLevel::newest());
-        let pyarrow =
-            py.import_bound("pyarrow").expect("pyarrow not installed");
-        let polars = py.import_bound("polars").expect("polars not installed");
+        let array = s.to_arrow(0, CompatLevel::newest());
+        let pyarrow = py.import("pyarrow")?;
+        let polars = py.import("polars")?;
 
-        let arg = to_py_array(arr, py, &pyarrow).unwrap();
-        let s = polars.call_method1("from_arrow", (arg,)).unwrap();
-        let s = s.call_method1("rename", (name,)).unwrap();
-        s.to_object(py)
+        let argument = to_py_array(array, py, &pyarrow)?;
+        let s = polars.call_method1("from_arrow", (argument,))?;
+        let s = s.call_method1("rename", (name,))?;
+        Ok(s)
     }
 }
 
-// TODO: When https://github.com/PyO3/pyo3/issues/1813 is solved, implement a
-// failable version.
-impl IntoPy<PyObject> for PyDataFrame {
-    fn into_py(self, py: Python<'_>) -> PyObject {
+impl<'py> IntoPyObject<'py> for PyDataFrame {
+    type Target = PyAny;
+    type Output = Bound<'py, Self::Target>;
+    type Error = PyErr;
+
+    fn into_pyobject(
+        self,
+        py: Python<'py>,
+    ) -> Result<Self::Output, Self::Error> {
         let pyseries = self
             .0
             .get_columns()
             .iter()
             .map(|s| {
                 PySeries(s.clone().as_materialized_series_maintain_scalar())
-                    .into_py(py)
+                    .into_pyobject(py)
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, PyErr>>()?;
 
-        let polars = py.import_bound("polars").expect("polars not installed");
-        let df_object = polars.call_method1("DataFrame", (pyseries,)).unwrap();
-        df_object.into_py(py)
+        let polars = py.import("polars")?;
+        let df_object = polars.call_method1("DataFrame", (pyseries,))?;
+        Ok(df_object)
     }
 }
 

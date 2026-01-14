@@ -78,8 +78,7 @@ impl CategoricalParams {
                 self.weights[0],
                 self.weights
                     .last()
-                    .map(|x| x.to_string())
-                    .unwrap_or_else(|| "-".to_string())
+                    .map_or_else(|| "-".to_string(), ToString::to_string)
             ),
         };
 
@@ -93,13 +92,13 @@ impl CategoricalParams {
 
 impl From<&Bernoulli> for BernoulliParams {
     fn from(dist: &Bernoulli) -> Self {
-        BernoulliParams { p: dist.p() }
+        Self { p: dist.p() }
     }
 }
 
 impl From<&Categorical> for CategoricalParams {
     fn from(dist: &Categorical) -> Self {
-        CategoricalParams {
+        Self {
             weights: dist.weights(),
         }
     }
@@ -107,7 +106,7 @@ impl From<&Categorical> for CategoricalParams {
 
 impl From<&Gaussian> for GaussianParams {
     fn from(dist: &Gaussian) -> Self {
-        GaussianParams {
+        Self {
             mu: dist.mu(),
             sigma: dist.sigma(),
         }
@@ -116,7 +115,7 @@ impl From<&Gaussian> for GaussianParams {
 
 impl From<&Poisson> for PoissonParams {
     fn from(dist: &Poisson) -> Self {
-        PoissonParams { rate: dist.rate() }
+        Self { rate: dist.rate() }
     }
 }
 

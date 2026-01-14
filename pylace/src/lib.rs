@@ -1,3 +1,5 @@
+#![allow(clippy::needless_pass_by_value)]
+
 mod component;
 mod df;
 mod metadata;
@@ -36,14 +38,20 @@ use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
 use pyo3::types::PyType;
+use pyo3::IntoPyObjectExt;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::update_handler::PyUpdateHandler;
-use crate::utils::*;
+use crate::utils::{
+    coltype_to_ftype, datum_to_value, dict_to_given, list_to_pairs,
+    pandas_to_insert_values, pandas_to_logp_values, parts_to_insert_values,
+    pyany_to_indices, to_pyerr, value_to_index, Indexer,
+};
 
+#[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Clone, Serialize, Deserialize)]
 #[pyclass(subclass, module = "lace.core")]
 struct CoreEngine {
@@ -61,19 +69,19 @@ impl CoreEngine {
     ///
     /// Parameters
     /// ----------
-    /// dataframe: DataFrame
-    ///     polars DataFrame with subject data.
-    /// codebook_builder: CodebookBuilder, optional
+    /// dataframe: `DataFrame`
+    ///     polars `DataFrame` with subject data.
+    /// `codebook_builder`: `CodebookBuilder`, optional
     ///     Optional codebook builder from
-    /// n_states: int, optional
+    /// `n_states`: int, optional
     ///     The number of states (posterior samples)
-    /// id_offset: int, optional
+    /// `id_offset`: int, optional
     ///     Increase the IDs of the states by an integer. Used when you want to
     ///     merge the states in multiple metadata files. For example, if you run
     ///     4 states on two separate machine, you would use an `id_offset` of 2
     ///     on the second machine so that the state files have names `2.state`
     ///     and `3.state`
-    /// rng_seed: int, optional
+    /// `rng_seed`: int, optional
     ///     Integer seed for the random number generator
     #[allow(clippy::too_many_arguments)]
     #[new]
@@ -94,17 +102,14 @@ impl CoreEngine {
         id_offset: usize,
         rng_seed: Option<u64>,
         flat_columns: bool,
-    ) -> PyResult<CoreEngine> {
+    ) -> PyResult<Self> {
         let dataframe = dataframe.0;
         let codebook =
             codebook_builder.unwrap_or_default().build(&dataframe)?;
         let data_source = DataSource::Polars(dataframe);
-
-        let rng = if let Some(seed) = rng_seed {
+        let rng = rng_seed.map_or_else(Xoshiro256Plus::from_os_rng, |seed| {
             Xoshiro256Plus::seed_from_u64(seed)
-        } else {
-            Xoshiro256Plus::from_os_rng()
-        };
+        });
 
         let mut engine = lace::Engine::new(
             n_states,
@@ -130,7 +135,7 @@ impl CoreEngine {
 
     /// Load a Engine from metadata
     #[classmethod]
-    fn load(_cls: &Bound<PyType>, path: PathBuf) -> PyResult<CoreEngine> {
+    fn load(_cls: &Bound<PyType>, path: PathBuf) -> PyResult<Self> {
         let (engine, rng) = {
             let mut engine = lace::Engine::load(path)
                 .map_err(|e| EngineLoadError::new_err(e.to_string()))?;
@@ -189,7 +194,7 @@ impl CoreEngine {
         self.engine.n_cols()
     }
 
-    /// Return the (n_rows, n_cols) shape of the table
+    /// Return the (`n_rows`, `n_cols`) shape of the table
     #[getter]
     fn shape(&self) -> (usize, usize) {
         (self.engine.n_rows(), self.engine.n_cols())
@@ -255,7 +260,7 @@ impl CoreEngine {
             .drain(..)
             .enumerate()
             .map(|(col_ix, ftype)| {
-                let col_name = self.col_indexer.to_name[&col_ix].to_owned();
+                let col_name = self.col_indexer.to_name[&col_ix].clone();
                 let ftype_str = ftype.to_string();
                 (col_name, ftype_str)
             })
@@ -325,18 +330,10 @@ impl CoreEngine {
 
         let mixture = self.engine.states[state_ix].feature_as_mixture(col_ix);
         match ComponentParams::from(mixture) {
-            ComponentParams::Bernoulli(params) => {
-                Ok(params.into_py(py).into_bound(py))
-            }
-            ComponentParams::Categorical(params) => {
-                Ok(params.into_py(py).into_bound(py))
-            }
-            ComponentParams::Gaussian(params) => {
-                Ok(params.into_py(py).into_bound(py))
-            }
-            ComponentParams::Poisson(params) => {
-                Ok(params.into_py(py).into_bound(py))
-            }
+            ComponentParams::Bernoulli(params) => params.into_pyobject(py),
+            ComponentParams::Categorical(params) => params.into_pyobject(py),
+            ComponentParams::Gaussian(params) => params.into_pyobject(py),
+            ComponentParams::Poisson(params) => params.into_pyobject(py),
         }
     }
 
@@ -360,14 +357,14 @@ impl CoreEngine {
     /// Flatten the column assignment of each state so that each state has only
     /// one view
     fn flatten_columns(&mut self) {
-        self.engine.flatten_cols()
+        self.engine.flatten_cols();
     }
 
     /// Dependence probability
     ///
     /// Parameters
     /// ----------
-    /// col_pairs: list((index-like, index-like))
+    /// `col_pairs`: list((index-like, index-like))
     ///     A list of column pairs over which to compute dependence probability. Integers are
     ///     treated like indices and string are treated as names.
     ///
@@ -413,14 +410,14 @@ impl CoreEngine {
     ///
     /// Parameters
     /// ----------
-    /// row_pairs: list((index-like, index-like))
+    /// `row_pairs`: list((index-like, index-like))
     ///     A list of row pairs over which to compute row similarity. Integers
     ///     are treated like indices and string are treated as names.
     /// wrt: list(index-like), optional
     ///     With respect to. A list of columns to contextualize row similarity.
     ///     The row similarity computation will be limited to the columns listed
     ///     in `wrt`. If `None` (default), all columns will be used.
-    /// col_weighted: bool, optional
+    /// `col_weighted`: bool, optional
     ///     If `True`, row similarity will be weighted according to the number
     ///     of columns in each view. If `False` (default), row similarity will
     ///     be weighted according to the total number of views.
@@ -511,8 +508,7 @@ impl CoreEngine {
                     .map(|xs| (xs, &self.row_indexer))
             }
             _ => Err(PyErr::new::<PyValueError, _>(format!(
-                "Unsupported pairwise fn: {}",
-                fn_name
+                "Unsupported pairwise fn: {fn_name}",
             ))),
         }
         .and_then(|(values, indexer)| {
@@ -539,8 +535,7 @@ impl CoreEngine {
             )
             .map_err(|err| {
                 PyErr::new::<PyRuntimeError, _>(format!(
-                    "Failed to create df: {}",
-                    err
+                    "Failed to create df: {err}",
                 ))
             })
             .map(PyDataFrame)
@@ -579,7 +574,7 @@ impl CoreEngine {
             .map_err(to_pyerr)?;
 
         utils::simulate_to_df(
-            values,
+            &values,
             &self.engine.ftypes(),
             &col_ixs,
             &self.col_indexer,
@@ -715,6 +710,7 @@ impl CoreEngine {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     #[pyo3(signature=(col, rows=None, values=None, state_ixs=None))]
     fn surprisal(
         &self,
@@ -735,13 +731,13 @@ impl CoreEngine {
             let n_vals = vals.len()?;
             match row_ixs.len().cmp(&1) {
                 Ordering::Greater => {
-                    let vals = if n_vals != row_ixs.len() {
+                    let vals = if n_vals == row_ixs.len() {
+                        utils::pyany_to_data(vals, ftype)
+                    } else {
                         Err(PyErr::new::<PyValueError, _>(format!(
                             "The lengths of `rows` ({}) and `values` ({}) do not match.",
                             row_ixs.len(), n_vals
                         )))
-                    } else {
-                        utils::pyany_to_data(vals, ftype)
                     }?;
                     let mut row_names = Vec::with_capacity(n_vals);
                     let mut surps = Vec::with_capacity(n_vals);
@@ -752,8 +748,7 @@ impl CoreEngine {
                             .map_err(to_pyerr)
                             .map(|surp| {
                                 row_names.push(
-                                    self.row_indexer.to_name[&row_ix]
-                                        .to_owned(),
+                                    self.row_indexer.to_name[&row_ix].clone(),
                                 );
                                 surps.push(surp);
                             })
@@ -814,7 +809,7 @@ impl CoreEngine {
                                 if let Some(s) = surp {
                                     let row_name = self.row_indexer.to_name
                                         [&row_ix]
-                                        .to_owned();
+                                        .clone();
                                     row_names.push(row_name);
                                     values.push(x);
                                     surps.push(s);
@@ -896,7 +891,7 @@ impl CoreEngine {
 
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
 
-        let mut row_ixs: Vec<usize> = if let Some(row_ixs) = rows {
+        let row_ixs: Vec<usize> = if let Some(row_ixs) = rows {
             pyany_to_indices(row_ixs, &self.row_indexer)?
         } else {
             // Get all missing rows
@@ -910,15 +905,15 @@ impl CoreEngine {
         let mut uncs = Vec::with_capacity(row_ixs.len());
         let mut row_names = Vec::with_capacity(row_ixs.len());
 
-        row_ixs.drain(..).try_for_each(|row_ix| {
+        row_ixs.into_iter().try_for_each(|row_ix| {
             self.engine
                 .impute(row_ix, col_ix, with_uncertainty)
                 .map(|(val, unc)| {
                     values.push(val);
                     row_names.push(self.row_indexer.to_name[&row_ix].clone());
                     if let Some(u) = unc {
-                        uncs.push(u)
-                    };
+                        uncs.push(u);
+                    }
                 })
                 .map_err(to_pyerr)
         })?;
@@ -987,9 +982,9 @@ impl CoreEngine {
                     PyErr::new::<PyValueError, _>(format!("{err}"))
                 })?;
             let value = datum_to_value(pred)?;
-            Python::with_gil(|py| {
-                let unc = unc.into_py(py);
-                Ok((value, unc).into_py(py))
+            Python::attach(|py| {
+                let unc = unc.into_pyobject(py)?;
+                (value, unc).into_py_any(py)
             })
         } else {
             let (pred, _) = self
@@ -1079,6 +1074,7 @@ impl CoreEngine {
             update_handler=None,
         )
     )]
+    #[allow(clippy::too_many_arguments)]
     fn update(
         &mut self,
         py: Python<'_>,
@@ -1087,21 +1083,19 @@ impl CoreEngine {
         checkpoint: Option<usize>,
         transitions: Option<Vec<transition::StateTransition>>,
         save_path: Option<PathBuf>,
-        update_handler: Option<PyObject>,
+        update_handler: Option<Py<PyAny>>,
     ) -> PyResult<()> {
         use std::time::Duration;
 
         use lace::update_handler::Timeout;
 
-        let config = match transitions {
-            Some(mut trns) => {
-                let trns = trns.drain(..).map(|t| t.into()).collect();
+        let config = transitions
+            .map_or_else(EngineUpdateConfig::with_default_transitions, |trns| {
+                let trns = trns.into_iter().map(Into::into).collect();
                 EngineUpdateConfig::new().transitions(trns)
-            }
-            None => EngineUpdateConfig::with_default_transitions(),
-        }
-        .n_iters(n_iters)
-        .checkpoint(checkpoint);
+            })
+            .n_iters(n_iters)
+            .checkpoint(checkpoint);
 
         let save_config =
             save_path.map(|path| lace::config::SaveEngineConfig {
@@ -1119,7 +1113,7 @@ impl CoreEngine {
             Timeout::new(Duration::from_secs(secs))
         };
 
-        py.allow_threads(|| {
+        py.detach(|| {
             if let Some(update_handler) = update_handler {
                 self.engine
                     .update(
@@ -1194,7 +1188,7 @@ impl CoreEngine {
         )?;
 
         let data = parts_to_insert_values(
-            df_vals.col_names,
+            &df_vals.col_names,
             row_names,
             df_vals.values,
         );
@@ -1278,7 +1272,7 @@ impl CoreEngine {
     fn append_columns(
         &mut self,
         cols: &Bound<PyAny>,
-        mut metadata: Vec<metadata::ColumnMetadata>,
+        metadata: Vec<metadata::ColumnMetadata>,
     ) -> PyResult<()> {
         let suppl_types = Some(
             metadata
@@ -1328,7 +1322,7 @@ impl CoreEngine {
             })?;
 
         let data = parts_to_insert_values(
-            col_names,
+            &col_names,
             df_vals.row_names.ok_or_else(|| {
                 PyValueError::new_err(
                     "Provided dataframe has no index (row names)",
@@ -1338,7 +1332,7 @@ impl CoreEngine {
         );
 
         let col_metadata = ColMetadataList::try_from(
-            metadata.drain(..).map(|md| md.0).collect::<Vec<_>>(),
+            metadata.into_iter().map(|md| md.0).collect::<Vec<_>>(),
         )
         .map_err(to_pyerr)?;
 
@@ -1398,7 +1392,7 @@ impl CoreEngine {
     ) -> PyResult<Vec<pyo3::Py<PyAny>>> {
         use lace::codebook::ValueMap as Vm;
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.engine
                 .codebook
                 .value_map(col_ix)
@@ -1408,30 +1402,33 @@ impl CoreEngine {
                 })
                 .map(|vm| match vm {
                     Vm::UInt(k) => (0..*k as u64)
-                        .map(|ix| ix.into_py(py))
+                        .map(|ix| ix.into_py_any(py).unwrap())
                         .collect::<Vec<_>>(),
-                    Vm::Bool => vec![false.into_py(py), true.into_py(py)],
+                    Vm::Bool => {
+                        vec![
+                            false.into_py_any(py).unwrap(),
+                            true.into_py_any(py).unwrap(),
+                        ]
+                    }
                     Vm::String(cm) => (0..cm.len())
-                        .map(|ix| cm.category(ix).into_py(py))
+                        .map(|ix| cm.category(ix).into_py_any(py).unwrap())
                         .collect::<Vec<_>>(),
                 })
         })
     }
 
-    pub fn __setstate__(
-        &mut self,
-        py: Python,
-        state: PyObject,
-    ) -> PyResult<()> {
-        let s = state.extract::<&PyBytes>(py)?;
-        *self = bincode::deserialize(s.as_bytes()).map_err(|e| {
+    pub fn __setstate__(&mut self, state: Bound<PyBytes>) -> PyResult<()> {
+        *self = bincode::deserialize(state.as_bytes()).map_err(|e| {
             PyValueError::new_err(format!("Cannot Deserialize CoreEngine: {e}"))
         })?;
         Ok(())
     }
 
-    pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
-        Ok(PyBytes::new_bound(
+    pub fn __getstate__<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Bound<'py, PyBytes>> {
+        PyBytes::new(
             py,
             &bincode::serialize(&self).map_err(|e| {
                 PyValueError::new_err(format!(
@@ -1439,9 +1436,11 @@ impl CoreEngine {
                 ))
             })?,
         )
-        .to_object(py))
+        .into_pyobject(py)
+        .map_err(PyErr::from)
     }
 
+    #[allow(clippy::unused_self)]
     pub fn __getnewargs__(&self) -> PyResult<(PyDataFrame,)> {
         Ok((PyDataFrame(
             polars::df! {
@@ -1452,6 +1451,15 @@ impl CoreEngine {
     }
 }
 
+/// Infer `ColumnMetadata` from a `Series`
+///
+/// # Parameters
+/// `srs` - Pandas Series
+/// `cat_cutoff` - Limit on categorical assignments, where continuous is the fallback.
+/// `no_hypers` - Disable hyper-priors
+///
+/// # Errors
+/// This will fail if the `Series` type is unsupported or invalid values are seen.
 #[pyfunction]
 pub fn infer_srs_metadata(
     srs: PySeries,
@@ -1488,10 +1496,7 @@ fn core(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<update_handler::PyEngineUpdateConfig>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
-    m.add("EngineLoadError", py.get_type_bound::<EngineLoadError>())?;
-    m.add(
-        "EngineUpdateError",
-        py.get_type_bound::<EngineUpdateError>(),
-    )?;
+    m.add("EngineLoadError", py.get_type::<EngineLoadError>())?;
+    m.add("EngineUpdateError", py.get_type::<EngineUpdateError>())?;
     Ok(())
 }

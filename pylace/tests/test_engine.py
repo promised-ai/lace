@@ -21,3 +21,10 @@ def test_remove_rows():
     removed = engine.remove_rows(["cow", "wolf"])
     assert n_rows == engine.n_rows + 2
     assert removed["index"].len() == 2
+
+
+def test_diagnostics():
+    from lace.examples import Animals
+
+    engine = Animals()
+    engine.diagnostics()

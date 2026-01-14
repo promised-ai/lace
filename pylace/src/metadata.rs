@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::path::PathBuf;
 
 use lace::codebook::data::df_to_codebook;
@@ -21,6 +22,7 @@ use pyo3::exceptions::PyKeyError;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
+use pyo3::IntoPyObjectExt;
 
 use crate::df::PyDataFrame;
 use crate::utils::to_pyerr;
@@ -86,15 +88,15 @@ impl ContinuousHyper {
     ///
     /// Parameters
     /// ----------
-    /// pr_m: (float, float)
+    /// `pr_m`: (float, float)
     ///     The mean and standard deviation of the normal distribution on the
     ///     prior mean.
-    /// pr_k: (float, float)
+    /// `pr_k`: (float, float)
     ///     The shape and rate parameters of the gamma distribution on ``k``
-    /// pr_v: (float, float)
+    /// `pr_v`: (float, float)
     ///     The shape and scale parameters of the inverse gamma distribution on
     ///     ``v``.
-    /// pr_s2: (float, float)
+    /// `pr_s2`: (float, float)
     ///     The shape and scale parameters of the inverse gamma distribution on
     ///     ``s2``.
     #[new]
@@ -211,9 +213,9 @@ impl CountHyper {
     ///
     /// Parameters
     /// ----------
-    /// pr_shape: (float, float)
+    /// `pr_shape`: (float, float)
     ///     The shape and rate gamma parameters on the prior shape
-    /// pr_rate: (float, float)
+    /// `pr_rate`: (float, float)
     ///     The shape and scale inverse gamma parameters on the prior rate
     #[new]
     #[pyo3(signature = (pr_shape=(1.0, 1.0), pr_rate=(1.0, 1.0)))]
@@ -242,11 +244,11 @@ pub struct ValueMapIterator {
 
 #[pymethods]
 impl ValueMapIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+    const fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Py<PyAny>> {
         use lace::codebook::ValueMap as Vm;
         match slf.inner {
             Vm::String(ref map) => {
@@ -255,25 +257,25 @@ impl ValueMapIterator {
                 } else {
                     let s = map.category(slf.ix);
                     slf.ix += 1;
-                    Some(s.into_py(slf.py()))
+                    s.into_py_any(slf.py()).ok()
                 }
             }
             Vm::UInt(k) => {
                 if slf.ix >= k {
                     None
                 } else {
-                    let c = slf.ix.into_py(slf.py());
+                    let c = slf.ix.into_py_any(slf.py());
                     slf.ix += 1;
-                    Some(c)
+                    c.ok()
                 }
             }
             Vm::Bool => {
                 if slf.ix == 0 {
                     slf.ix += 1;
-                    Some(false.into_py(slf.py()))
+                    false.into_py_any(slf.py()).ok()
                 } else if slf.ix == 1 {
                     slf.ix += 1;
-                    Some(true.into_py(slf.py()))
+                    true.into_py_any(slf.py()).ok()
                 } else {
                     None
                 }
@@ -287,7 +289,7 @@ impl ValueMap {
     /// Create a map of ``k`` unsigned integers
     #[classmethod]
     #[pyo3(signature = (k))]
-    pub fn int(_cls: &Bound<PyType>, k: usize) -> Self {
+    pub const fn int(_cls: &Bound<PyType>, k: usize) -> Self {
         Self(lace::codebook::ValueMap::UInt(k))
     }
 
@@ -300,7 +302,7 @@ impl ValueMap {
     ///
     /// Raises
     /// ------
-    /// ValueError
+    /// `ValueError`
     ///     The strings are not unique
     #[classmethod]
     #[pyo3(signature = (values))]
@@ -312,7 +314,7 @@ impl ValueMap {
 
     /// Create a map from boolean
     #[classmethod]
-    pub fn bool(_cls: &Bound<PyType>) -> Self {
+    pub const fn bool(_cls: &Bound<PyType>) -> Self {
         Self(lace::codebook::ValueMap::Bool)
     }
 
@@ -322,15 +324,18 @@ impl ValueMap {
             Vm::UInt(k) => format!("ValueMap (UInt, k={k})"),
             Vm::String(ref inner) => {
                 let k = inner.len();
-                let cats = (0..k)
-                    .map(|ix| format!("'{}' ", inner.category(ix)))
-                    .collect::<String>();
+                let cats = (0..k).fold(String::new(), |mut acc, ix| {
+                    write!(&mut acc, "'{}' ", inner.category(ix))
+                        .expect("to be able to write to a string");
+                    acc
+                });
                 format!("ValueMap (String) [ {cats}]")
             }
             Vm::Bool => String::from("ValueMap (bool)"),
         }
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn values(slf: PyRef<'_, Self>) -> PyResult<Py<ValueMapIterator>> {
         let iter = ValueMapIterator {
             inner: slf.0.clone(),
@@ -349,10 +354,10 @@ impl ColumnMetadata {
     /// ----------
     /// name: str
     ///     The name of the column
-    /// prior: ContinuousPrior, optional
+    /// prior: `ContinuousPrior`, optional
     ///     The prior on the data. If ``None`` (default), a prior will be drawn
     ///     from the ``hyper``
-    /// hyper: ContinuousHyper, optional
+    /// hyper: `ContinuousHyper`, optional
     ///     The prior on the data. If ``None`` (default) and ``prior`` is
     ///     defined, the prior parameters will be locked.
     #[classmethod]
@@ -382,14 +387,14 @@ impl ColumnMetadata {
     ///     The name of the column
     /// k: int
     ///     The number of categories
-    /// value_map: ValueMap, optional
+    /// `value_map`: `ValueMap`, optional
     ///     A map from possible values to unsigned integers. If ``None``
     ///     (default), it is assumed the values to this column take on values
     ///     in [0, k-1].
-    /// prior: CategoricalPrior, optional
+    /// prior: `CategoricalPrior`, optional
     ///     The prior on the data. If ``None`` (default), a prior will be drawn
     ///     from the ``hyper``
-    /// hyper: CategoricalHyper, optional
+    /// hyper: `CategoricalHyper`, optional
     ///     The prior on the data. If ``None`` (default) and ``prior`` is
     ///     defined, the prior parameters will be locked.
     #[classmethod]
@@ -408,9 +413,10 @@ impl ColumnMetadata {
                 k,
                 hyper: hyper.map(|hy| hy.0),
                 prior: prior.map(|pr| pr.0),
-                value_map: value_map
-                    .map(|pr| pr.0)
-                    .unwrap_or_else(|| lace::codebook::ValueMap::UInt(k)),
+                value_map: value_map.map_or_else(
+                    || lace::codebook::ValueMap::UInt(k),
+                    |pr| pr.0,
+                ),
             },
             notes: None,
             missing_not_at_random: false,
@@ -423,10 +429,10 @@ impl ColumnMetadata {
     /// ----------
     /// name: str
     ///     The name of the column
-    /// prior: CountPrior, optional
+    /// prior: `CountPrior`, optional
     ///     The prior on the data. If ``None`` (default), a prior will be drawn
     ///     from the ``hyper``
-    /// hyper: CountHyper, optional
+    /// hyper: `CountHyper`, optional
     ///     The prior on the data. If ``None`` (default) and ``prior`` is
     ///     defined, the prior parameters will be locked.
     #[classmethod]
@@ -527,7 +533,7 @@ impl PriorProcess {
         d_a: f64,
         d_b: f64,
     ) -> Self {
-        PriorProcess(lace::codebook::PriorProcess::PitmanYor {
+        Self(lace::codebook::PriorProcess::PitmanYor {
             alpha_prior: Gamma::new(alpha_shape, alpha_rate).unwrap(),
             d_prior: Beta::new(d_a, d_b).unwrap(),
         })
@@ -540,7 +546,7 @@ impl PriorProcess {
         alpha_shape: f64,
         alpha_rate: f64,
     ) -> Self {
-        PriorProcess(lace::codebook::PriorProcess::Dirichlet {
+        Self(lace::codebook::PriorProcess::Dirichlet {
             alpha_prior: Gamma::new(alpha_shape, alpha_rate).unwrap(),
         })
     }
@@ -553,6 +559,7 @@ pub struct Codebook(pub(crate) lace::codebook::Codebook);
 #[pymethods]
 impl Codebook {
     #[new]
+    #[allow(clippy::field_reassign_with_default)]
     pub fn new(table_name: String) -> Self {
         let mut codebook = lace::codebook::Codebook::default();
         codebook.table_name = table_name;
@@ -563,20 +570,12 @@ impl Codebook {
         self.0.table_name = table_name;
     }
 
-    pub fn set_state_prior_process(
-        &mut self,
-        process: PriorProcess,
-    ) -> PyResult<()> {
+    pub fn set_state_prior_process(&mut self, process: PriorProcess) {
         self.0.state_prior_process = Some(process.0);
-        Ok(())
     }
 
-    pub fn set_view_prior_process(
-        &mut self,
-        process: PriorProcess,
-    ) -> PyResult<()> {
+    pub fn set_view_prior_process(&mut self, process: PriorProcess) {
         self.0.view_prior_process = Some(process.0);
-        Ok(())
     }
 
     pub fn set_row_names(&mut self, row_names: Vec<String>) -> PyResult<()> {
@@ -587,10 +586,10 @@ impl Codebook {
 
     pub fn append_column_metadata(
         &mut self,
-        mut col_metadata: Vec<ColumnMetadata>,
+        col_metadata: Vec<ColumnMetadata>,
     ) -> PyResult<()> {
         let col_metadata: ColMetadataList = col_metadata
-            .drain(..)
+            .into_iter()
             .map(|md| md.0)
             .collect::<Vec<ColMetadata>>()
             .try_into()
@@ -600,11 +599,11 @@ impl Codebook {
 
     pub fn remove_column_metadata(
         &mut self,
-        name: String,
+        name: &str,
     ) -> PyResult<ColumnMetadata> {
         self.0
             .col_metadata
-            .take(name.as_str())
+            .take(name)
             .ok_or_else(|| PyKeyError::new_err(format!("No '{name}' column")))
             .map(ColumnMetadata)
     }
@@ -630,11 +629,11 @@ impl Codebook {
             self.0
                 .state_prior_process
                 .clone()
-                .map_or_else(|| String::from("None"), |p| format!("{}", p)),
+                .map_or_else(|| String::from("None"), |p| format!("{p}")),
             self.0
                 .view_prior_process
                 .clone()
-                .map_or_else(|| String::from("None"), |p| format!("{}", p)),
+                .map_or_else(|| String::from("None"), |p| format!("{p}")),
             self.0.col_metadata.len(),
             self.0.row_names.len()
         )
@@ -692,6 +691,7 @@ impl Codebook {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
 #[pyo3(signature = (df, cat_cutoff=None, no_hypers=false))]
 pub fn codebook_from_df(
@@ -721,7 +721,7 @@ pub struct CodebookBuilder {
 impl CodebookBuilder {
     #[classmethod]
     /// Load a Codebook from a path.
-    fn load(_cls: &Bound<PyType>, path: PathBuf) -> Self {
+    const fn load(_cls: &Bound<PyType>, path: PathBuf) -> Self {
         Self {
             method: CodebookMethod::Path(path),
         }
@@ -729,25 +729,25 @@ impl CodebookBuilder {
 
     #[classmethod]
     #[pyo3(signature = (cat_cutoff=None, state_prior_process=None, view_prior_process=None, use_hypers=true))]
-    fn infer(
+    const fn infer(
         _cls: &Bound<PyType>,
         cat_cutoff: Option<u32>,
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         use_hypers: bool,
-    ) -> PyResult<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             method: CodebookMethod::Inferred {
                 cat_cutoff,
                 state_prior_process,
                 view_prior_process,
                 no_hypers: !use_hypers,
             },
-        })
+        }
     }
 
     #[classmethod]
-    fn codebook(_cls: &Bound<PyType>, codebook: Codebook) -> Self {
+    const fn codebook(_cls: &Bound<PyType>, codebook: Codebook) -> Self {
         Self {
             method: CodebookMethod::Codebook(codebook),
         }
@@ -762,7 +762,8 @@ impl CodebookBuilder {
                 let file =
                     std::fs::File::open(path.clone()).map_err(|err| {
                         PyIOError::new_err(format!(
-                            "Error opening {path:?}: {err}",
+                            "Error opening {path}: {err}",
+                            path = path.display(),
                         ))
                     })?;
 
@@ -770,7 +771,8 @@ impl CodebookBuilder {
                     .or_else(|_| serde_json::from_reader(&file))
                     .map_err(|_| {
                         PyIOError::new_err(format!(
-                            "Failed to read codebook at {path:?}"
+                            "Failed to read codebook at {path}",
+                            path = path.display(),
                         ))
                     })
             }

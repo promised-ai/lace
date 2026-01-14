@@ -5,22 +5,23 @@ use pyo3::prelude::*;
 /// A column reassignment MCMC kernel
 #[pyclass]
 #[derive(Clone, Copy)]
-pub(crate) struct ColumnKernel(ColAssignAlg);
+pub struct ColumnKernel(ColAssignAlg);
 
 #[pymethods]
 impl ColumnKernel {
     /// The `slice` column reassignment kernel
     #[staticmethod]
-    fn slice() -> Self {
+    const fn slice() -> Self {
         Self(ColAssignAlg::Slice)
     }
 
     /// The `gibbs` column reassignment kernel
     #[staticmethod]
-    fn gibbs() -> Self {
+    const fn gibbs() -> Self {
         Self(ColAssignAlg::Gibbs)
     }
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     fn __repr__(&self) -> String {
         self.to_string()
     }
@@ -29,28 +30,29 @@ impl ColumnKernel {
 /// A row reassignment MCMC kernel
 #[pyclass]
 #[derive(Clone, Copy)]
-pub(crate) struct RowKernel(RowAssignAlg);
+pub struct RowKernel(RowAssignAlg);
 
 #[pymethods]
 impl RowKernel {
     #[staticmethod]
     /// The `slice` row reassignment kernel
-    fn slice() -> Self {
+    const fn slice() -> Self {
         Self(RowAssignAlg::Slice)
     }
 
     #[staticmethod]
     /// The `gibbs` row reassignment kernel
-    fn gibbs() -> Self {
+    const fn gibbs() -> Self {
         Self(RowAssignAlg::Gibbs)
     }
 
     #[staticmethod]
     /// The `sams` merge-split row reassignment kernel
-    fn sams() -> Self {
+    const fn sams() -> Self {
         Self(RowAssignAlg::Sams)
     }
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     fn __repr__(&self) -> String {
         self.to_string()
     }
@@ -59,13 +61,13 @@ impl RowKernel {
 /// A particular state transition within the Markov chain
 #[pyclass]
 #[derive(Clone, Copy)]
-pub(crate) struct StateTransition(lace::cc::transition::StateTransition);
+pub struct StateTransition(lace::cc::transition::StateTransition);
 
 #[pymethods]
 impl StateTransition {
     /// The column reassignment transition with selected MCMC kernel
     #[staticmethod]
-    fn column_assignment(kernel: ColumnKernel) -> Self {
+    const fn column_assignment(kernel: ColumnKernel) -> Self {
         Self(lace::cc::transition::StateTransition::ColumnAssignment(
             kernel.0,
         ))
@@ -73,7 +75,7 @@ impl StateTransition {
 
     /// The row reassignment transition with selected MCMC kernel
     #[staticmethod]
-    fn row_assignment(kernel: RowKernel) -> Self {
+    const fn row_assignment(kernel: RowKernel) -> Self {
         Self(lace::cc::transition::StateTransition::RowAssignment(
             kernel.0,
         ))
@@ -82,29 +84,30 @@ impl StateTransition {
     /// The state prior process parameters (controls the assignment of
     /// columns to views) transition.
     #[staticmethod]
-    fn state_prior_process_params() -> Self {
+    const fn state_prior_process_params() -> Self {
         Self(lace::cc::transition::StateTransition::StatePriorProcessParams)
     }
 
     /// The view prior process parameters (controls the assignment of rows to
     /// categories within each view) transition.
     #[staticmethod]
-    fn view_prior_process_params() -> Self {
+    const fn view_prior_process_params() -> Self {
         Self(lace::cc::transition::StateTransition::ViewPriorProcessParams)
     }
 
     /// Re-sample the feature prior parameters
     #[staticmethod]
-    fn feature_priors() -> Self {
+    const fn feature_priors() -> Self {
         Self(lace::cc::transition::StateTransition::FeaturePriors)
     }
 
     /// Update the component model parameters
     #[staticmethod]
-    fn component_parameters() -> Self {
+    const fn component_parameters() -> Self {
         Self(lace::cc::transition::StateTransition::ComponentParams)
     }
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     fn __repr__(&self) -> String {
         self.to_string()
     }

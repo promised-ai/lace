@@ -1,14 +1,14 @@
 /// Update Handler and associated tooling for `CoreEngine.update` in Python.
 use std::sync::Arc;
-/// Update Handler and associated tooling for `CoreEngine.update` in Python.
 use std::sync::Mutex;
+
+use pyo3::IntoPyObject;
 
 use lace::cc::state::State;
 use lace::update_handler::UpdateHandler;
 use lace::EngineUpdateConfig;
 use pyo3::prelude::PyDictMethods;
 use pyo3::pyclass;
-use pyo3::IntoPy;
 use pyo3::Py;
 use pyo3::PyAny;
 
@@ -42,10 +42,14 @@ impl PyUpdateHandler {
 macro_rules! pydict {
     ($py: expr, $($key:tt : $val:expr),* $(,)?) => {{
 
-        let map = pyo3::types::PyDict::new_bound($py);
+        let map = pyo3::types::PyDict::new($py);
         $(
-            let _ = map.set_item($key, $val.into_py($py))
-                .expect("Should be able to set item in PyDict");
+            let _ = map.set_item(
+                $key,
+                $val.into_pyobject($py)
+                    .expect("Value should be convertable into a pyobject")
+            )
+               .expect("Should be able to set item in PyDict");
         )*
         map
     }};
@@ -58,14 +62,14 @@ macro_rules! call_pyhandler_noret {
             .lock()
             .expect("Should be able to get a lock for the PyUpdateHandler");
 
-        ::pyo3::Python::with_gil(|py| {
+        ::pyo3::Python::attach(|py| {
             let kwargs = pydict!(
                 py,
                 $($key: $val),*
             );
 
             handler
-                .call_method_bound(py, $func_name, (), Some(&kwargs))
+                .call_method(py, $func_name, (), Some(&kwargs))
                 .expect("Expected python call_method to return successfully");
         })
     }};
@@ -78,14 +82,14 @@ macro_rules! call_pyhandler_ret {
             .lock()
             .expect("Should be able to get a lock for the PyUpdateHandler");
 
-        ::pyo3::Python::with_gil(|py| {
+        ::pyo3::Python::attach(|py| {
             let kwargs = pydict!(
                 py,
                 $($key: $val),*
             );
 
             handler
-                .call_method_bound(py, $func_name, (), Some(&kwargs))
+                .call_method(py, $func_name, (), Some(&kwargs))
                 .expect("Expected python call_method to return successfully")
                 .extract(py)
                 .expect("Failed to extract expected type")
@@ -139,6 +143,6 @@ impl UpdateHandler for PyUpdateHandler {
     }
 
     fn finalize(&mut self) {
-        call_pyhandler_noret!(self, "finalize",)
+        call_pyhandler_noret!(self, "finalize",);
     }
 }
