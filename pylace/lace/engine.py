@@ -2,12 +2,14 @@
 
 import itertools as it
 from os import PathLike
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, Set
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union, Set
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import polars as pl
 from tqdm.auto import tqdm
+from .utils import predopt_objective
 
 from lace import core, utils
 from lace.codebook import Codebook
@@ -166,6 +168,83 @@ class Engine:
 
         """
         return cls(core.CoreEngine.load(path))
+
+    def optimize_for_prediction(
+        self,
+        target: str,
+        n_steps: int,
+        n_rows_per_step: int = 1,
+        n_update_steps: int = 1,
+        objective: Literal[
+            "wrong", "surprial", "neglogp", "abserr", "relerr", "sqerr"
+        ] = "surprisal",
+        scale_objective: Optional[
+            Literal["surprial", "neglogp", "abserr", "relerr", "sqerr"]
+        ] = None,
+        transitions: Optional[Union[str, List[core.StateTransition]]] = None,
+        validation_data: Optional[Dict[str, Dict]] = None,
+        greed: float = 1.0,
+        i_am_an_idiot: bool = False,
+    ) -> Optional[List]:
+        if not i_am_an_idiot:
+            raise ValueError("You must be an idiot to use this function.")
+
+        data = None
+        if objective != "surprisal":
+            data = {}
+            for row in self[:, :].to_dicts():
+                ix = row.pop("index")
+                data[ix] = row
+
+        validation_metrics = None
+        if (validation_data is not None) and (data is not None):
+            _, objs = predopt_objective(
+                self, target, validation_data, objective
+            )
+            met = np.mean(objs)
+            validation_metrics = [met]
+
+        for _ in tqdm(range(n_steps)):
+            ixs, objs = predopt_objective(self, target, data, objective)
+            if scale_objective is not None:
+                _, scale_objs = predopt_objective(self, target, data, objective)
+                objs *= scale_objs
+
+            p = np.array(objs)
+            p = (p / p.sum()) ** greed
+            p /= p.sum()
+            ixs = list(np.random.choice(ixs, size=n_rows_per_step, p=p))
+            new_ixs = []
+            for ix in ixs:
+                ix_parts = ix.split("_")
+                if len(ix_parts) < 3:
+                    ix = f"{ix}_impdup_0"
+                elif ix_parts[-2] == "impdup":
+                    num = int(ix_parts[-1])
+                    ix = f"{ix}_impdup_{num+1}"
+                else:
+                    raise IndexError("Failed to interpret row index `{ix}`")
+
+                new_ixs.append(ix)
+
+            rows = self[ixs, :].to_pandas()
+            rows.loc[:, "index"] = [
+                str(self.shape[0] * 2 + i) for i in range(n_rows_per_step)
+            ]
+            rows = rows.set_index("index")
+            rows.index.rename("ID", inplace=True)
+            self.append_rows(rows)
+            self.update(n_update_steps, transitions=transitions, quiet=True)
+
+            if validation_metrics is not None:
+                _, objs = predopt_objective(
+                    self, target, validation_data, objective
+                )
+                met = np.mean(objs)
+                validation_metrics.append(met)
+
+        if validation_metrics is not None:
+            return validation_metrics
 
     def save(self, path: Union[str, bytes, PathLike]):
         """

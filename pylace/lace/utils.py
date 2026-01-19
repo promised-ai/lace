@@ -1,6 +1,8 @@
+from math import exp
 import itertools as it
-from typing import List, Optional, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
+from numpy.typing import ArrayLike
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -187,3 +189,102 @@ def predict_xs(
         return pl.Series(target, engine.engine.categorical_support(target))
     else:
         raise ValueError("unsupported ftype")
+
+
+def predopt_err(
+    engine,
+    target: str,
+    data: Dict,
+    objective: Literal["abserr", "relerr", "sqerr"],
+):
+    ixs = []
+    errs = []
+    ftype = engine.ftype(target)
+    is_categorical = ftype.lower() == "categorical"
+
+    for ix, row in data.items():
+        val = row.pop(target, None)
+        if val is None:
+            continue
+        given = {k: v for k, v in row.items() if v is not None}
+        pred = engine.predict(target, given=given, with_uncertainty=False)
+        ixs.append(ix)
+
+        if is_categorical:
+            err = float(val != pred)
+        else:
+            match objective:
+                case "abserr":
+                    err = abs(val - pred)
+                case "relerr":
+                    err = 1.0 - abs(pred / val)
+                case "sqerr":
+                    err = (val - pred) * (val - pred)
+                case _:
+                    raise ValueError(f"Unsupported obejctive `{objective}`")
+
+        errs.append(err)
+
+    return ixs, errs
+
+
+def predopt_unc(
+    engine,
+    target: str,
+    data: Dict,
+):
+    ixs = []
+    errs = []
+    for ix, row in data.items():
+        given = {k: v for k, v in row.items() if not pd.isnull(v)}
+        val = given.pop(target, None)
+        if val is None:
+            continue
+        _, unc = engine.predict(target, given=given, with_uncertainty=True)
+
+        ixs.append(ix)
+        errs.append(unc)
+
+    return ixs, np.array(errs)
+
+
+def predopt_objective(
+    engine,
+    target: str,
+    data: Optional[Dict],
+    objective: Literal[
+        "wrong", "surprial", "neglogp", "abserr", "relerr", "sqerr", "unc"
+    ],
+) -> Tuple[List, ArrayLike]:
+    match objective:
+        case "wrong":
+            imp = engine.impute(target, rows=engine.index, with_uncertainty=False)
+            wrong = imp[target] != engine[:, target][target]
+            return imp["index"], wrong.to_numpy().astype(float)
+
+        case "surprisal":
+            surp = engine.surprisal(target)
+            return surp["index"].to_list(), np.array(surp["surprisal"].exp())
+        case "neglogp":
+            assert data is not None
+            ixs = []
+            ps = []
+            for ix, row in data.items():
+                given = {k: v for k, v in row.items() if not pd.isnull(v)}
+                val = given.pop(target, None)
+                if val is None:
+                    continue
+                x = pl.Series(target, [val])
+                logp = engine.logp(x, given=given)
+                ixs.append(ix)
+                ps.append(exp(-logp))
+
+            return ixs, np.array(ps)
+        case "unc":
+            assert data is not None
+            return predopt_unc(engine, target, data)
+        case "abserr" | "relerr" | "squerr":
+            assert data is not None
+            return predopt_err(engine, target, data, objective)
+        case _:
+            raise ValueError(f"Unsupported obejctive `{objective}`")
