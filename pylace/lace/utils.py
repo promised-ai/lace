@@ -210,6 +210,8 @@ def predopt_err(
         pred = engine.predict(target, given=given, with_uncertainty=False)
         ixs.append(ix)
 
+        row[target] = val
+
         if is_categorical:
             err = float(val != pred)
         else:
@@ -242,6 +244,7 @@ def predopt_unc(
             continue
         _, unc = engine.predict(target, given=given, with_uncertainty=True)
 
+        given[target] = val
         ixs.append(ix)
         errs.append(unc)
 
@@ -258,7 +261,9 @@ def predopt_objective(
 ) -> Tuple[List, ArrayLike]:
     match objective:
         case "wrong":
-            imp = engine.impute(target, rows=engine.index, with_uncertainty=False)
+            imp = engine.impute(
+                target, rows=engine.index, with_uncertainty=False
+            )
             wrong = imp[target] != engine[:, target][target]
             return imp["index"], wrong.to_numpy().astype(float)
 
@@ -276,6 +281,9 @@ def predopt_objective(
                     continue
                 x = pl.Series(target, [val])
                 logp = engine.logp(x, given=given)
+
+                given[target] = val
+
                 ixs.append(ix)
                 ps.append(exp(-logp))
 
@@ -283,7 +291,7 @@ def predopt_objective(
         case "unc":
             assert data is not None
             return predopt_unc(engine, target, data)
-        case "abserr" | "relerr" | "squerr":
+        case "abserr" | "relerr" | "sqerr":
             assert data is not None
             return predopt_err(engine, target, data, objective)
         case _:

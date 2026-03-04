@@ -213,6 +213,7 @@ class Engine:
             p = np.array(objs)
             p = (p / p.sum()) ** greed
             p /= p.sum()
+
             ixs = list(np.random.choice(ixs, size=n_rows_per_step, p=p))
             new_ixs = []
             for ix in ixs:
