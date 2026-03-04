@@ -45,11 +45,17 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::update_handler::PyUpdateHandler;
-use crate::utils::{
-    coltype_to_ftype, datum_to_value, dict_to_given, list_to_pairs,
-    pandas_to_insert_values, pandas_to_logp_values, parts_to_insert_values,
-    pyany_to_indices, to_pyerr, value_to_index, Indexer,
-};
+use crate::utils::coltype_to_ftype;
+use crate::utils::datum_to_value;
+use crate::utils::dict_to_given;
+use crate::utils::list_to_pairs;
+use crate::utils::pandas_to_insert_values;
+use crate::utils::pandas_to_logp_values;
+use crate::utils::parts_to_insert_values;
+use crate::utils::pyany_to_indices;
+use crate::utils::to_pyerr;
+use crate::utils::value_to_index;
+use crate::utils::Indexer;
 
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Clone, Serialize, Deserialize)]
@@ -260,7 +266,7 @@ impl CoreEngine {
             .drain(..)
             .enumerate()
             .map(|(col_ix, ftype)| {
-                let col_name = self.col_indexer.to_name[&col_ix].clone();
+                let col_name = self.col_indexer.to_name[col_ix].clone();
                 let ftype_str = ftype.to_string();
                 (col_name, ftype_str)
             })
@@ -517,8 +523,8 @@ impl CoreEngine {
 
             utils::pairs_list_iter(pairs, indexer).try_for_each(|res| {
                 let (ix_a, ix_b) = res?;
-                let name_a = indexer.to_name[&ix_a].clone();
-                let name_b = indexer.to_name[&ix_b].clone();
+                let name_a = indexer.to_name[ix_a].clone();
+                let name_b = indexer.to_name[ix_b].clone();
                 a.push(name_a);
                 b.push(name_b);
 
@@ -748,7 +754,7 @@ impl CoreEngine {
                             .map_err(to_pyerr)
                             .map(|surp| {
                                 row_names.push(
-                                    self.row_indexer.to_name[&row_ix].clone(),
+                                    self.row_indexer.to_name[row_ix].clone(),
                                 );
                                 surps.push(surp);
                             })
@@ -808,7 +814,7 @@ impl CoreEngine {
                             .map(|surp| {
                                 if let Some(s) = surp {
                                     let row_name = self.row_indexer.to_name
-                                        [&row_ix]
+                                        [row_ix]
                                         .clone();
                                     row_names.push(row_name);
                                     values.push(x);
@@ -910,7 +916,7 @@ impl CoreEngine {
                 .impute(row_ix, col_ix, with_uncertainty)
                 .map(|(val, unc)| {
                     values.push(val);
-                    row_names.push(self.row_indexer.to_name[&row_ix].clone());
+                    row_names.push(self.row_indexer.to_name[row_ix].clone());
                     if let Some(u) = unc {
                         uncs.push(u);
                     }
@@ -1181,7 +1187,8 @@ impl CoreEngine {
                     ))
                 } else {
                     self.row_indexer.to_ix.insert(name.to_owned(), ix);
-                    self.row_indexer.to_name.insert(ix, name.to_owned());
+                    assert_eq!(self.row_indexer.to_name.len(), ix);
+                    self.row_indexer.to_name.push(name.to_string());
                     Ok(())
                 }
             },
@@ -1226,10 +1233,12 @@ impl CoreEngine {
         let row_idxs: Vec<usize> = remove
             .iter()
             .map(|row_name| {
-                self.engine.codebook.row_index(row_name).ok_or_else(|| {
-                    PyIndexError::new_err(format!(
-                        "{row_name} is not a valid row index"
-                    ))
+                self.row_indexer.drop_by_name(row_name).and_then(|_| {
+                    self.engine.codebook.row_index(row_name).ok_or_else(|| {
+                        PyIndexError::new_err(format!(
+                            "{row_name} is not a valid row index"
+                        ))
+                    })
                 })
             })
             .collect::<PyResult<Vec<_>>>()?;
@@ -1316,7 +1325,8 @@ impl CoreEngine {
                     )))
                 } else {
                     self.col_indexer.to_ix.insert(name.to_owned(), ix);
-                    self.col_indexer.to_name.insert(ix, name.to_owned());
+                    assert_eq!(self.col_indexer.to_name.len(), ix);
+                    self.col_indexer.to_name.push(name.to_string());
                     Ok(())
                 }
             })?;

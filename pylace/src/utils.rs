@@ -349,9 +349,9 @@ pub fn simulate_to_df(
 ) -> PyResult<PyDataFrame> {
     let mut df = DataFrame::default();
 
-    for (i, col_ix) in col_ixs.iter().enumerate() {
+    for (i, &col_ix) in col_ixs.iter().enumerate() {
         let name = indexer.to_name[col_ix].as_str();
-        let srs: Series = match ftypes[*col_ix] {
+        let srs: Series = match ftypes[col_ix] {
             FType::Binary => Ok::<Series, PyErr>(srs_from_simulate!(
                 values, i, name, bool, Binary
             )),
@@ -359,7 +359,7 @@ pub fn simulate_to_df(
                 Ok(srs_from_simulate!(values, i, name, f64, Continuous))
             }
             FType::Categorical => {
-                let repr = CategoricalRepr::from_codebook(*col_ix, codebook);
+                let repr = CategoricalRepr::from_codebook(col_ix, codebook);
                 match repr {
                     CategoricalRepr::Int => {
                         Ok(cat_srs_from_simulate!(values, i, name, u32, UInt))
@@ -401,20 +401,21 @@ pub fn str_to_mitype(mi_type: &str) -> PyResult<lace::MiType> {
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Indexer {
     pub to_ix: HashMap<String, usize>,
-    pub to_name: HashMap<usize, String>,
+    pub to_name: Vec<String>,
 }
 
 impl Indexer {
     pub fn columns(codebook: &Codebook) -> Self {
         let mut to_ix: HashMap<String, usize> = HashMap::new();
-        let mut to_name: HashMap<usize, String> = HashMap::new();
+        let mut to_name: Vec<String> = Vec::new();
         codebook
             .col_metadata
             .iter()
             .enumerate()
             .for_each(|(ix, col_md)| {
                 to_ix.insert(col_md.name.clone(), ix);
-                to_name.insert(ix, col_md.name.clone());
+                assert_eq!(ix, to_name.len());
+                to_name.push(col_md.name.to_string());
             });
 
         Self { to_ix, to_name }
@@ -422,23 +423,43 @@ impl Indexer {
 
     pub fn rows(codebook: &Codebook) -> Self {
         let mut to_ix: HashMap<String, usize> = HashMap::new();
-        let mut to_name: HashMap<usize, String> = HashMap::new();
+        let mut to_name: Vec<String> = Vec::new();
         codebook.row_names.iter().for_each(|(ix, name)| {
             to_ix.insert(name.to_string(), ix);
-            to_name.insert(ix, name.to_string());
+            assert_eq!(ix, to_name.len());
+            to_name.push(name.to_string());
         });
 
         Self { to_ix, to_name }
     }
 
+    fn cannonicalize_indices(&mut self, ix: usize) {
+        self.to_ix.values_mut().for_each(|i| {
+            if *i > ix {
+                *i -= 1;
+            }
+        });
+    }
+
     pub fn drop_by_ix(&mut self, ix: usize) -> PyResult<String> {
-        let name = self.to_name.remove(&ix).ok_or_else(|| {
-            PyIndexError::new_err(format!("Index {ix} not found"))
-        })?;
+        if self.to_name.len() <= ix {
+            return Err(PyIndexError::new_err(format!("Index {ix} not found")));
+        }
+        let name = self.to_name.remove(ix);
         self.to_ix
             .remove(&name)
-            .expect("Should exist as a consequence of the check above");
+            .expect("Name should exist as a consequence of the check above");
+        self.cannonicalize_indices(ix);
         Ok(name)
+    }
+
+    pub(crate) fn drop_by_name(&mut self, name: &str) -> PyResult<usize> {
+        let ix = self.to_ix.remove(name).ok_or_else(|| {
+            PyIndexError::new_err(format!("Name {name} not found"))
+        })?;
+        self.to_name.remove(ix);
+        self.cannonicalize_indices(ix);
+        Ok(ix)
     }
 }
 
@@ -617,9 +638,9 @@ pub fn value_to_name(
 ) -> PyResult<String> {
     val.extract::<String>().or_else(|_| {
         let ix: usize = val.extract()?;
-        indexer.to_name.get(&ix).map_or_else(
+        indexer.to_name.get(ix).map_or_else(
             || Err(PyErr::new::<PyIndexError, _>(format!("No index {ix}"))),
-            |name| Ok(name.to_owned()),
+            |name| Ok(name.to_string()),
         )
     })
 }
