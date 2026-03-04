@@ -4074,3 +4074,8 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "bytes"
+version = "1.11.1"
+source = "git+https://github.com/tokio-rs/bytes?tag=v1.11.1#417dccdeff249e0c011327de7d92e0d6fbe7cc43"
