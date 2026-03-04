@@ -47,6 +47,10 @@ polars = { version = "0.52", default_features = false, features = [
   "dtype-u16",
 ] }
 
+[patch.crates-io]
+# polars is using an old insecure version of bytes
+bytes = { git = "https://github.com/tokio-rs/bytes", tag = "v1.11.1" }
+
 [dev-dependencies]
 clap = { version = "4.3.17", features = ["derive"] }
 approx = "0.5.1"

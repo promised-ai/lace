@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Update `rv` to 0.19.2 due to RUSTSEC issue with `lru` crate <0.16.3
+- Patch `bytes` to v1.11.1 due to RUSTSEC issue
 
 ## [python-0.10.0] - 2026-01-12
 
