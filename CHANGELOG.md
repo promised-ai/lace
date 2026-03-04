@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Engine would not allow re-adding previously-removed rows, stating that the
   indices already exist.
+- Bump lace to 0.9.1 due to RUSTSEC issue with `lru` dependency
+
+## [rust-0.9.1] - 2026-03-04
+
+### Changed
+- Update `rv` to 0.19.2 due to RUSTSEC issue with `lru` crate <0.16.3
 
 ## [python-0.10.0] - 2026-01-12
 
@@ -339,6 +345,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [unreleased]: https://github.com/promised-ai/lace/compare/python-0.8.0...HEAD
 [python-0.10.1]: https://github.com/promised-ai/lace/compare/python-0.10.0...python-0.10.1
+[rust-0.9.1]: https://github.com/promised-ai/lace/compare/rust-0.9.0...rust-0.9.1
 [python-0.10.0]: https://github.com/promised-ai/lace/compare/python-0.9.0...python-0.10.0
 [rust-0.9.0]: https://github.com/promised-ai/lace/compare/rust-0.8.0...rust-0.9.0
 [python-0.9.0]: https://github.com/promised-ai/lace/compare/python-0.8.0...python-0.9.0

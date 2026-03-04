@@ -1776,7 +1776,7 @@ dependencies = [
 
 [[package]]
 name = "lace"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "approx",
  "bincode 1.3.3",
@@ -1877,9 +1877,9 @@ checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 
 [[package]]
 name = "lru"
-version = "0.16.2"
+version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96051b46fc183dc9cd4a223960ef37b9af631b55191852a8274bfef064cda20f"
+checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
 dependencies = [
  "hashbrown 0.16.0",
 ]
@@ -3412,9 +3412,9 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
 name = "rv"
-version = "0.19.1"
+version = "0.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb89285b0862665a769f9e34fc308ed627be1ff149ea6b16ba245921782adcf6"
+checksum = "afb4dc109cd0ccf7a891a1f6c99453e6612ff483fbfc7a9a18bf5f2b74ea04a7"
 dependencies = [
  "doc-comment",
  "itertools 0.14.0",
