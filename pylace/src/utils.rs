@@ -415,7 +415,7 @@ impl Indexer {
             .for_each(|(ix, col_md)| {
                 to_ix.insert(col_md.name.clone(), ix);
                 assert_eq!(ix, to_name.len());
-                to_name.push(col_md.name.to_string());
+                to_name.push(col_md.name.clone());
             });
 
         Self { to_ix, to_name }
@@ -640,7 +640,7 @@ pub fn value_to_name(
         let ix: usize = val.extract()?;
         indexer.to_name.get(ix).map_or_else(
             || Err(PyErr::new::<PyIndexError, _>(format!("No index {ix}"))),
-            |name| Ok(name.to_string()),
+            |name| Ok(name.clone()),
         )
     })
 }

@@ -1188,7 +1188,7 @@ impl CoreEngine {
                 } else {
                     self.row_indexer.to_ix.insert(name.to_owned(), ix);
                     assert_eq!(self.row_indexer.to_name.len(), ix);
-                    self.row_indexer.to_name.push(name.to_string());
+                    self.row_indexer.to_name.push(name.clone());
                     Ok(())
                 }
             },
@@ -1326,7 +1326,7 @@ impl CoreEngine {
                 } else {
                     self.col_indexer.to_ix.insert(name.to_owned(), ix);
                     assert_eq!(self.col_indexer.to_name.len(), ix);
-                    self.col_indexer.to_name.push(name.to_string());
+                    self.col_indexer.to_name.push(name.clone());
                     Ok(())
                 }
             })?;
