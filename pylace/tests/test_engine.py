@@ -53,4 +53,3 @@ def test_readd_rows():
     assert engine.index[-2] == "cow"
     assert engine.index[-1] == "wolf"
     assert len(engine.index) == n_rows
-    
