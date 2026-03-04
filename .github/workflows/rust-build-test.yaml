@@ -90,7 +90,7 @@ jobs:
         #       due to their reliance on `chrono`, which is the ultimate source of the violation
         #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
         #       and thus neither `polars` or `arrow2` can pass `audit` checks
-        run: cargo audit -f Cargo.lock --ignore RUSTSEC-2020-0071
+        run: cargo audit -f Cargo.lock --ignore RUSTSEC-2026-0007
 
       - name: Run audit (CLI)
         working-directory: cli
