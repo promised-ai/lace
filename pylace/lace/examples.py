@@ -86,10 +86,8 @@ def yes_or_no(question):
 class ExamplePaths:
     def __init__(self, name: str):
         if name not in EXAMPLE_PATHS:
-            raise ValueError(
-                f"Invalid example `{name}`. Valid names are: \
-                {EXAMPLE_PATHS.keys()}"
-            )
+            raise ValueError(f"Invalid example `{name}`. Valid names are: \
+                {EXAMPLE_PATHS.keys()}")
         base = EXAMPLE_PATHS[name]
         self.base = base
         self.hash = Path(base, HASH_FILE)
@@ -145,10 +143,8 @@ def delete_metadata(name: str):
 
     """
     if name not in EXAMPLE_PATHS:
-        raise ValueError(
-            f"Invalid example `{name}`. Valid names are: \
-            {EXAMPLE_PATHS.keys()}"
-        )
+        raise ValueError(f"Invalid example `{name}`. Valid names are: \
+            {EXAMPLE_PATHS.keys()}")
     metadata_path = Path(EXAMPLE_PATHS[name], METADATA_DIR)
     if metadata_path.exists():
         rmtree(metadata_path)

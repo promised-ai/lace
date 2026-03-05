@@ -1,6 +1,6 @@
 [package]
 name = "pylace"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2021"
 license = "MIT"
 rust-version = "1.89.0"
@@ -10,7 +10,7 @@ name = "lace"
 crate-type = ["cdylib"]
 
 [dependencies]
-lace = { path = "../lace", version = "0.9.0" }
+lace = { path = "../lace", version = "0.9.1" }
 rand = { version = "0.9" }
 rand_xoshiro = "0.7.0"
 pyo3 = { version = "0.27", features = ["extension-module"] }
