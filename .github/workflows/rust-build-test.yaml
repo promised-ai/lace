@@ -244,24 +244,15 @@ jobs:
         working-directory: lace
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
-          PACKAGE_ORDER: "lace_utils lace_consts lace_data lace_stats lace_codebook lace_geweke lace_cc lace_metadata lace"
         run: |
-          for PACKAGE_NAME in $PACKAGE_ORDER
-          do
-            echo "Processing package $PACKAGE_NAME"
-            if [ "$PACKAGE_NAME" == 'lace' ]
-            then
-              CARGO_FILE="Cargo.toml"
-            else
-              CARGO_FILE="$PACKAGE_NAME/Cargo.toml"
-            fi
-            PACKAGE_VERSION=$(tomlq .package.version $CARGO_FILE)
-            ALREADY_PUBLISHED=$(cargo crate info $PACKAGE_NAME --json --max-versions 100 | jq '[.krate.versions[].num] | any(. == '$PACKAGE_VERSION')')
-            if [ "$ALREADY_PUBLISHED" == 'false' ]
-            then
-              cargo publish --token "${CRATES_TOKEN}" -p $PACKAGE_NAME
-            fi
-          done
+          echo "Processing package $PACKAGE_NAME"
+          CARGO_FILE="Cargo.toml"
+          PACKAGE_VERSION=$(tomlq .package.version $CARGO_FILE)
+          ALREADY_PUBLISHED=$(cargo crate info $PACKAGE_NAME --json --max-versions 100 | jq '[.krate.versions[].num] | any(. == '$PACKAGE_VERSION')')
+          if [ "$ALREADY_PUBLISHED" == 'false' ]
+          then
+            cargo publish --token "${CRATES_TOKEN}" -p lace
+          fi
       - name: Publish Updated CLI Crate to Crates.io
         working-directory: cli
         env:
