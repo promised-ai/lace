@@ -46,10 +46,11 @@ polars = { version = "0.52", default_features = false, features = [
   "dtype-u8",
   "dtype-u16",
 ] }
-
-[patch.crates-io]
-# polars is using an old insecure version of bytes
-bytes = { git = "https://github.com/tokio-rs/bytes", tag = "v1.11.1" }
+# Bring in bytes JUST to pass the RUSTSEC issue with bytes used by polars 0.52
+# and 0.53
+bytes = "1.11.1"
+# Bring in time JUST to pass the RUSTSEC issue with time used by plotly
+time = "0.3.47"
 
 [dev-dependencies]
 clap = { version = "4.3.17", features = ["derive"] }
@@ -57,7 +58,7 @@ approx = "0.5.1"
 tempfile = "3.4"
 criterion = "0.5"
 indoc = "2.0.3"
-plotly = "0.8"
+plotly = "0.14"
 
 [features]
 default = ["examples"]

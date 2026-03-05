@@ -18,7 +18,6 @@ use lace::InsertDataActions;
 use lace::SupportExtension;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::traits::Sampleable;
 
 fn animals_data_path() -> PathBuf {
     Path::new("resources")
