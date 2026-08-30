@@ -666,6 +666,27 @@ impl Codebook {
             .map(|(_, md)| ColumnMetadata(md.clone()))
     }
 
+    fn set_value_map(
+        &mut self,
+        name: &str,
+        valuemap: ValueMap,
+    ) -> PyResult<()> {
+        let Some((_, md)) = self.0.col_metadata.get_mut(name) else {
+            return Err(PyIndexError::new_err(format!("No column '{name}'")));
+        };
+        match md.coltype {
+            ColType::Categorical {
+                ref mut value_map, ..
+            } => {
+                *value_map = valuemap.0;
+                Ok(())
+            }
+            _ => Err(PyValueError::new_err(
+                "Cannot set value_map for non-categorical features",
+            )),
+        }
+    }
+
     fn set_column_metadata(
         &mut self,
         name: &str,

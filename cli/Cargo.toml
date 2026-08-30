@@ -1,6 +1,6 @@
 [package]
 name = "lace-cli"
-version = "0.9.1"
+version = "0.9.2"
 authors = ["Redpoll"]
 edition = "2021"
 rust-version = "1.62.0"
@@ -17,7 +17,7 @@ name = "lace"
 path = "src/main.rs"
 
 [dependencies]
-lace = { path = "../lace", version = "0.9.1", features = [
+lace = { path = "../lace", version = "0.9.2", features = [
   "formats",
   "ctrlc_handler",
 ] }

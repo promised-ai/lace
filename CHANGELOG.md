@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [python-0.10.2] - 2026-08-28
+
+### Added
+- Enable `Engine.mean` method
+- Add `set_value_map` method to `Codebook` so you can set the support for
+  Categorical features.
+
+## [rust-0.9.2] - 2026-08-28
+
+### Changed
+- Add `mean` method to `OracleT`, which works like `variability` but returns--
+  wait for it--the mean.
+- Use fixed point iteration to compute argmax/predict for Gaussian features.
+  Faster and more accurate.
+
 ## [python-0.10.1] - 2026-03-04
 
 ### Fixed

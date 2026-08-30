@@ -1793,6 +1793,49 @@ class Engine:
         """
         return self.engine.predict(target, given, state_ixs, with_uncertainty)
 
+    def mean(
+        self,
+        target: Union[str, int],
+        given: Optional[Dict[Union[str, int], object]] = None,
+        state_ixs: Optional[List[int]] = None,
+    ):
+        """
+        Return the mean of a conditional distribution if it exists. Will return
+        `None` for categorical targets.
+
+        Parameters
+        ----------
+        target: column index
+            The column for which to return the mean
+        given: Dict[column index, value], optional
+            Column -> Value dictionary describing observations. Note that
+            columns can either be indices (int) or names (str)
+        state_ixs: List[int], optional
+            An optional list specifying which states should be used in the
+            computation. If `None` (default), use all states.
+
+        Returns
+        -------
+        Optiona[float]
+            The mean of the distribution. Will always return `None` for
+            categorical targets.
+
+        Examples
+        --------
+        Compute the mean of the Period_minutes column unconditioned
+
+        >>> from lace.examples import Satellites
+        >>> sats = Satellites()
+        >>> sats.mean("Period_minutes")
+        705.1385827784865
+
+        Compute the mean of Period_minutes for geosynchronous satellite
+
+        >>> sats.mean("Period_minutes", given={"Class_of_Orbit": "GEO"})
+        1412.4609593922153
+        """
+        return self.engine.mean(target, given, state_ixs)
+
     def variability(
         self,
         target: Union[str, int],

@@ -180,9 +180,10 @@ pub enum PredictError {
     GivenError(#[from] GivenError),
 }
 
-/// Describes errors that can occur from bad inputs to `Oracle::variability`
+/// Describes errors that can occur from bad inputs to
+/// `Oracle::feature_as_mixture`
 #[derive(Debug, Clone, PartialEq, Error)]
-pub enum VariabilityError {
+pub enum MixtureError {
     /// The target column index is out of bounds
     #[error("Target index error in predict query: {0}")]
     IndexError(#[from] IndexError),

@@ -1335,7 +1335,7 @@ pub fn continuous_predict(
     col_ix: usize,
     given: &Given<usize>,
 ) -> f64 {
-    let mm = {
+    let gmm = {
         let mixtures = states
             .iter()
             .map(|state| {
@@ -1369,42 +1369,60 @@ pub fn continuous_predict(
         sort_mixture_by_mode(mm)
     };
 
-    let f = |x: f64| -mm.f(&x);
+    // Fixed-point iteration to find the nearest local maximum starting from
+    // `start_x`.
+    fn local_max(gmm: &Mixture<Gaussian>, start_x: f64, iters: usize) -> f64 {
+        let mut x = start_x;
 
-    // We find the mode in the mixture model with the highest likelihood then
-    // build everything around that mode
-    let eval_points = continuous_mixture_quad_points(&mm);
-    let n_eval_points = eval_points.len();
+        for _ in 0..iters {
+            let mut num = 0.0;
+            let mut den = 0.0;
 
-    if n_eval_points == 1 {
-        return eval_points[0];
+            for (w, cpnt) in gmm.weights().iter().zip(gmm.components().iter()) {
+                let diff = x - cpnt.mu();
+                let var = cpnt.sigma() * cpnt.sigma();
+                let pre_coef = w / (var * cpnt.sigma());
+                let pre_den = 2.0 * var;
+                let exponent = -(diff * diff) / pre_den;
+
+                let r = pre_coef * exponent.exp();
+
+                num = r.mul_add(cpnt.mu(), num);
+                den += r;
+            }
+
+            // Underflow protection: if we are so far in the tails that all
+            // weights are 0
+            if den < 1e-14 {
+                break;
+            }
+
+            x = num / den;
+        }
+
+        x
     }
 
-    let min_ix = eval_points
-        .iter()
-        .enumerate()
-        .map(|(ix, &x)| (ix, f(x)))
-        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-        .unwrap()
-        .0;
+    // This could be a method on Mixture<Gaussian>
+    fn argmax(gmm: &Mixture<Gaussian>, iters: usize) -> f64 {
+        let mut best_x = 0.0;
+        let mut max_p = f64::NEG_INFINITY;
 
-    // Check whether the first or last modes are the highest likelihood
-    let (ix_left, ix_right) = if min_ix == 0 {
-        (0, 1)
-    } else if min_ix == n_eval_points - 1 {
-        (n_eval_points - 2, n_eval_points - 1)
-    } else {
-        (min_ix - 1, min_ix + 1)
-    };
+        // Start a fast local search from the mean of every component
+        for cpnt in gmm.components() {
+            let local_max_x = local_max(gmm, cpnt.mu(), iters);
+            let p_val = gmm.ln_f(&local_max_x);
 
-    let left = eval_points[ix_left];
-    let right = eval_points[ix_right];
-    let n_steps = 20;
-    let step_size = (right - left) / n_steps as f64;
+            if p_val > max_p {
+                max_p = p_val;
+                best_x = local_max_x;
+            }
+        }
 
-    // Use a grid search to narrow down the range
-    let x0 = fmin_brute(&f, (left, right), n_steps);
-    fmin_bounded(f, (x0 - step_size, x0 + step_size), None, None)
+        best_x
+    }
+
+    argmax(&gmm, 10)
 }
 
 pub fn categorical_predict(

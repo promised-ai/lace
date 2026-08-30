@@ -441,6 +441,19 @@ class Codebook:
         """
         return self.column_metadata[col].value_map
 
+    def set_value_map(self, col: str, value_map):
+        """
+        Set the value map for a Categorical column.
+
+        Parameters
+        ----------
+        col: str
+            The column name
+        value_map: ValueMap
+            The new value map
+        """
+        self.codebook.set_value_map(col, value_map)
+
     def json(self) -> str:
         """Return the codebook as a JSON string."""
         return self.codebook.json()

@@ -33,6 +33,7 @@ use crate::interface::oracle::MiComponents;
 use crate::interface::oracle::MiType;
 use crate::interface::CanOracle;
 use crate::interface::Given;
+use crate::stats::MixtureType;
 use crate::stats::SampleError;
 
 macro_rules! col_indices_ok  {
@@ -2076,28 +2077,12 @@ pub trait OracleT: CanOracle {
         }
     }
 
-    /// Compute the variability of a conditional distribution
-    ///
-    /// # Notes
-    /// - Returns variance for Continuous and Count columns
-    /// - Returns Entropy for Categorical columns
-    ///
-    /// # Arguments
-    /// - col_ix: the index of the column for which to compute the variability
-    /// - given: optional observations by which to constrain the prediction
-    /// - state_ixs_opt: Optional vector of state indices from which to compute,
-    ///   if None, use all states.
-    fn variability<Ix: ColumnIndex, GIx: ColumnIndex>(
+    fn feature_as_mixture<Ix: ColumnIndex, GIx: ColumnIndex>(
         &self,
         col_ix: Ix,
         given: &Given<GIx>,
         state_ixs_opt: Option<&[usize]>,
-    ) -> Result<Variability, error::VariabilityError> {
-        use rv::traits::Entropy;
-        use rv::traits::Variance;
-
-        use crate::stats::MixtureType;
-
+    ) -> Result<MixtureType, error::MixtureError> {
         let states: Vec<&State> = if let Some(state_ixs) = state_ixs_opt {
             state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
         } else {
@@ -2106,9 +2091,9 @@ pub trait OracleT: CanOracle {
 
         let given =
             given.clone().canonical(self.codebook()).map_err(|err| {
-                error::VariabilityError::GivenError(
-                    error::GivenError::IndexError(err),
-                )
+                error::MixtureError::GivenError(error::GivenError::IndexError(
+                    err,
+                ))
             })?;
 
         let col_ix = col_ix.col_ix(self.codebook())?;
@@ -2140,14 +2125,14 @@ pub trait OracleT: CanOracle {
             Gaussian,
             Categorical,
             Count,
-            Unsupported,
+            Bernoulli,
         }
 
         let mtype = match mixture_types[0] {
             MixtureType::Gaussian(_) => MType::Gaussian,
             MixtureType::Poisson(_) => MType::Count,
             MixtureType::Categorical(_) => MType::Categorical,
-            _ => MType::Unsupported,
+            MixtureType::Bernoulli(_) => MType::Bernoulli,
         };
 
         match mtype {
@@ -2162,8 +2147,7 @@ pub trait OracleT: CanOracle {
                         }
                     })
                     .collect();
-                let mm = Mixture::combine(mms);
-                Ok(Variability::Variance(mm.variance().unwrap()))
+                Ok(MixtureType::Gaussian(Mixture::combine(mms)))
             }
             MType::Count => {
                 let mms: Vec<_> = mixture_types
@@ -2176,8 +2160,7 @@ pub trait OracleT: CanOracle {
                         }
                     })
                     .collect();
-                let mm = Mixture::combine(mms);
-                Ok(Variability::Variance(mm.variance().unwrap()))
+                Ok(MixtureType::Poisson(Mixture::combine(mms)))
             }
             MType::Categorical => {
                 let mms: Vec<_> = mixture_types
@@ -2190,11 +2173,86 @@ pub trait OracleT: CanOracle {
                         }
                     })
                     .collect();
-                let mm = Mixture::combine(mms);
-                Ok(Variability::Entropy(mm.entropy()))
+                Ok(MixtureType::Categorical(Mixture::combine(mms)))
             }
-            _ => panic!("Unsupported MType"),
+            MType::Bernoulli => {
+                let mms: Vec<_> = mixture_types
+                    .drain(..)
+                    .map(|mt| {
+                        if let MixtureType::Bernoulli(mm) = mt {
+                            mm
+                        } else {
+                            panic!("Expected Categorical Mixture Type")
+                        }
+                    })
+                    .collect();
+                Ok(MixtureType::Bernoulli(Mixture::combine(mms)))
+            }
         }
+    }
+
+    /// Compute the mean of a conditional distribution if it exists
+    ///
+    /// # Notes
+    /// Does not support Categorical columns--you'll always get `None`.
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column for which to compute the mean
+    /// - given: optional observations by which to constrain the distribution
+    /// - state_ixs_opt: Optional vector of state indices from which to compute,
+    ///   if None, use all states.
+    fn mean<Ix: ColumnIndex, GIx: ColumnIndex>(
+        &self,
+        col_ix: Ix,
+        given: &Given<GIx>,
+        state_ixs_opt: Option<&[usize]>,
+    ) -> Result<Option<f64>, error::MixtureError> {
+        use rv::traits::Mean;
+
+        let mixture_model =
+            self.feature_as_mixture(col_ix, given, state_ixs_opt)?;
+
+        Ok(match mixture_model {
+            MixtureType::Gaussian(mm) => mm.mean(),
+            MixtureType::Poisson(mm) => mm.mean(),
+            MixtureType::Bernoulli(mm) => mm.mean(),
+            _ => None,
+        })
+    }
+
+    /// Compute the variability of a conditional distribution
+    ///
+    /// # Notes
+    /// - Returns variance for Continuous and Count columns
+    /// - Returns Entropy for Categorical or Bernoulli columns
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column for which to compute the variability
+    /// - given: optional observations by which to constrain the prediction
+    /// - state_ixs_opt: Optional vector of state indices from which to compute,
+    ///   if None, use all states.
+    fn variability<Ix: ColumnIndex, GIx: ColumnIndex>(
+        &self,
+        col_ix: Ix,
+        given: &Given<GIx>,
+        state_ixs_opt: Option<&[usize]>,
+    ) -> Result<Variability, error::MixtureError> {
+        use rv::traits::Entropy;
+        use rv::traits::Variance;
+
+        let mixture_model =
+            self.feature_as_mixture(col_ix, given, state_ixs_opt)?;
+
+        Ok(match mixture_model {
+            MixtureType::Gaussian(mm) => {
+                Variability::Variance(mm.variance().unwrap())
+            }
+            MixtureType::Poisson(mm) => {
+                Variability::Variance(mm.variance().unwrap())
+            }
+            MixtureType::Bernoulli(mm) => Variability::Entropy(mm.entropy()),
+            MixtureType::Categorical(mm) => Variability::Entropy(mm.entropy()),
+        })
     }
 
     /// Compute the error between the observed data in a feature and the feature

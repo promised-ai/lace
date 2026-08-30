@@ -1,6 +1,6 @@
 [package]
 name = "lace"
-version = "0.9.1"
+version = "0.9.2"
 authors = ["Redpoll"]
 build = "build.rs"
 edition = "2021"
@@ -51,6 +51,7 @@ polars = { version = "0.52", default_features = false, features = [
 bytes = "1.11.1"
 # Bring in time JUST to pass the RUSTSEC issue with time used by plotly
 time = "0.3.47"
+
 
 [dev-dependencies]
 clap = { version = "4.3.17", features = ["derive"] }
