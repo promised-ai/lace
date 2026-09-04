@@ -26,10 +26,7 @@ macro_rules! series_to_opt_vec {
     ($srs: ident, $X: ty) => {{
         macro_rules! stv_arm {
             ($srsi: ident, $method: ident, $Xi: ty) => {{
-                $srsi
-                    .$method()?
-                    .into_iter()
-                    .map(|x_opt| x_opt.map(|x| x as $Xi))
+                $srsi.$method()?.iter().map(|x_opt| x_opt.map(|x| x as $Xi))
             }};
         }
         match $srs.dtype() {
@@ -79,10 +76,7 @@ macro_rules! series_to_vec {
     ($srs: ident, $X: ty) => {{
         macro_rules! stv_arm {
             ($srsi: ident, $method: ident, $Xi: ty) => {{
-                $srsi
-                    .$method()?
-                    .into_iter()
-                    .map(|x_opt| x_opt.map(|x| x as $Xi))
+                $srsi.$method()?.iter().map(|x_opt| x_opt.map(|x| x as $Xi))
             }};
         }
         match $srs.dtype() {
@@ -134,7 +128,7 @@ macro_rules! series_to_opt_strings {
             ($srsi: ident, $method: ident) => {{
                 $srsi
                     .$method()?
-                    .into_iter()
+                    .iter()
                     .map(|x_opt| x_opt.map(|x| format!("{}", x)))
             }};
         }
@@ -190,7 +184,7 @@ macro_rules! series_to_strings {
             ($srsi: ident, $method: ident) => {{
                 $srsi
                     .$method()?
-                    .into_iter()
+                    .iter()
                     .map(|x_opt| x_opt.map(|x| format!("{}", x)))
             }};
         }
@@ -357,7 +351,7 @@ fn string_categorical_coltype(
         let unique: BTreeSet<String> = srs
             .unique()?
             .str()?
-            .into_iter()
+            .iter()
             .filter_map(|x| x.map(String::from))
             .collect();
 

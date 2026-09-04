@@ -162,7 +162,7 @@ fn categorical_col_model<R: rand::Rng>(
         }
         (ValueMap::Bool, DataType::Boolean) => srs
             .bool()?
-            .into_iter()
+            .iter()
             .map(|maybe_bool| {
                 maybe_bool.map(|b| ValueMap::Bool.ix(&b.into()).unwrap() as u32)
             })

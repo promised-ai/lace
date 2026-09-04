@@ -134,8 +134,8 @@ impl ValueMap {
     /// ```
     pub fn ix(&self, cat: &Category) -> Option<usize> {
         match (self, cat) {
-            (Self::String(map), Category::String(ref x)) => map.ix(x),
-            (Self::UInt(k), Category::UInt(ref x)) => {
+            (Self::String(map), Category::String(x)) => map.ix(x),
+            (Self::UInt(k), Category::UInt(x)) => {
                 if (*x as usize) < *k {
                     Some(*x as usize)
                 } else {
@@ -283,10 +283,7 @@ impl ValueMap {
                 additions.into_iter().for_each(|x| map.add(x));
                 Ok(())
             }
-            (
-                ValueMap::UInt(ref mut cur_max),
-                ValueMapExtension::UInt { new_max },
-            ) => {
+            (ValueMap::UInt(cur_max), ValueMapExtension::UInt { new_max }) => {
                 if new_max > *cur_max {
                     *cur_max = new_max;
                 }
@@ -414,7 +411,9 @@ where
                     return Err(format!("Category {ix} is a duplicate"));
                 }
             } else {
-                return Err(format!("Category index {ix} exceeds the number of categories ({k})"));
+                return Err(format!(
+                    "Category index {ix} exceeds the number of categories ({k})"
+                ));
             }
         }
 

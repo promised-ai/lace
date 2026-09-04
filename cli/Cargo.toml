@@ -2,8 +2,8 @@
 name = "lace-cli"
 version = "0.9.2"
 authors = ["Redpoll"]
-edition = "2021"
-rust-version = "1.62.0"
+edition = "2024"
+rust-version = "1.89.0"
 license = "MIT"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
@@ -17,13 +17,10 @@ name = "lace"
 path = "src/main.rs"
 
 [dependencies]
-lace = { path = "../lace", version = "0.9.2", features = [
-  "formats",
-  "ctrlc_handler",
-] }
+lace = { workspace = true, features = ["formats", "ctrlc_handler"] }
 clap = { version = "4.3.17", features = ["derive"] }
 env_logger = "0.10"
-serde_yaml = "0.9.4"
+serde_yaml = { workspace = true }
 
 [patch.crates-io]
 # polars is using an old insecure version of bytes

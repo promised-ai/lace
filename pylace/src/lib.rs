@@ -168,6 +168,15 @@ impl CoreEngine {
         self.rng = Xoshiro256Plus::seed_from_u64(rng_seed);
     }
 
+    /// Put the states in another engine in this model
+    fn extend_states_unchecked(&mut self, other: &Self) {
+        let max_state_id = self.engine.state_ids.iter().max().copied().unwrap();
+        for (i, state) in other.engine.states.iter().enumerate() {
+            self.engine.state_ids.push(max_state_id + i);
+            self.engine.states.push(state.clone());
+        }
+    }
+
     /// Drops the data and diagnostics
     fn low_mem_mode(&mut self) {
         self.engine.states.iter_mut().for_each(|state| {

@@ -2466,6 +2466,40 @@ class Engine:
         """
         return self.engine.remove_rows(indices)
 
+    def extend_states(self, other):
+        """Extend the states in this engine with the states in another Engine"""
+        if self.shape != other.shape:
+            raise ValueError(
+                f"Shapes are not equal. self: `{self.shape}`, other `{other.shape}`"
+            )
+
+        if self.index != other.index:
+            raise IndexError("`other` Engine.index does not align with `self`")
+
+        if self.columns != other.columns:
+            raise IndexError(
+                "`other` Engine.columns does not align with `self`"
+            )
+
+        ftypes_self = self.ftypes
+        ftypes_other = other.ftypes
+        for column, ftype in ftypes_self.items():
+            other_ftype = ftypes_other[column]
+            if ftype != other_ftype:
+                raise ValueError(
+                    f"Mismatched FType for column {column}. Should be {ftype}, but is {other_ftype}"
+                )
+
+            if ftype.lower() == "categorical":
+                vmap_self = self.codebook.value_map(column)
+                vmap_other = other.codebook.value_map(column)
+                if vmap_self != vmap_other:
+                    raise ValueError(
+                        f"Incompatible value maps for column `{column}`."
+                    )
+
+        self.engine.extend_states_unchecked(other.engine)
+
 
 class _TqdmUpdateHandler:
     def __init__(self):

@@ -350,8 +350,8 @@ pub fn gen_sobol_samples(
     state: &State,
     n: usize,
 ) -> (Vec<Vec<Datum>>, f64) {
-    use crate::stats::seq::SobolSeq;
     use crate::stats::QmcEntropy;
+    use crate::stats::seq::SobolSeq;
 
     let features: Vec<_> =
         col_ixs.iter().map(|&ix| state.feature(ix)).collect();
@@ -462,7 +462,7 @@ fn single_view_weights(
     let mut weights: Vec<_> = view.weights.iter().map(|w| w.ln()).collect();
 
     match given {
-        Given::Conditions(ref conditions) => {
+        Given::Conditions(conditions) => {
             for &(col_ix, ref datum) in conditions {
                 let in_target_view =
                     state.asgn().asgn[col_ix] == target_view_ix;
@@ -492,7 +492,7 @@ fn single_view_exp_weights(
     let mut weights = view.weights.clone();
 
     match given {
-        Given::Conditions(ref conditions) => {
+        Given::Conditions(conditions) => {
             conditions.iter().for_each(|(ix, datum)| {
                 let in_target_view = state.asgn().asgn[*ix] == target_view_ix;
                 if in_target_view {
@@ -769,11 +769,7 @@ pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
         .skip(1)
         .fold((lower, fx(lower)), |(argmax, max), xi| {
             let fxi = fx(xi);
-            if fxi > max {
-                (xi, fxi)
-            } else {
-                (argmax, max)
-            }
+            if fxi > max { (xi, fxi) } else { (argmax, max) }
         })
         .0
 }
@@ -1643,13 +1639,15 @@ macro_rules! impunc_arm {
                 let view = &$states[state_ix].views[view_ix];
                 let k = view.asgn().asgn[$row_ix];
                 match &view.ftrs[&$col_ix] {
-                    ColModel::$variant(ref ftr) => ftr.components[k].fx.clone(),
-                    ColModel::MissingNotAtRandom(
-                        $crate::cc::feature::MissingNotAtRandom { fx, .. },
+                    &ColModel::$variant(ref ftr) => {
+                        ftr.components[k].fx.clone()
+                    }
+                    &ColModel::MissingNotAtRandom(
+                        $crate::cc::feature::MissingNotAtRandom {
+                            ref fx, ..
+                        },
                     ) => match &**fx {
-                        ColModel::$variant(ref ftr) => {
-                            ftr.components[k].fx.clone()
-                        }
+                        ColModel::$variant(ftr) => ftr.components[k].fx.clone(),
                         cm => {
                             panic!(
                                 "Mismatched MNAR feature type: {}",
@@ -2258,8 +2256,8 @@ mod tests {
     #[cfg(feature = "examples")]
     #[test]
     fn multi_state_categorical_single_entropy_vs_old() {
-        use crate::examples::Example;
         use crate::HasStates;
+        use crate::examples::Example;
         let oracle = Example::Animals.oracle().unwrap();
 
         for col_ix in 0..oracle.n_cols() {
