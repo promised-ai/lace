@@ -14,9 +14,6 @@ use std::path::PathBuf;
 use df::DataFrameLike;
 use df::PyDataFrame;
 use df::PySeries;
-use lace::data::DataSource;
-use lace::metadata::SerializedType;
-use lace::prelude::ColMetadataList;
 use lace::Datum;
 use lace::EngineUpdateConfig;
 use lace::FType;
@@ -24,11 +21,15 @@ use lace::HasStates;
 use lace::OracleT;
 use lace::StateDiagnostics;
 use lace::TableIndex;
+use lace::data::DataSource;
+use lace::metadata::SerializedType;
+use lace::prelude::ColMetadataList;
 use metadata::Codebook;
 use metadata::CodebookBuilder;
 use polars::prelude::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::prelude::Series;
+use pyo3::IntoPyObjectExt;
 use pyo3::create_exception;
 use pyo3::exceptions::PyIndexError;
 use pyo3::exceptions::PyRuntimeError;
@@ -38,13 +39,13 @@ use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
 use pyo3::types::PyType;
-use pyo3::IntoPyObjectExt;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::update_handler::PyUpdateHandler;
+use crate::utils::Indexer;
 use crate::utils::coltype_to_ftype;
 use crate::utils::datum_to_value;
 use crate::utils::dict_to_given;
@@ -55,7 +56,6 @@ use crate::utils::parts_to_insert_values;
 use crate::utils::pyany_to_indices;
 use crate::utils::to_pyerr;
 use crate::utils::value_to_index;
-use crate::utils::Indexer;
 
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Clone, Serialize, Deserialize)]
@@ -247,7 +247,7 @@ impl CoreEngine {
         );
 
         let mut df = polars::frame::DataFrame::empty();
-        df.with_column(index).map_err(to_pyerr)?;
+        df.with_column(index.into()).map_err(to_pyerr)?;
 
         for col_ix in &col_ixs {
             let mut values = Vec::new();
@@ -263,7 +263,7 @@ impl CoreEngine {
                 ftype,
                 &self.engine.codebook,
             )?;
-            df.with_column(srs.0).map_err(to_pyerr)?;
+            df.with_column(srs.0.into()).map_err(to_pyerr)?;
         }
         Ok(PyDataFrame(df))
     }
@@ -751,7 +751,8 @@ impl CoreEngine {
                     } else {
                         Err(PyErr::new::<PyValueError, _>(format!(
                             "The lengths of `rows` ({}) and `values` ({}) do not match.",
-                            row_ixs.len(), n_vals
+                            row_ixs.len(),
+                            n_vals
                         )))
                     }?;
                     let mut row_names = Vec::with_capacity(n_vals);
@@ -775,11 +776,15 @@ impl CoreEngine {
                         ftype,
                         &self.engine.codebook,
                     )?;
-                    df.with_column(Series::new("index".into(), row_names))
-                        .map_err(to_pyerr)?;
-                    df.with_column(vals_srs.0).map_err(to_pyerr)?;
-                    df.with_column(Series::new("surprisal".into(), surps))
-                        .map_err(to_pyerr)?;
+                    df.with_column(
+                        Series::new("index".into(), row_names).into(),
+                    )
+                    .map_err(to_pyerr)?;
+                    df.with_column(vals_srs.0.into()).map_err(to_pyerr)?;
+                    df.with_column(
+                        Series::new("surprisal".into(), surps).into(),
+                    )
+                    .map_err(to_pyerr)?;
                     Ok(PyDataFrame(df))
                 }
                 Ordering::Equal => {
@@ -799,8 +804,10 @@ impl CoreEngine {
                             })
                     })?;
                     let mut df = DataFrame::default();
-                    df.with_column(Series::new("surprisal".into(), surps))
-                        .map_err(to_pyerr)?;
+                    df.with_column(
+                        Series::new("surprisal".into(), surps).into(),
+                    )
+                    .map_err(to_pyerr)?;
                     Ok(PyDataFrame(df))
                 }
                 Ordering::Less => {
@@ -844,9 +851,9 @@ impl CoreEngine {
             )?;
             let surps = Series::new("surprisal".into(), surps);
 
-            df.with_column(index).map_err(to_pyerr)?;
-            df.with_column(values.0).map_err(to_pyerr)?;
-            df.with_column(surps).map_err(to_pyerr)?;
+            df.with_column(index.into()).map_err(to_pyerr)?;
+            df.with_column(values.0.into()).map_err(to_pyerr)?;
+            df.with_column(surps.into()).map_err(to_pyerr)?;
             Ok(PyDataFrame(df))
         }
     }
@@ -944,12 +951,12 @@ impl CoreEngine {
                 &self.engine.codebook,
             )?;
             let index = Series::new("index".into(), row_names);
-            df.with_column(index).map_err(to_pyerr)?;
-            df.with_column(values_srs.0).map_err(to_pyerr)?;
+            df.with_column(index.into()).map_err(to_pyerr)?;
+            df.with_column(values_srs.0.into()).map_err(to_pyerr)?;
 
             if !uncs.is_empty() {
                 let uncs_srs = Series::new("uncertainty".into(), uncs);
-                df.with_column(uncs_srs).map_err(to_pyerr)?;
+                df.with_column(uncs_srs.into()).map_err(to_pyerr)?;
             }
             df
         };
@@ -1270,7 +1277,7 @@ impl CoreEngine {
 
         let mut df = polars::frame::DataFrame::empty();
         let index = polars::series::Series::new("index".into(), remove);
-        df.with_column(index).map_err(to_pyerr)?;
+        df.with_column(index.into()).map_err(to_pyerr)?;
 
         for col_ix in 0..self.engine.n_cols() {
             let values = row_idxs
@@ -1287,7 +1294,7 @@ impl CoreEngine {
                 ftype,
                 &self.engine.codebook,
             )?;
-            df.with_column(srs.0).map_err(to_pyerr)?;
+            df.with_column(srs.0.into()).map_err(to_pyerr)?;
         }
 
         self.engine

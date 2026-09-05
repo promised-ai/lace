@@ -20,7 +20,7 @@ indexmap = { version = "2.0.0", features = ["serde"] }
 thiserror = "1.0.19"
 indicatif = "0.17.0"
 ctrlc = { version = "3.2.1" }
-polars = { version = "0.52.0", default-features = false, features = [
+polars = { version = "0.55.2", default-features = false, features = [
   "csv",
   "dtype-i8",
   "dtype-i16",
@@ -38,5 +38,5 @@ tempfile = "3.4"
 criterion = "0.5"
 indoc = "2.0.3"
 plotly = "0.14"
-polars-arrow = "0.52.0"
+polars-arrow = "0.55.2"
 pyo3 = { version = "0.27", features = ["extension-module"] }

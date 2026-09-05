@@ -1448,7 +1448,7 @@ mod test {
         assert_eq!(state.views[0].ftrs.len(), 1);
         assert_eq!(state.views[1].ftrs.len(), 2);
 
-        assert_eq!(state.asgn().asgn, vec![0, usize::max_value(), 1, 1]);
+        assert_eq!(state.asgn().asgn, vec![0, usize::MAX, 1, 1]);
         assert_eq!(state.asgn().counts, vec![1, 2]);
         assert_eq!(state.asgn().n_cats, 2);
 
@@ -1477,7 +1477,7 @@ mod test {
         assert_eq!(state.n_views(), 1);
         assert_eq!(state.views[0].ftrs.len(), 2);
 
-        assert_eq!(state.asgn().asgn, vec![usize::max_value(), 0, 0]);
+        assert_eq!(state.asgn().asgn, vec![usize::MAX, 0, 0]);
         assert_eq!(state.asgn().counts, vec![2]);
         assert_eq!(state.asgn().n_cats, 1);
 

@@ -12,13 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `set_value_map` method to `Codebook` so you can set the support for
   Categorical features.
 
-## [rust-0.9.2] - 2026-08-28
+## [rust-0.10.0] - 2026-08-28
 
 ### Changed
 - Add `mean` method to `OracleT`, which works like `variability` but returns--
   wait for it--the mean.
 - Use fixed point iteration to compute argmax/predict for Gaussian features.
   Faster and more accurate.
+- Bump Polars
 
 ## [python-0.10.1] - 2026-03-04
 
@@ -361,6 +362,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release on [crates.io](https://crates.io/)
 
 [unreleased]: https://github.com/promised-ai/lace/compare/python-0.8.0...HEAD
+[python-0.10.2]: https://github.com/promised-ai/lace/compare/python-0.10.1...python-0.10.2
+[rust-0.10.0]: https://github.com/promised-ai/lace/compare/rust-0.9.1...rust-0.10.0
 [python-0.10.1]: https://github.com/promised-ai/lace/compare/python-0.10.0...python-0.10.1
 [rust-0.9.1]: https://github.com/promised-ai/lace/compare/rust-0.9.0...rust-0.9.1
 [python-0.10.0]: https://github.com/promised-ai/lace/compare/python-0.9.0...python-0.10.0

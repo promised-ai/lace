@@ -4,6 +4,13 @@ use polars::prelude::CompatLevel;
 use polars::prelude::PolarsError;
 use polars::series::Series;
 use polars_arrow::ffi;
+use pyo3::Bound;
+use pyo3::FromPyObject;
+use pyo3::IntoPyObject;
+use pyo3::PyAny;
+use pyo3::PyErr;
+use pyo3::PyResult;
+use pyo3::Python;
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::exceptions::PyIOError;
@@ -13,13 +20,6 @@ use pyo3::types::PyAnyMethods;
 use pyo3::types::PyList;
 use pyo3::types::PyModule;
 use pyo3::types::PyStringMethods;
-use pyo3::Bound;
-use pyo3::FromPyObject;
-use pyo3::IntoPyObject;
-use pyo3::PyAny;
-use pyo3::PyErr;
-use pyo3::PyResult;
-use pyo3::Python;
 
 #[derive(Debug)]
 pub struct DataFrameError(PolarsError);
@@ -194,7 +194,8 @@ impl<'a, 'py> FromPyObject<'a, 'py> for PyDataFrame {
             let s = pyseries.extract::<PySeries>()?.0;
             columns.push(s.into());
         }
-        Ok(Self(DataFrame::new(columns).unwrap()))
+
+        Ok(Self(DataFrame::new_infer_height(columns).unwrap()))
     }
 }
 
@@ -259,7 +260,7 @@ impl<'py> IntoPyObject<'py> for PyDataFrame {
     ) -> Result<Self::Output, Self::Error> {
         let pyseries = self
             .0
-            .get_columns()
+            .columns()
             .iter()
             .map(|s| {
                 PySeries(s.clone().as_materialized_series_maintain_scalar())
