@@ -176,7 +176,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated all packages to have the correct SPDX for the Business Source License
+- Updated all packages to have the correct SPDX for Business Source License
 - Removed internal implimentation of `logsumexp` in favor of `rv::misc::logsumexp`
 - Changed to using total variation distance for uncertainty prediction (see docs)
 - Bump min rust version to `1.62` to support `f64::total_cmp`
