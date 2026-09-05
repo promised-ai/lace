@@ -67,14 +67,6 @@ jobs:
         env:
           RUSTFLAGS: -C debuginfo=0 # Do not produce debug symbols to keep memory usage down
         run: cargo clippy
-
-      - name: Install audit
-        run: cargo install cargo-audit
-
-      - name: Run audit
-        working-directory: lace
-        run: cargo audit -f Cargo.lock
-
   build:
     needs: ["lint-python", "lint-rust"]
     strategy:

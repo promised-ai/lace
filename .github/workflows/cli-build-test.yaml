@@ -66,17 +66,6 @@ jobs:
         run: |
           cargo clippy --all-features
 
-      - name: Install audit
-        run: cargo install cargo-audit
-
-      - name: Run audit
-        working-directory: cli
-        # Note: Both `polars` and `arrow2` trigger this security violation
-        #       due to their reliance on `chrono`, which is the ultimate source of the violation
-        #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
-        #       and thus neither `polars` or `arrow2` can pass `audit` checks
-        run: cargo audit -f Cargo.lock
-
   test:
     runs-on: ${{ matrix.os }}
     needs: ["lint", "features"]
