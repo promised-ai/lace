@@ -89,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `StateAlpha` and `ViewAlpha` transitions are now `StatePriorProcessParams` and `ViewPriorProcessParams`
+- `StateAlpha` and `ViewAlpha` transition functions are now `StatePriorProcessParams` and `ViewPriorProcessParams`
 - Updated Pyo3 version to 0.21
 
 ## [python-0.7.1] - 2024-02-27
@@ -361,7 +361,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/python-0.8.0...HEAD
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.10.2...HEAD
 [python-0.10.2]: https://github.com/promised-ai/lace/compare/python-0.10.1...python-0.10.2
 [rust-0.10.0]: https://github.com/promised-ai/lace/compare/rust-0.9.1...rust-0.10.0
 [python-0.10.1]: https://github.com/promised-ai/lace/compare/python-0.10.0...python-0.10.1
