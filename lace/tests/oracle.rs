@@ -3,6 +3,9 @@ use std::io::Read;
 use std::path::Path;
 
 use approx::*;
+use lace::Given;
+use lace::Oracle;
+use lace::OracleT;
 use lace::cc::feature::ColModel;
 use lace::cc::feature::Column;
 use lace::cc::feature::FType;
@@ -12,9 +15,6 @@ use lace::data::DataStore;
 use lace::data::SparseContainer;
 use lace::error::IndexError;
 use lace::stats::prior::nix::NixHyper;
-use lace::Given;
-use lace::Oracle;
-use lace::OracleT;
 use rand::Rng;
 use rv::dist::Gamma;
 use rv::dist::Gaussian;
@@ -257,8 +257,8 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod rowsim {
-            use lace::error::RowSimError;
             use lace::RowSimilarityVariant;
+            use lace::error::RowSimError;
 
             use super::*;
 
@@ -960,9 +960,9 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod mi {
+            use lace::MiType;
             use lace::error::IndexError;
             use lace::error::MiError;
-            use lace::MiType;
 
             use super::*;
 
@@ -1224,8 +1224,8 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod conditional_entropy {
-            use lace::error::ConditionalEntropyError;
             use lace::ConditionalEntropyType;
+            use lace::error::ConditionalEntropyError;
 
             use super::*;
 
@@ -1630,11 +1630,11 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod predict {
+            use lace::Given;
             use lace::data::Datum;
             use lace::error::GivenError;
             use lace::error::IndexError;
             use lace::error::PredictError;
-            use lace::Given;
 
             use super::*;
 
@@ -1717,11 +1717,11 @@ macro_rules! oracle_test {
 
         #[cfg(test)]
         mod logp {
+            use lace::Given;
             use lace::data::Datum;
             use lace::error::GivenError;
             use lace::error::IndexError;
             use lace::error::LogpError;
-            use lace::Given;
 
             use super::*;
 

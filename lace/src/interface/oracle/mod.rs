@@ -13,15 +13,15 @@ pub use traits::OracleT;
 pub use traits::Variability;
 
 use super::HasCodebook;
+use crate::Engine;
+use crate::HasData;
+use crate::HasStates;
 use crate::cc::state::State;
 use crate::codebook::Codebook;
 use crate::data::DataStore;
 use crate::data::Datum;
 use crate::data::SummaryStatistics;
 use crate::metadata::latest::Metadata;
-use crate::Engine;
-use crate::HasData;
-use crate::HasStates;
 
 /// Mutual Information Type
 #[derive(
@@ -222,14 +222,14 @@ mod tests {
     use rv::traits::Sampleable;
 
     use super::*;
+    use crate::Given;
+    use crate::Oracle;
+    use crate::OracleT;
     use crate::cc::feature::FType;
     use crate::cc::feature::Feature;
     use crate::codebook::ColMetadata;
     use crate::codebook::ColType;
     use crate::stats::MixtureType;
-    use crate::Given;
-    use crate::Oracle;
-    use crate::OracleT;
 
     fn dummy_codebook_from_state(state: &State) -> Codebook {
         Codebook {
@@ -475,8 +475,8 @@ mod tests {
         use super::*;
         #[test]
         fn recreate_doctest_mi_failure() {
-            use crate::examples::Example;
             use crate::MiType;
+            use crate::examples::Example;
 
             let oracle = Example::Animals.oracle().unwrap();
 

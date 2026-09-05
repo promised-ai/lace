@@ -1,11 +1,11 @@
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use lace::codebook::data::df_to_codebook;
 use lace::codebook::ColMetadata;
 use lace::codebook::ColMetadataList;
 use lace::codebook::ColType;
 use lace::codebook::RowNameList;
+use lace::codebook::data::df_to_codebook;
 use lace::rv::dist::Beta;
 use lace::rv::dist::Gamma;
 use lace::rv::dist::Gaussian;
@@ -16,27 +16,23 @@ use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
 use lace::stats::prior::pg::PgHyper;
 use polars::prelude::DataFrame;
+use pyo3::IntoPyObjectExt;
 use pyo3::exceptions::PyIOError;
 use pyo3::exceptions::PyIndexError;
 use pyo3::exceptions::PyKeyError;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use pyo3::IntoPyObjectExt;
 
 use crate::df::PyDataFrame;
 use crate::utils::to_pyerr;
 
 macro_rules! newtype_json_repr {
-    ($self: ident) => {{
-        serde_json::to_string_pretty(&$self.0).map_err(to_pyerr)
-    }};
+    ($self: ident) => {{ serde_json::to_string_pretty(&$self.0).map_err(to_pyerr) }};
 }
 
 macro_rules! newtype_string_repr {
-    ($self: ident) => {{
-        Ok($self.0.to_string())
-    }};
+    ($self: ident) => {{ Ok($self.0.to_string()) }};
 }
 
 /// Column metadata
@@ -820,9 +816,21 @@ impl CodebookBuilder {
 
     fn __repr__(&self) -> String {
         match &self.method {
-            CodebookMethod::Path(path) => format!("<CodebookBuilder path='{}'>", path.display()),
-            CodebookMethod::Inferred { cat_cutoff, state_prior_process, view_prior_process, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, state_prior_process={state_prior_process:?}, view_prior_process={view_prior_process:?}, use_hypers={})", !no_hypers),
-            CodebookMethod::Codebook(_) => String::from("Codebook (fully specified)"),
+            CodebookMethod::Path(path) => {
+                format!("<CodebookBuilder path='{}'>", path.display())
+            }
+            CodebookMethod::Inferred {
+                cat_cutoff,
+                state_prior_process,
+                view_prior_process,
+                no_hypers,
+            } => format!(
+                "CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, state_prior_process={state_prior_process:?}, view_prior_process={view_prior_process:?}, use_hypers={})",
+                !no_hypers
+            ),
+            CodebookMethod::Codebook(_) => {
+                String::from("Codebook (fully specified)")
+            }
         }
     }
 }

@@ -6,8 +6,8 @@ use rv::traits::*;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::stats::mh::mh_symrw_adaptive_mv;
 use crate::stats::UpdatePrior;
+use crate::stats::mh::mh_symrw_adaptive_mv;
 
 pub fn geweke() -> Gamma {
     Gamma::new_unchecked(10.0, 10.0)

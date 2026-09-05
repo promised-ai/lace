@@ -69,6 +69,8 @@ macro_rules! loaders {
             use std::path::Path;
 
             use log::info;
+            use $crate::metadata::Error;
+            use $crate::metadata::SerializedType;
             use $crate::metadata::config::FileConfig;
             use $crate::metadata::utils::get_codebook_path;
             use $crate::metadata::utils::get_data_path;
@@ -78,8 +80,6 @@ macro_rules! loaders {
             use $crate::metadata::utils::load;
             use $crate::metadata::utils::load_as_type;
             use $crate::metadata::utils::read_diagnostics;
-            use $crate::metadata::Error;
-            use $crate::metadata::SerializedType;
 
             use super::*;
 

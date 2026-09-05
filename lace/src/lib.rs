@@ -192,7 +192,6 @@ mod index;
 
 pub use config::EngineUpdateConfig;
 pub use index::*;
-pub use interface::update_handler;
 pub use interface::AppendStrategy;
 pub use interface::BuildEngineError;
 pub use interface::ConditionalEntropyType;
@@ -215,6 +214,7 @@ pub use interface::RowSimilarityVariant;
 pub use interface::SupportExtension;
 pub use interface::Value;
 pub use interface::WriteMode;
+pub use interface::update_handler;
 
 pub mod error {
     pub use super::interface::error::*;

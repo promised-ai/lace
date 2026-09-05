@@ -1,16 +1,16 @@
 use std::convert::TryInto;
 
+use lace::AppendStrategy;
+use lace::Engine;
+use lace::HasData;
+use lace::HasStates;
+use lace::WriteMode;
 use lace::cc::state::Builder;
 use lace::codebook::Codebook;
 use lace::codebook::ColMetadata;
 use lace::codebook::ColType;
 use lace::data::Datum;
 use lace::stats::prior::nix::NixHyper;
-use lace::AppendStrategy;
-use lace::Engine;
-use lace::HasData;
-use lace::HasStates;
-use lace::WriteMode;
 use rand::Rng;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;

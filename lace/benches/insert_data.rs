@@ -1,20 +1,20 @@
 use std::convert::TryInto;
 
+use criterion::BatchSize;
+use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
 use criterion::criterion_main;
-use criterion::BatchSize;
-use criterion::Criterion;
+use lace::Engine;
+use lace::Row;
+use lace::Value;
+use lace::WriteMode;
 use lace::cc::state::Builder;
 use lace::codebook::Codebook;
 use lace::codebook::ColMetadata;
 use lace::codebook::ColMetadataList;
 use lace::codebook::ColType;
 use lace::data::Datum;
-use lace::Engine;
-use lace::Row;
-use lace::Value;
-use lace::WriteMode;
 use rand::Rng;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;

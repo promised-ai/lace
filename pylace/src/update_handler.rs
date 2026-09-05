@@ -2,15 +2,14 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use pyo3::IntoPyObject;
-
+use lace::EngineUpdateConfig;
 use lace::cc::state::State;
 use lace::update_handler::UpdateHandler;
-use lace::EngineUpdateConfig;
-use pyo3::prelude::PyDictMethods;
-use pyo3::pyclass;
+use pyo3::IntoPyObject;
 use pyo3::Py;
 use pyo3::PyAny;
+use pyo3::prelude::PyDictMethods;
+use pyo3::pyclass;
 
 /// Python version of `EngineUpdateConfig`.
 #[derive(Clone, Debug)]

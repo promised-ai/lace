@@ -13,8 +13,8 @@ use super::FeatureHelper;
 use crate::data::Datum;
 use crate::data::FeatureData;
 use crate::data::SparseContainer;
-use crate::stats::assignment::Assignment;
 use crate::stats::MixtureType;
+use crate::stats::assignment::Assignment;
 
 /// Missing-not-at-random column type
 #[derive(Debug, Clone, Serialize, Deserialize)]

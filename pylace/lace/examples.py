@@ -113,12 +113,7 @@ class ExamplePaths:
             write_hashes(hashes, self.hash)
         else:
             if need_to_regen(hashes, current_hashes):
-                if auto_regen:
-                    generate_metadata(
-                        self.data, self.metadata, self.codebook, quiet
-                    )
-                    write_hashes(hashes, self.hash)
-                elif yes_or_no(f"{name} metadata is out of date. Regenerate?"):
+                if auto_regen or yes_or_no(f"{name} metadata is out of date. Regenerate?"):
                     generate_metadata(
                         self.data, self.metadata, self.codebook, quiet
                     )

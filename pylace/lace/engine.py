@@ -2,7 +2,7 @@
 
 import itertools as it
 from os import PathLike
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, Set
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
 import pandas as pd
 import plotly.express as px
@@ -2435,7 +2435,7 @@ class Engine:
 
     def remove_rows(
         self,
-        indices: Union[pd.Series, List[str], pd.Series, Set[str]],
+        indices: Union[pd.Series, List[str], Set[str]],
     ) -> pl.DataFrame:
         """
         Remove rows from the table.

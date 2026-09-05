@@ -15,13 +15,19 @@ pub enum CsvParseError {
     #[error("The csv contained no columns")]
     NoColumns,
     /// The first column must be named "ID" or "Index
-    #[error("The first csv column must be named a case-insensitive variant of either 'ID' or 'Index'")]
+    #[error(
+        "The first csv column must be named a case-insensitive variant of either 'ID' or 'Index'"
+    )]
     FirstColumnNotNamedId,
     /// There are one or more columns that are in the CSV, but not the codebook
-    #[error("One or more columns appear in the csv that do not appear in the codebook")]
+    #[error(
+        "One or more columns appear in the csv that do not appear in the codebook"
+    )]
     MissingCodebookColumns,
     /// There are one or more columns that are in the codebook but not the CSV
-    #[error("One or more columns appear in the codebook that do not appear in the csv")]
+    #[error(
+        "One or more columns appear in the codebook that do not appear in the csv"
+    )]
     MissingCsvColumns,
     /// There is a mismatch between the number of rows in the `row_names`
     /// codebook field and the number of rows in the data
@@ -37,7 +43,9 @@ pub enum CsvParseError {
     #[error("There are duplicate row names in the csv")]
     DuplicateCsvRows,
     /// Could not parse the cell as the correct data type
-    #[error("Could not parse value '{val}' at row '{row_name}', column {col_id} into {col_type:?}")]
+    #[error(
+        "Could not parse value '{val}' at row '{row_name}', column {col_id} into {col_type:?}"
+    )]
     InvalidValueForColumn {
         col_id: usize,
         row_name: String,

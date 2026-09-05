@@ -8,9 +8,6 @@ use std::path::Path;
 
 pub use builder::BuildEngineError;
 pub use builder::EngineBuilder;
-use data::append_empty_columns;
-use data::insert_data_tasks;
-use data::maybe_add_categories;
 pub use data::AppendStrategy;
 pub use data::InsertDataActions;
 pub use data::InsertMode;
@@ -19,6 +16,9 @@ pub use data::Row;
 pub use data::SupportExtension;
 pub use data::Value;
 pub use data::WriteMode;
+use data::append_empty_columns;
+use data::insert_data_tasks;
+use data::maybe_add_categories;
 use error::DataParseError;
 use error::InsertDataError;
 use error::NewEngineError;
@@ -32,6 +32,10 @@ use serde::Serialize;
 
 use self::update_handler::UpdateHandler;
 use super::HasCodebook;
+use crate::HasData;
+use crate::HasStates;
+use crate::Oracle;
+use crate::TableIndex;
 use crate::cc::feature::ColModel;
 use crate::cc::feature::Feature;
 use crate::cc::state::State;
@@ -46,12 +50,8 @@ use crate::error::IndexError;
 use crate::index::ColumnIndex;
 use crate::index::RowIndex;
 use crate::interface::oracle::utils::post_process_datum;
-use crate::metadata::latest::Metadata;
 use crate::metadata::SerializedType;
-use crate::HasData;
-use crate::HasStates;
-use crate::Oracle;
-use crate::TableIndex;
+use crate::metadata::latest::Metadata;
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
