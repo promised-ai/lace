@@ -127,10 +127,9 @@ impl Feature for MissingNotAtRandom {
 
     #[inline]
     fn take_datum(&mut self, row_ix: usize, k: usize) -> Option<Datum> {
-        self.fx.take_datum(row_ix, k).map(|x| {
+        self.fx.take_datum(row_ix, k).inspect(|_x| {
             // if the datum was present, we must now mark it as missing
             self.present.insert_datum(row_ix, Datum::Binary(false));
-            x
         })
     }
 

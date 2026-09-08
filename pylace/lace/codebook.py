@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import copy
-from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -28,7 +29,7 @@ class _ColumnMetadataIndexer:
         """Remove and return the column metadata with ``name``."""
         return self.codebook.remove_column_metadata(name)
 
-    def extend(self, column_metadatas: List[_lc.ColumnMetadata]):
+    def extend(self, column_metadatas: list[_lc.ColumnMetadata]):
         """Append a number of column metadatas to the end of codebook."""
         self.codebook.append_column_metadata(column_metadatas)
 
@@ -70,7 +71,7 @@ class Codebook:
     def from_df(
         cls,
         name: str,
-        df: Union[pd.DataFrame, pl.DataFrame],
+        df: pd.DataFrame | pl.DataFrame,
         cat_cutoff: int = 20,
         no_hypers: bool = False,
     ):
@@ -221,7 +222,7 @@ class Codebook:
         return _ColumnMetadataIndexer(self.codebook)
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         """
         A (n_rows, n_cols) tuple.
 
@@ -236,7 +237,7 @@ class Codebook:
         return self.codebook.shape
 
     @property
-    def row_names(self) -> List[str]:
+    def row_names(self) -> list[str]:
         """
         Contains the name of each row.
 
@@ -251,7 +252,7 @@ class Codebook:
         return self.codebook.row_names
 
     @property
-    def column_names(self) -> List[str]:
+    def column_names(self) -> list[str]:
         """
         Contains the name of each column.
 
@@ -360,15 +361,13 @@ class Codebook:
         codebook.codebook.set_view_prior_process(prior_process)
         return codebook
 
-    def append_column_metadata(self, col_metadata: List[_lc.ColumnMetadata]):
+    def append_column_metadata(self, col_metadata: list[_lc.ColumnMetadata]):
         """Append new columns to the codebook."""
         codebook = copy.copy(self)
         codebook.codebook.append_column_metadata(col_metadata)
         return codebook
 
-    def set_row_names(
-        self, row_names: Union[List[str], pd.Series, pl.Series, np.ndarray]
-    ):
+    def set_row_names(self, row_names: list[str] | pd.Series | pl.Series | np.ndarray):
         """
         Return a copy of the codebook with new row_names.
 

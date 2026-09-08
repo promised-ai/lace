@@ -603,7 +603,7 @@ impl State {
         // TODO: Can use `unstable_div_ceil` to make this shorter, when it lands
         // in stable. See:
         // https://doc.rust-lang.org/std/primitive.usize.html#:~:text=unchecked_sub-,unstable_div_ceil,-unstable_div_floor
-        let n_batches = if n_cols % batch_size == 0 {
+        let n_batches = if n_cols.is_multiple_of(batch_size) {
             n_cols / batch_size
         } else {
             n_cols / batch_size + 1

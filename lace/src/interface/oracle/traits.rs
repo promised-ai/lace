@@ -284,10 +284,10 @@ pub trait OracleT: CanOracle {
             ));
         }
 
-        if let Some(col_ixs) = wrt {
-            if col_ixs.is_empty() {
-                return Err(error::RowSimError::EmptyWrt);
-            }
+        if let Some(col_ixs) = wrt
+            && col_ixs.is_empty()
+        {
+            return Err(error::RowSimError::EmptyWrt);
         }
 
         Ok(())

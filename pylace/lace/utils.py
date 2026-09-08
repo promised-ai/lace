@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import itertools as it
-from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -52,11 +53,7 @@ def get_all_pairs(fn_name, engine):
     if fn_name not in FN_DIMENSION:
         raise ValueError(f"{fn_name} is an invalid pairwise function")
 
-    indices = (
-        engine.index
-        if FN_DIMENSION[fn_name] == Dimension.Rows
-        else engine.columns
-    )
+    indices = engine.index if FN_DIMENSION[fn_name] == Dimension.Rows else engine.columns
 
     symmetric = FN_IS_SYMMETRIC[fn_name]
 
@@ -80,7 +77,7 @@ def hcluster(df: pl.DataFrame, method="ward"):
     return df[leaves, col_ixs], z
 
 
-def return_srs(srs: Optional[Union[pl.Series, float]]):
+def return_srs(srs: pl.Series | float | None):
     if srs is None:
         return None
 
@@ -97,10 +94,10 @@ def return_srs(srs: Optional[Union[pl.Series, float]]):
 
 
 def infer_column_metadata(
-    df: Union[pl.DataFrame, pd.DataFrame],
+    df: pl.DataFrame | pd.DataFrame,
     cat_cutoff: int = 20,
     no_hypers: bool = False,
-) -> List[ColumnMetadata]:
+) -> list[ColumnMetadata]:
     """
     Infer the column metadata from data.
 
@@ -119,9 +116,7 @@ def infer_column_metadata(
     for column in df.columns:
         if column.lower() in ("id", "index"):
             continue
-        md = infer_srs_metadata(
-            pl.Series(df[column]), cat_cutoff, no_hypers
-        ).rename(column)
+        md = infer_srs_metadata(pl.Series(df[column]), cat_cutoff, no_hypers).rename(column)
         mds.append(md)
     return mds
 
@@ -162,7 +157,7 @@ _COMMON_TRANSITIONS = {
 }
 
 
-def _get_common_transitions(name: str) -> List[StateTransition]:
+def _get_common_transitions(name: str) -> list[StateTransition]:
     transitions = _COMMON_TRANSITIONS.get(name)
     if transitions is None:
         keys_str = ", ".join(_COMMON_TRANSITIONS.keys())
@@ -172,9 +167,7 @@ def _get_common_transitions(name: str) -> List[StateTransition]:
     return transitions
 
 
-def predict_xs(
-    engine, target, given, *, n_points=1_000, mass=0.99
-) -> pl.Series:
+def predict_xs(engine, target, given, *, n_points=1_000, mass=0.99) -> pl.Series:
     ftype = engine.ftype(target)
     if ftype == "Continuous":
         xs = engine.simulate([target], given=given, n=10_000)
