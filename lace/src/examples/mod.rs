@@ -145,10 +145,7 @@ impl Example {
             0,
             Xoshiro256Plus::seed_from_u64(1337),
         )
-        .map_err(|_| {
-            let err_kind = io::ErrorKind::Other;
-            io::Error::new(err_kind, "Failed to create Engine")
-        })?;
+        .map_err(|_| io::Error::other("Failed to create Engine"))?;
 
         let config = EngineUpdateConfig::new()
             .default_transitions()

@@ -56,16 +56,12 @@ def test_engine_with_boolean_string_columns():
 
     codebook = lace.Codebook.from_df("test", df)
     assert codebook.shape == (n, 2)
-    assert str(codebook.column_metadata["b"].value_map) == str(
-        lace.ValueMap.bool()
-    )
+    assert str(codebook.column_metadata["b"].value_map) == str(lace.ValueMap.bool())
 
     engine = lace.Engine.from_df(df, codebook=codebook, n_states=3)
     assert engine.shape == (n, 2)
     assert engine.columns == ["x", "b"]
-    assert str(engine.codebook.column_metadata["b"].value_map) == str(
-        lace.ValueMap.bool()
-    )
+    assert str(engine.codebook.column_metadata["b"].value_map) == str(lace.ValueMap.bool())
 
 
 def test_with_index():

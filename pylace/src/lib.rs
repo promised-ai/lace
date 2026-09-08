@@ -272,7 +272,7 @@ impl CoreEngine {
     fn ftypes(&self) -> HashMap<String, String> {
         self.engine
             .ftypes()
-            .drain(..)
+            .into_iter()
             .enumerate()
             .map(|(col_ix, ftype)| {
                 let col_name = self.col_indexer.to_name[col_ix].clone();
@@ -1048,7 +1048,7 @@ impl CoreEngine {
             .engine
             .mean(col_ix, &given, state_ixs.as_deref())
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
-        Ok(val.into())
+        Ok(val)
     }
 
     /// Forward the Markov chains

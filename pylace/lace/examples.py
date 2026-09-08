@@ -86,8 +86,10 @@ def yes_or_no(question):
 class ExamplePaths:
     def __init__(self, name: str):
         if name not in EXAMPLE_PATHS:
-            raise ValueError(f"Invalid example `{name}`. Valid names are: \
-                {EXAMPLE_PATHS.keys()}")
+            raise ValueError(
+                f"Invalid example `{name}`. Valid names are: \
+                {EXAMPLE_PATHS.keys()}"
+            )
         base = EXAMPLE_PATHS[name]
         self.base = base
         self.hash = Path(base, HASH_FILE)
@@ -95,8 +97,8 @@ class ExamplePaths:
         self.codebook = Path(base, CODEBOOK_FILE)
         self.metadata = Path(base, METADATA_DIR)
 
-        quiet = bool(int(os.environ.get(QUIET_VAR, 0)))
-        auto_regen = bool(int(os.environ.get(AUTOREGEN_VAR, 0)))
+        quiet = bool(int(os.environ.get(QUIET_VAR, "0")))
+        auto_regen = bool(int(os.environ.get(AUTOREGEN_VAR, "0")))
 
         # generate codebook and data hashes to monitor whether the examples have
         # changed. If the examples have changed, the user will need to recreate
@@ -112,14 +114,11 @@ class ExamplePaths:
             generate_metadata(self.data, self.metadata, self.codebook, quiet)
             write_hashes(hashes, self.hash)
         else:
-            if need_to_regen(hashes, current_hashes):
-                if auto_regen or yes_or_no(
-                    f"{name} metadata is out of date. Regenerate?"
-                ):
-                    generate_metadata(
-                        self.data, self.metadata, self.codebook, quiet
-                    )
-                    write_hashes(hashes, self.hash)
+            if need_to_regen(hashes, current_hashes) and (
+                auto_regen or yes_or_no(f"{name} metadata is out of date. Regenerate?")
+            ):
+                generate_metadata(self.data, self.metadata, self.codebook, quiet)
+                write_hashes(hashes, self.hash)
 
 
 def delete_metadata(name: str):
@@ -140,8 +139,10 @@ def delete_metadata(name: str):
 
     """
     if name not in EXAMPLE_PATHS:
-        raise ValueError(f"Invalid example `{name}`. Valid names are: \
-            {EXAMPLE_PATHS.keys()}")
+        raise ValueError(
+            f"Invalid example `{name}`. Valid names are: \
+            {EXAMPLE_PATHS.keys()}"
+        )
     metadata_path = Path(EXAMPLE_PATHS[name], METADATA_DIR)
     if metadata_path.exists():
         rmtree(metadata_path)

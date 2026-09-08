@@ -1,4 +1,3 @@
-use approx::assert_relative_eq;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -9,11 +8,17 @@ use lace::codebook::ColType;
 use std::{io, process::Output};
 
 fn animals_path() -> PathBuf {
-    Path::new("resources").join("datasets").join("animals")
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("datasets")
+        .join("animals")
 }
 
 fn satellites_path() -> PathBuf {
-    Path::new("resources").join("datasets").join("satellites")
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("datasets")
+        .join("satellites")
 }
 
 macro_rules! path_fn {
@@ -40,45 +45,21 @@ macro_rules! path_fn {
     };
 }
 
-fn animals_codebook_path() -> String {
-    animals_path()
-        .join("codebook.yaml")
-        .into_os_string()
-        .into_string()
-        .unwrap()
-}
-
 path_fn!(csv, "csv");
 path_fn!(csvgz, "csv.gz");
 path_fn!(jsonl, "jsonl");
 path_fn!(arrow, "arrow");
 path_fn!(parquet, "parquet");
 
-#[cfg(not(target_os = "windows"))]
-const RESOURCE_BASE_PATH: &str = "resources/datasets/animals/";
-#[cfg(target_os = "windows")]
-const RESOURCE_BASE_PATH: &str = "resources\\datasets\\animals\\";
-
-#[test]
-fn test_paths() {
-    assert_eq!(csv::animals(), format!("{RESOURCE_BASE_PATH}data.csv"));
-    assert_eq!(
-        animals_codebook_path(),
-        format!("{RESOURCE_BASE_PATH}codebook.yaml")
-    );
-    assert_eq!(csvgz::animals(), format!("{RESOURCE_BASE_PATH}data.csv.gz"));
-    assert_eq!(jsonl::animals(), format!("{RESOURCE_BASE_PATH}data.jsonl"));
-    assert_eq!(arrow::animals(), format!("{RESOURCE_BASE_PATH}data.arrow"));
-    assert_eq!(
-        parquet::animals(),
-        format!("{RESOURCE_BASE_PATH}data.parquet")
-    );
+fn lace_cmd() -> Command {
+    let mut cmd = Command::new(env!("CARGO"));
+    cmd.arg("run")
+        .arg("--manifest-path")
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml"))
+        .arg("--release")
+        .arg(&"--");
+    cmd
 }
-
-#[cfg(not(target_os = "windows"))]
-const LACE_CMD: &str = "./target/debug/lace";
-#[cfg(target_os = "windows")]
-const LACE_CMD: &str = ".\\target\\debug\\lace";
 
 mod run {
     use super::*;
@@ -217,7 +198,7 @@ mod run {
     }
 
     fn create_animals_lacefile_args(src_flag: &str, src: &str, dst: &str) -> io::Result<Output> {
-        Command::new(LACE_CMD)
+        lace_cmd()
             .arg("run")
             .arg("-q")
             .arg(src_flag)
@@ -302,7 +283,7 @@ mod run {
         let csv = simple_csv();
         let good_codebook = simple_csv_codebook_good();
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -323,7 +304,7 @@ mod run {
         let csv = simple_csv();
         let misordered_codebook = simple_csv_codebook_cols_unordered();
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -341,7 +322,7 @@ mod run {
     #[test]
     fn from_csv_with_default_args() {
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -363,7 +344,7 @@ mod run {
             .unwrap();
 
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -386,7 +367,7 @@ mod run {
 
         assert!(cmd_output.status.success());
 
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -428,7 +409,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -455,7 +436,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -487,7 +468,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -519,7 +500,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -531,7 +512,6 @@ mod run {
             .arg(dirname)
             .output()
             .expect("failed to execute process");
-        dbg!(&output);
 
         assert!(!output.status.success());
         assert!(
@@ -552,7 +532,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -595,7 +575,7 @@ mod run {
         assert!(cmd_output.status.success());
 
         {
-            let output = Command::new(LACE_CMD)
+            let output = lace_cmd()
                 .arg("run")
                 .arg("-q")
                 .arg("--n-iters")
@@ -610,7 +590,7 @@ mod run {
         }
 
         {
-            let output = Command::new(LACE_CMD)
+            let output = lace_cmd()
                 .arg("summarize")
                 .arg(dirname)
                 .output()
@@ -627,7 +607,7 @@ mod run {
     #[test]
     fn with_invalid_row_alg() {
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -649,7 +629,7 @@ mod run {
     #[test]
     fn with_invalid_col_alg() {
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -669,7 +649,7 @@ mod run {
     #[test]
     fn csv_and_engine_args_conflict() {
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -694,7 +674,7 @@ mod run {
         use std::collections::HashSet;
 
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3", "-o", "4"])
@@ -742,7 +722,9 @@ mod run {
         use lace::OracleT;
 
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(LACE_CMD)
+        let mut cmd = lace_cmd();
+
+        cmd
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "10", "--flat-columns"])
@@ -750,9 +732,9 @@ mod run {
             .arg("state_prior_process_params,view_prior_process_params,component_params,row_assignment,feature_priors")
             .arg("--csv")
             .arg(csv::animals())
-            .arg(dir.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
+            .arg(dir.path().to_str().unwrap());
+
+        let output = cmd.output().expect("failed to execute process");
 
         assert!(output.status.success());
 
@@ -800,7 +782,7 @@ macro_rules! test_codebook_under_fmt {
             #[test]
             fn with_default_args() {
                 let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-                let output = Command::new(LACE_CMD)
+                let output = lace_cmd()
                     .arg("codebook")
                     .arg($flag)
                     .arg($crate::$mod::animals())
@@ -815,7 +797,7 @@ macro_rules! test_codebook_under_fmt {
             #[test]
             fn with_no_hyper_has_no_hyper() {
                 let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-                let output = Command::new(LACE_CMD)
+                let output = lace_cmd()
                     .arg("codebook")
                     .arg($flag)
                     .arg($crate::$mod::satellites())
@@ -863,7 +845,7 @@ mod codebook {
     #[test]
     fn with_invalid_csv() {
         let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("codebook")
             .arg("--csv")
             .arg("tortoise-cannot-swim.csv") // this doesn't exist
@@ -896,7 +878,7 @@ mod codebook {
         }
 
         // Default categorical cutoff should be 20
-        let output_default = Command::new(LACE_CMD)
+        let output_default = lace_cmd()
             .arg("codebook")
             .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
@@ -916,7 +898,7 @@ mod codebook {
 
         // Set the value to 25 and confirm it labed the column to Categorical
         let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("codebook")
             .args(["-c", "25"])
             .arg("--csv")
@@ -936,7 +918,7 @@ mod codebook {
 
         // Explicitly set the categorical cutoff below given distinct value count
         let fileout = tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("codebook")
             .args(["-c", "15"])
             .arg("--csv")
@@ -972,7 +954,7 @@ mod codebook {
         for i in 100..=150 {
             writeln!(f, "{},{},SINGLE_VALUE", i, i)?;
         }
-        let output = Command::new(LACE_CMD)
+        let output = lace_cmd()
             .arg("codebook")
             .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
@@ -1006,7 +988,7 @@ mod codebook {
         }
 
         // Default categorical cutoff should be 20
-        let output_default = Command::new(LACE_CMD)
+        let output_default = lace_cmd()
             .arg("run")
             .arg("--csv")
             .arg(data_file.path())
