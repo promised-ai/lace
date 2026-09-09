@@ -4,8 +4,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use lace::codebook::ColType;
 use lace::HasStates;
+use lace::codebook::ColType;
 use std::{io, process::Output};
 
 fn animals_path() -> PathBuf {
@@ -469,9 +469,11 @@ mod run {
             .expect("failed to execute process");
 
         assert!(!output.status.success());
-        assert!(String::from_utf8(output.stderr)
-            .unwrap()
-            .contains("cannot be used with"));
+        assert!(
+            String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("cannot be used with")
+        );
     }
 
     #[test]
@@ -499,9 +501,11 @@ mod run {
             .expect("failed to execute process");
 
         assert!(!output.status.success());
-        assert!(String::from_utf8(output.stderr)
-            .unwrap()
-            .contains("cannot be used with"));
+        assert!(
+            String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("cannot be used with")
+        );
     }
 
     #[test]
@@ -530,9 +534,11 @@ mod run {
         dbg!(&output);
 
         assert!(!output.status.success());
-        assert!(String::from_utf8(output.stderr)
-            .unwrap()
-            .contains("cannot be used with"));
+        assert!(
+            String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("cannot be used with")
+        );
     }
 
     #[test]
@@ -560,9 +566,11 @@ mod run {
             .expect("failed to execute process");
 
         assert!(!output.status.success());
-        assert!(String::from_utf8(output.stderr)
-            .unwrap()
-            .contains("cannot be used with"));
+        assert!(
+            String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("cannot be used with")
+        );
     }
 
     fn get_n_iters(summary: String) -> Vec<usize> {
@@ -632,8 +640,10 @@ mod run {
             .expect("failed to execute process");
 
         assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("invalid value 'row_magic' for '--row-alg"));
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("invalid value 'row_magic' for '--row-alg")
+        );
     }
 
     #[test]

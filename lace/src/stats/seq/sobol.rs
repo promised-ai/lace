@@ -299,11 +299,7 @@ mod tests {
         let inside = s.take(size).fold(0_usize, |sum, r| {
             let x = r.first().unwrap();
             let y = r.get(1).unwrap();
-            if x * x + y * y < 1.0 {
-                sum + 1
-            } else {
-                sum
-            }
+            if x * x + y * y < 1.0 { sum + 1 } else { sum }
         });
 
         let pi_approx = 4.0 * (inside as f64) / (size as f64);

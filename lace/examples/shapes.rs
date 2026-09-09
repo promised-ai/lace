@@ -68,12 +68,12 @@ mod requires_formats {
         xs_sim: Vec<f64>,
         ys_sim: Vec<f64>,
     ) {
+        use plotly::Plot;
+        use plotly::Scatter;
         use plotly::common::Mode;
         use plotly::layout::GridPattern;
         use plotly::layout::Layout;
         use plotly::layout::LayoutGrid;
-        use plotly::Plot;
-        use plotly::Scatter;
 
         let trace1 =
             Scatter::new(xs_in, ys_in).name("Input").mode(Mode::Markers);

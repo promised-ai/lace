@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 
 pub use builder::BuildStateError;
 pub use builder::Builder;
-use rand::seq::SliceRandom as _;
 use rand::Rng;
 use rand::SeedableRng;
+use rand::seq::SliceRandom as _;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rv::dist::Dirichlet;
@@ -17,11 +17,11 @@ use serde::Serialize;
 use crate::cc::alg::ColAssignAlg;
 use crate::cc::alg::RowAssignAlg;
 use crate::cc::config::StateUpdateConfig;
-use crate::cc::feature::geweke::gen_geweke_col_models;
 use crate::cc::feature::ColModel;
 use crate::cc::feature::Component;
 use crate::cc::feature::FType;
 use crate::cc::feature::Feature;
+use crate::cc::feature::geweke::gen_geweke_col_models;
 use crate::cc::transition::StateTransition;
 use crate::cc::view::GewekeViewSummary;
 use crate::cc::view::View;
@@ -33,15 +33,15 @@ use crate::data::FeatureData;
 use crate::geweke::GewekeModel;
 use crate::geweke::GewekeResampleData;
 use crate::geweke::GewekeSummarize;
+use crate::stats::MixtureType;
 use crate::stats::assignment::Assignment;
 use crate::stats::prior_process::Builder as AssignmentBuilder;
 use crate::stats::prior_process::PriorProcess;
 use crate::stats::prior_process::PriorProcessT;
 use crate::stats::prior_process::PriorProcessType;
 use crate::stats::prior_process::Process;
-use crate::stats::MixtureType;
-use crate::utils::unused_components;
 use crate::utils::Matrix;
+use crate::utils::unused_components;
 
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
@@ -603,7 +603,7 @@ impl State {
         // TODO: Can use `unstable_div_ceil` to make this shorter, when it lands
         // in stable. See:
         // https://doc.rust-lang.org/std/primitive.usize.html#:~:text=unchecked_sub-,unstable_div_ceil,-unstable_div_floor
-        let n_batches = if n_cols % batch_size == 0 {
+        let n_batches = if n_cols.is_multiple_of(batch_size) {
             n_cols / batch_size
         } else {
             n_cols / batch_size + 1
@@ -714,7 +714,7 @@ impl State {
                         // compute likelihood of the rest of the columns under
                         // the new view
                         pre_comps.iter_mut().for_each(
-                            |(col_ix, _, ref mut logps, _)| {
+                            |(col_ix, _, logps, _)| {
                                 let logp = self.feature(*col_ix).asgn_score(
                                     self.views.last().unwrap().asgn(),
                                 );
@@ -839,9 +839,9 @@ impl State {
             })
             .collect();
 
-        let u_star: f64 =
-            us.iter()
-                .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+        let u_star: f64 = us
+            .iter()
+            .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
         // Variable shadowing
         let weights = self
@@ -1448,7 +1448,7 @@ mod test {
         assert_eq!(state.views[0].ftrs.len(), 1);
         assert_eq!(state.views[1].ftrs.len(), 2);
 
-        assert_eq!(state.asgn().asgn, vec![0, usize::max_value(), 1, 1]);
+        assert_eq!(state.asgn().asgn, vec![0, usize::MAX, 1, 1]);
         assert_eq!(state.asgn().counts, vec![1, 2]);
         assert_eq!(state.asgn().n_cats, 2);
 
@@ -1477,7 +1477,7 @@ mod test {
         assert_eq!(state.n_views(), 1);
         assert_eq!(state.views[0].ftrs.len(), 2);
 
-        assert_eq!(state.asgn().asgn, vec![usize::max_value(), 0, 0]);
+        assert_eq!(state.asgn().asgn, vec![usize::MAX, 0, 0]);
         assert_eq!(state.asgn().counts, vec![2]);
         assert_eq!(state.asgn().n_cats, 1);
 

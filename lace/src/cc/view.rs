@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use rand::seq::SliceRandom as _;
 use rand::Rng;
 use rand::SeedableRng;
+use rand::seq::SliceRandom as _;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Dirichlet;
 use rv::misc::ln_pflip;
@@ -12,12 +12,12 @@ use serde::Serialize;
 
 // use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::cc::alg::RowAssignAlg;
-use crate::cc::feature::geweke::gen_geweke_col_models;
-use crate::cc::feature::geweke::ColumnGewekeSettings;
-use crate::cc::feature::geweke::GewekeColumnSummary;
 use crate::cc::feature::ColModel;
 use crate::cc::feature::FType;
 use crate::cc::feature::Feature;
+use crate::cc::feature::geweke::ColumnGewekeSettings;
+use crate::cc::feature::geweke::GewekeColumnSummary;
+use crate::cc::feature::geweke::gen_geweke_col_models;
 use crate::cc::massflip;
 use crate::cc::transition::ViewTransition;
 use crate::data::Datum;
@@ -31,10 +31,10 @@ use crate::stats::prior_process::PriorProcess;
 use crate::stats::prior_process::PriorProcessT;
 use crate::stats::prior_process::PriorProcessType;
 use crate::stats::prior_process::Process;
-use crate::utils::logaddexp;
-use crate::utils::unused_components;
 use crate::utils::Matrix;
 use crate::utils::Shape;
+use crate::utils::logaddexp;
+use crate::utils::unused_components;
 
 /// A cross-categorization view of columns/features
 ///
@@ -435,9 +435,9 @@ impl View {
             })
             .collect();
 
-        let u_star: f64 =
-            us.iter()
-                .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+        let u_star: f64 = us
+            .iter()
+            .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
         let weights = self
             .prior_process
@@ -652,11 +652,7 @@ impl View {
             .enumerate()
             .filter_map(
                 |(row_ix, &z)| {
-                    if z == usize::MAX {
-                        Some(row_ix)
-                    } else {
-                        None
-                    }
+                    if z == usize::MAX { Some(row_ix) } else { None }
                 },
             )
             .collect();
@@ -814,11 +810,7 @@ impl View {
                 .enumerate()
                 .filter_map(
                     |(ix, &z)| {
-                        if z == zi || z == zj {
-                            Some(ix)
-                        } else {
-                            None
-                        }
+                        if z == zi || z == zj { Some(ix) } else { None }
                     },
                 )
                 .collect()

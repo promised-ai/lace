@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = ["lace", "pylace", "cli"]
+
+[workspace.dependencies]
+lace = { path = "lace" }
+rv = { version = "0.19.2", features = ["serde1", "arraydist"] }
+rand = { version = "0.9", features = ["serde"] }
+rand_xoshiro = { version = "0.7", features = ["serde"] }
+rand_distr = "0.5"
+rayon = "1.5"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9.4"
+serde_json = "1"
+bincode = "1"
+special = "0.10"
+itertools = "0.12"
+maplit = "1"
+indexmap = { version = "2.0.0", features = ["serde"] }
+thiserror = "1.0.19"
+indicatif = "0.17.0"
+ctrlc = { version = "3.2.1" }
+polars = { version = "0.55.2", default-features = false, features = [
+  "csv",
+  "dtype-i8",
+  "dtype-i16",
+  "dtype-u8",
+  "dtype-u16",
+] }
+enum_dispatch = "0.3.13"
+num = "0.4"
+log = "0.4.28"
+# Bring in time JUST to pass the RUSTSEC issue with time used by plotly
+time = "0.3.47"
+clap = { version = "4.3.17", features = ["derive"] }
+approx = "0.5.1"
+tempfile = "3.4"
+criterion = "0.5"
+indoc = "2.0.3"
+plotly = "0.14"
+polars-arrow = "0.55.2"
+pyo3 = { version = "0.27", features = ["extension-module"] }

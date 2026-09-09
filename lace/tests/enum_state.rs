@@ -10,10 +10,10 @@ mod enum_test;
 
 use std::collections::HashMap;
 
+use enum_test::Partition;
 use enum_test::build_features;
 use enum_test::normalize_assignment;
 use enum_test::partition_to_ix;
-use enum_test::Partition;
 use itertools::Itertools;
 use lace::cc::alg::ColAssignAlg;
 use lace::cc::alg::RowAssignAlg;

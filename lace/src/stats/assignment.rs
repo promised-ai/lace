@@ -67,9 +67,7 @@ pub enum AssignmentError {
     SumCountsNotEqualToAssignmentLength,
     #[error("The counts do not agree with the assignment")]
     AssignmentAndCountsDisagree,
-    #[error(
-        "The length of the counts does not equal the number of categories"
-    )]
+    #[error("The length of the counts does not equal the number of categories")]
     NCatsIsNotCountsLength,
     #[error("Attempting to set assignment with a different-length assignment")]
     NewAssignmentLengthMismatch,
@@ -102,13 +100,10 @@ impl AssignmentDiagnostics {
             asgn_agrees_with_counts: {
                 let mut all = true;
                 for (k, &count) in asgn.counts.iter().enumerate() {
-                    let k_count = asgn.asgn.iter().fold(0, |acc, &z| {
-                        if z == k {
-                            acc + 1
-                        } else {
-                            acc
-                        }
-                    });
+                    let k_count = asgn
+                        .asgn
+                        .iter()
+                        .fold(0, |acc, &z| if z == k { acc + 1 } else { acc });
                     all = all && (k_count == count)
                 }
                 all
@@ -701,8 +696,8 @@ mod tests {
 
     #[test]
     fn from_rng_seed_control_works() {
-        use rand::rngs::SmallRng;
         use rand::SeedableRng;
+        use rand::rngs::SmallRng;
 
         let mut rng_1 = SmallRng::seed_from_u64(17_834_795);
         let mut rng_2 = SmallRng::seed_from_u64(17_834_795);

@@ -9,12 +9,12 @@ use std::time::Duration;
 
 use thiserror::Error;
 
+use crate::Engine;
+use crate::Oracle;
 use crate::codebook::Codebook;
 use crate::data::DataSource;
 use crate::metadata::Error;
 use crate::update_handler::Timeout;
-use crate::Engine;
-use crate::Oracle;
 
 const DEFAULT_N_ITERS: usize = 5_000;
 const DEFAULT_TIMEOUT: Option<u64> = None;
@@ -22,10 +22,14 @@ const DEFAULT_TIMEOUT: Option<u64> = None;
 #[derive(Clone, Debug, Error)]
 pub enum IndexConversionError {
     /// The row index is too high
-    #[error("cannot convert index {row_ix} into a row for a dataset with {n_rows} rows")]
+    #[error(
+        "cannot convert index {row_ix} into a row for a dataset with {n_rows} rows"
+    )]
     RowIndexOutOfBounds { row_ix: usize, n_rows: usize },
     /// The column index is too high
-    #[error("cannot convert index {col_ix} into a column for dataset with {n_cols} columns")]
+    #[error(
+        "cannot convert index {col_ix} into a column for dataset with {n_cols} columns"
+    )]
     ColumnIndexOutOfBounds { col_ix: usize, n_cols: usize },
 }
 
@@ -141,10 +145,7 @@ impl Example {
             0,
             Xoshiro256Plus::seed_from_u64(1337),
         )
-        .map_err(|_| {
-            let err_kind = io::ErrorKind::Other;
-            io::Error::new(err_kind, "Failed to create Engine")
-        })?;
+        .map_err(|_| io::Error::other("Failed to create Engine"))?;
 
         let config = EngineUpdateConfig::new()
             .default_transitions()

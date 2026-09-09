@@ -74,11 +74,7 @@ where
     let acc = (0..n_perms)
         .map(|_| {
             data.repartition(&mut rng);
-            if func(&data) > f0 {
-                1.0
-            } else {
-                0.0
-            }
+            if func(&data) > f0 { 1.0 } else { 0.0 }
         })
         .sum::<f64>();
 

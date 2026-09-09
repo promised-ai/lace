@@ -9,4 +9,3 @@ def test_placeholder() -> None:
     and thus that it does not exit with a failure due to
     no Python tests existing.
     """
-    pass

@@ -146,9 +146,8 @@ impl Builder {
             );
         }
 
-        let mut ftrs = if self.col_configs.is_some() {
-            self.col_configs
-                .unwrap()
+        let mut ftrs = if let Some(col_configs) = self.col_configs {
+            col_configs
                 .iter()
                 .enumerate()
                 .map(|(id, col_config)| {

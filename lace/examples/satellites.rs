@@ -2,8 +2,8 @@
 // variables in the satellites dataset.
 use std::convert::TryInto;
 
-use lace::examples::satellites::Column;
 use lace::examples::Example;
+use lace::examples::satellites::Column;
 use lace::prelude::*;
 use rayon::prelude::*;
 
