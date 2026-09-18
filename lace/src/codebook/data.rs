@@ -6,8 +6,6 @@ use polars::prelude::DataType;
 use polars::prelude::SerReader;
 use polars::prelude::Series;
 
-use crate::codebook::error::CodebookError;
-use crate::codebook::error::ReadError;
 use crate::codebook::Codebook;
 use crate::codebook::ColMetadata;
 use crate::codebook::ColMetadataList;
@@ -15,6 +13,8 @@ use crate::codebook::ColType;
 use crate::codebook::PriorProcess;
 use crate::codebook::RowNameList;
 use crate::codebook::ValueMap;
+use crate::codebook::error::CodebookError;
+use crate::codebook::error::ReadError;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
@@ -26,10 +26,7 @@ macro_rules! series_to_opt_vec {
     ($srs: ident, $X: ty) => {{
         macro_rules! stv_arm {
             ($srsi: ident, $method: ident, $Xi: ty) => {{
-                $srsi
-                    .$method()?
-                    .into_iter()
-                    .map(|x_opt| x_opt.map(|x| x as $Xi))
+                $srsi.$method()?.iter().map(|x_opt| x_opt.map(|x| x as $Xi))
             }};
         }
         match $srs.dtype() {
@@ -79,10 +76,7 @@ macro_rules! series_to_vec {
     ($srs: ident, $X: ty) => {{
         macro_rules! stv_arm {
             ($srsi: ident, $method: ident, $Xi: ty) => {{
-                $srsi
-                    .$method()?
-                    .into_iter()
-                    .map(|x_opt| x_opt.map(|x| x as $Xi))
+                $srsi.$method()?.iter().map(|x_opt| x_opt.map(|x| x as $Xi))
             }};
         }
         match $srs.dtype() {
@@ -134,7 +128,7 @@ macro_rules! series_to_opt_strings {
             ($srsi: ident, $method: ident) => {{
                 $srsi
                     .$method()?
-                    .into_iter()
+                    .iter()
                     .map(|x_opt| x_opt.map(|x| format!("{}", x)))
             }};
         }
@@ -177,7 +171,7 @@ macro_rules! series_to_opt_strings {
                     $crate::codebook::CodebookError::UnableToInferColumnType {
                         col_name: $srs.name().to_string(),
                     },
-                )
+                );
             }
         }
     }};
@@ -190,7 +184,7 @@ macro_rules! series_to_strings {
             ($srsi: ident, $method: ident) => {{
                 $srsi
                     .$method()?
-                    .into_iter()
+                    .iter()
                     .map(|x_opt| x_opt.map(|x| format!("{}", x)))
             }};
         }
@@ -233,7 +227,7 @@ macro_rules! series_to_strings {
                     $crate::codebook::CodebookError::UnableToInferColumnType {
                         col_name: $srs.name().to_string(),
                     },
-                )
+                );
             }
         }
     }};
@@ -357,7 +351,7 @@ fn string_categorical_coltype(
         let unique: BTreeSet<String> = srs
             .unique()?
             .str()?
-            .into_iter()
+            .iter()
             .filter_map(|x| x.map(String::from))
             .collect();
 
@@ -450,7 +444,7 @@ pub fn df_to_codebook(
     let (col_metadata, row_names) = {
         let mut row_names_opt: Option<RowNameList> = None;
         let mut col_metadata = Vec::with_capacity(df.shape().1);
-        for col in df.get_columns().iter() {
+        for col in df.columns().iter() {
             let srs = col.as_materialized_series();
             if crate::utils::is_index_col(srs.name()) {
                 if row_names_opt.is_some() {

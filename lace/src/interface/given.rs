@@ -5,11 +5,11 @@ use std::hash::Hash;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::Datum;
 use crate::codebook::Codebook;
 use crate::error::IndexError;
 use crate::index::ColumnIndex;
 use crate::interface::oracle::utils;
-use crate::Datum;
 
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Hash)]

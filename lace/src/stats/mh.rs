@@ -54,11 +54,7 @@ where
             assert!(fy.is_finite(), "Non finite proposal likelihood");
 
             let r: f64 = rng.random::<f64>();
-            if r.ln() < fy - fx {
-                (y, fy)
-            } else {
-                (x, fx)
-            }
+            if r.ln() < fy - fx { (y, fy) } else { (x, fx) }
         })
         .into()
 }
@@ -98,11 +94,7 @@ where
             assert!(fy.is_finite(), "Non finite proposal likelihood");
 
             let r: f64 = rng.random::<f64>();
-            if r.ln() < fy - fx {
-                (y, fy)
-            } else {
-                (x, fx)
-            }
+            if r.ln() < fy - fx { (y, fy) } else { (x, fx) }
         })
         .into()
 }
@@ -138,11 +130,7 @@ where
             assert!(fy.is_finite(), "Non finite proposal likelihood");
 
             let r: f64 = rng.random::<f64>();
-            if r.ln() < fy - fx {
-                (y, fy)
-            } else {
-                (x, fx)
-            }
+            if r.ln() < fy - fx { (y, fy) } else { (x, fx) }
         })
         .into()
 }
@@ -477,11 +465,7 @@ mod tests {
             );
             let (_, p) = ks_test(&xs, |x| x);
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -506,11 +490,7 @@ mod tests {
             );
             let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -553,11 +533,7 @@ mod tests {
 
             let (_, p) = ks_test(&xs, |x| true_posterior.cdf(&x));
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -582,11 +558,7 @@ mod tests {
             );
             let (_, p) = ks_test(&xs, |x| x);
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -612,11 +584,7 @@ mod tests {
             );
             let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -628,7 +596,7 @@ mod tests {
             if 0.0 < x && x < 1.0 {
                 0.0
             } else {
-                std::f64::NEG_INFINITY
+                f64::NEG_INFINITY
             }
         };
 
@@ -644,11 +612,7 @@ mod tests {
             );
             let (_, p) = ks_test(&xs, |x| x);
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -656,9 +620,6 @@ mod tests {
 
     #[test]
     fn test_mh_slice_gaussian() {
-        use std::f64::INFINITY;
-        use std::f64::NEG_INFINITY;
-
         let gauss = Gaussian::new(1.0, 1.5).unwrap();
 
         let score_fn = |x: f64| gauss.ln_f(&x);
@@ -673,7 +634,7 @@ mod tests {
                         1.0,
                         1,
                         score_fn,
-                        (NEG_INFINITY, INFINITY),
+                        (f64::NEG_INFINITY, f64::INFINITY),
                         &mut rng,
                     )
                     .x
@@ -683,11 +644,7 @@ mod tests {
             );
             let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -695,9 +652,6 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_adaptive_gaussian() {
-        use std::f64::INFINITY;
-        use std::f64::NEG_INFINITY;
-
         let gauss = Gaussian::new(1.0, 1.5).unwrap();
 
         let score_fn = |x: f64| gauss.ln_f(&x);
@@ -713,7 +667,7 @@ mod tests {
                         0.1,
                         100,
                         score_fn,
-                        (NEG_INFINITY, INFINITY),
+                        (f64::NEG_INFINITY, f64::INFINITY),
                         &mut rng,
                     )
                     .x
@@ -723,11 +677,7 @@ mod tests {
             );
             let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -735,9 +685,6 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_adaptive_normal_gamma() {
-        use std::f64::INFINITY;
-        use std::f64::NEG_INFINITY;
-
         let mut rng = rand::rng();
         let sigma: f64 = 1.5;
         let m0: f64 = 0.0;
@@ -773,7 +720,7 @@ mod tests {
                         0.1,
                         100,
                         score_fn,
-                        (NEG_INFINITY, INFINITY),
+                        (f64::NEG_INFINITY, f64::INFINITY),
                         &mut rng,
                     )
                     .x
@@ -783,11 +730,7 @@ mod tests {
             );
             let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -838,11 +781,7 @@ mod tests {
             let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
             println!("p: {}, m: {}", p, crate::utils::mean(&ys));
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -850,9 +789,6 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_adaptive_mv_normal_gamma_known_var() {
-        use std::f64::INFINITY;
-        use std::f64::NEG_INFINITY;
-
         use crate::stats::mat::Matrix1x1;
 
         let mut rng = rand::rng();
@@ -894,7 +830,7 @@ mod tests {
                         Matrix1x1([0.1]),
                         10,
                         score_fn,
-                        &[(NEG_INFINITY, INFINITY)],
+                        &[(f64::NEG_INFINITY, f64::INFINITY)],
                         &mut rng,
                     )
                     .x[0]
@@ -905,11 +841,7 @@ mod tests {
             let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
             println!("p: {}, m: {}", p, crate::utils::mean(&ys));
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);
@@ -917,9 +849,6 @@ mod tests {
 
     #[test]
     fn test_mh_symrw_adaptive_mv_normal_gamma_unknown() {
-        use std::f64::INFINITY;
-        use std::f64::NEG_INFINITY;
-
         use rv::dist::InvGamma;
 
         use crate::stats::mat::Matrix2x2;
@@ -1008,7 +937,10 @@ mod tests {
                         Matrix2x2::from_diag([1.0, 1.0]),
                         100,
                         score_fn,
-                        &[(NEG_INFINITY, INFINITY), (0.0, INFINITY)],
+                        &[
+                            (f64::NEG_INFINITY, f64::INFINITY),
+                            (0.0, f64::INFINITY),
+                        ],
                         &mut rng,
                     )
                     .x;
@@ -1036,11 +968,7 @@ mod tests {
             println!("p: {}", p);
             println!("MCMC Mean/Var: {}/{}", mean_mu_mh, var_mu_mh);
 
-            if p > KS_PVAL {
-                acc + 1
-            } else {
-                acc
-            }
+            if p > KS_PVAL { acc + 1 } else { acc }
         });
 
         assert!(n_passes > 0);

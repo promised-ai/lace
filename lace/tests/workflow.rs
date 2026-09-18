@@ -2,12 +2,12 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use lace::Engine;
+use lace::EngineBuilder;
 use lace::codebook::data::codebook_from_csv;
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::update_handler::Timeout;
-use lace::Engine;
-use lace::EngineBuilder;
 use rand::SeedableRng;
 
 const CSV_DATA: &str = r#"

@@ -3,9 +3,9 @@ use std::convert::TryFrom;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::ParseError;
 use crate::cc::alg::ColAssignAlg;
 use crate::cc::alg::RowAssignAlg;
-use crate::ParseError;
 
 pub const DEFAULT_STATE_TRANSITIONS: [StateTransition; 5] = [
     StateTransition::ColumnAssignment(ColAssignAlg::Slice),

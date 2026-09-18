@@ -13,8 +13,8 @@ use super::FeatureHelper;
 use crate::data::Datum;
 use crate::data::FeatureData;
 use crate::data::SparseContainer;
-use crate::stats::assignment::Assignment;
 use crate::stats::MixtureType;
+use crate::stats::assignment::Assignment;
 
 /// Missing-not-at-random column type
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,10 +127,9 @@ impl Feature for MissingNotAtRandom {
 
     #[inline]
     fn take_datum(&mut self, row_ix: usize, k: usize) -> Option<Datum> {
-        self.fx.take_datum(row_ix, k).map(|x| {
+        self.fx.take_datum(row_ix, k).inspect(|_x| {
             // if the datum was present, we must now mark it as missing
             self.present.insert_datum(row_ix, Datum::Binary(false));
-            x
         })
     }
 

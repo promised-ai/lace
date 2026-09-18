@@ -580,19 +580,23 @@ mod test {
 
         assert_eq!(container.data[0].0, 2);
         assert_eq!(container.data[0].1.len(), 3);
-        assert!(container.data[0]
-            .1
-            .iter()
-            .enumerate()
-            .all(|(i, x)| i as f64 == x - 1.0));
+        assert!(
+            container.data[0]
+                .1
+                .iter()
+                .enumerate()
+                .all(|(i, x)| i as f64 == x - 1.0)
+        );
 
         assert_eq!(container.data[1].0, 7);
         assert_eq!(container.data[1].1.len(), 4);
-        assert!(container.data[1]
-            .1
-            .iter()
-            .enumerate()
-            .all(|(i, x)| i as f64 == x - 1.0));
+        assert!(
+            container.data[1]
+                .1
+                .iter()
+                .enumerate()
+                .all(|(i, x)| i as f64 == x - 1.0)
+        );
     }
 
     #[test]

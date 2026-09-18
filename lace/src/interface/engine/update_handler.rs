@@ -1,18 +1,18 @@
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::RwLock;
 #[cfg(feature = "ctrlc_handler")]
 use std::sync::atomic::AtomicBool;
 #[cfg(feature = "ctrlc_handler")]
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::RwLock;
 use std::thread::JoinHandle;
 use std::time::Duration;
 use std::time::Instant;
 
-use crate::cc::state::State;
 use crate::EngineUpdateConfig;
+use crate::cc::state::State;
 
 /// Custom state inspector for `Engine::update`.
 ///

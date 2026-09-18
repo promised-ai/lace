@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
+use crate::Given;
 use crate::cc::state::State;
 use crate::data::Datum;
 use crate::error::GivenError;
 use crate::error::LogpError;
-use crate::Given;
 
 // Given a set of target indices on which to condition, determine whether
 // any of the target columns are conditioned upon.
@@ -155,9 +155,9 @@ mod tests {
     use crate::codebook::Codebook;
     use crate::data::DataStore;
     use crate::error::IndexError;
-    use crate::interface::oracle::utils::load_states;
     use crate::interface::HasStates;
     use crate::interface::Oracle;
+    use crate::interface::oracle::utils::load_states;
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {
         let states = load_states(filenames);
@@ -181,8 +181,10 @@ mod tests {
     fn given_nothing_is_ok() {
         let oracle = get_entropy_oracle_from_yaml();
         let nothing = Given::Nothing;
-        assert!(find_given_errors(&[0, 1, 2], &oracle.states()[0], &nothing)
-            .is_ok());
+        assert!(
+            find_given_errors(&[0, 1, 2], &oracle.states()[0], &nothing)
+                .is_ok()
+        );
     }
 
     #[test]
@@ -192,8 +194,10 @@ mod tests {
             (1, Datum::Continuous(1.2)),
             (3, Datum::Categorical(0_u32.into())),
         ]);
-        assert!(find_given_errors(&[0, 2], &oracle.states()[0], &conditions)
-            .is_ok());
+        assert!(
+            find_given_errors(&[0, 2], &oracle.states()[0], &conditions)
+                .is_ok()
+        );
     }
 
     #[test]

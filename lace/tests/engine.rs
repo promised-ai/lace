@@ -4,21 +4,20 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
-use lace::codebook::Codebook;
-use lace::codebook::ValueMap;
-use lace::config::EngineUpdateConfig;
-use lace::data::DataSource;
-use lace::examples::Example;
-use lace::metadata::SerializedType;
 use lace::AppendStrategy;
 use lace::Engine;
 use lace::EngineBuilder;
 use lace::HasStates;
 use lace::InsertDataActions;
 use lace::SupportExtension;
+use lace::codebook::Codebook;
+use lace::codebook::ValueMap;
+use lace::config::EngineUpdateConfig;
+use lace::data::DataSource;
+use lace::examples::Example;
+use lace::metadata::SerializedType;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::traits::Sampleable;
 
 fn animals_data_path() -> PathBuf {
     Path::new("resources")
@@ -249,6 +248,12 @@ fn engine_build_without_flat_col_is_not_flat() {
 // errors. They do not make sure the State metadata (assignment and sufficient
 // statistics) have been updated properly. Those tests occur in State.
 mod insert_data {
+    use lace::InsertMode;
+    use lace::OracleT;
+    use lace::OverwriteMode;
+    use lace::Row;
+    use lace::Value;
+    use lace::WriteMode;
     use lace::cc::alg::ColAssignAlg;
     use lace::cc::alg::RowAssignAlg;
     use lace::cc::feature::FType;
@@ -260,12 +265,6 @@ mod insert_data {
     use lace::data::Datum;
     use lace::error::InsertDataError;
     use lace::stats::prior::csd::CsdHyper;
-    use lace::InsertMode;
-    use lace::OracleT;
-    use lace::OverwriteMode;
-    use lace::Row;
-    use lace::Value;
-    use lace::WriteMode;
 
     use super::*;
 
@@ -2315,10 +2314,12 @@ mod del_rows {
             .collect();
 
         assert_eq!(engine.n_rows(), starting_rows - 1);
-        assert!(new_first_row
-            .iter()
-            .zip(second_row.iter())
-            .all(|(x, y)| x == y));
+        assert!(
+            new_first_row
+                .iter()
+                .zip(second_row.iter())
+                .all(|(x, y)| x == y)
+        );
     }
 
     #[test]
@@ -2343,10 +2344,12 @@ mod del_rows {
             .collect();
 
         assert_eq!(engine.n_rows(), starting_rows - 2);
-        assert!(new_first_row
-            .iter()
-            .zip(third_row.iter())
-            .all(|(x, y)| x == y));
+        assert!(
+            new_first_row
+                .iter()
+                .zip(third_row.iter())
+                .all(|(x, y)| x == y)
+        );
     }
 
     #[test]
@@ -2362,10 +2365,12 @@ mod del_rows {
             .map(|ix| engine.cell(n_rows - 2, ix).to_u32_opt().unwrap())
             .collect();
 
-        assert!(last_row
-            .iter()
-            .zip(penultimate_row.iter())
-            .any(|(x, y)| x != y));
+        assert!(
+            last_row
+                .iter()
+                .zip(penultimate_row.iter())
+                .any(|(x, y)| x != y)
+        );
 
         engine.del_rows_at(n_rows - 1, 1);
 
@@ -2374,10 +2379,12 @@ mod del_rows {
             .collect();
 
         assert_eq!(engine.n_rows(), n_rows - 1);
-        assert!(new_last_row
-            .iter()
-            .zip(penultimate_row.iter())
-            .all(|(x, y)| x == y));
+        assert!(
+            new_last_row
+                .iter()
+                .zip(penultimate_row.iter())
+                .all(|(x, y)| x == y)
+        );
     }
 
     #[test]
@@ -2402,11 +2409,11 @@ mod del_rows {
 }
 
 mod remove_data {
+    use lace::OracleT;
+    use lace::TableIndex;
     use lace::data::Datum;
     use lace::examples::animals::Column;
     use lace::examples::animals::Row;
-    use lace::OracleT;
-    use lace::TableIndex;
 
     use super::*;
 
@@ -2460,15 +2467,19 @@ mod remove_data {
 
         engine.remove_data(vec![column]).unwrap();
 
-        assert!(col_before_active
-            .drain(..)
-            .enumerate()
-            .all(|(ix, x)| { engine.datum(ix, active - 1).unwrap() == x }));
+        assert!(
+            col_before_active
+                .drain(..)
+                .enumerate()
+                .all(|(ix, x)| { engine.datum(ix, active - 1).unwrap() == x })
+        );
 
-        assert!(col_after_active
-            .drain(..)
-            .enumerate()
-            .all(|(ix, x)| { engine.datum(ix, active).unwrap() == x }));
+        assert!(
+            col_after_active
+                .drain(..)
+                .enumerate()
+                .all(|(ix, x)| { engine.datum(ix, active).unwrap() == x })
+        );
     }
 
     #[test]
@@ -2487,15 +2498,19 @@ mod remove_data {
 
         engine.remove_data(vec![row]).unwrap();
 
-        assert!(row_before_horse
-            .drain(..)
-            .enumerate()
-            .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x }));
+        assert!(
+            row_before_horse
+                .drain(..)
+                .enumerate()
+                .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x })
+        );
 
-        assert!(row_after_horse
-            .drain(..)
-            .enumerate()
-            .all(|(ix, x)| { engine.datum(horse, ix).unwrap() == x }));
+        assert!(
+            row_after_horse
+                .drain(..)
+                .enumerate()
+                .all(|(ix, x)| { engine.datum(horse, ix).unwrap() == x })
+        );
     }
 
     #[test]
@@ -2522,10 +2537,12 @@ mod remove_data {
         // the table
         assert_eq!(engine.n_rows(), 49);
 
-        assert!(row_before_horse
-            .drain(..)
-            .enumerate()
-            .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x }));
+        assert!(
+            row_before_horse
+                .drain(..)
+                .enumerate()
+                .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x })
+        );
 
         for (ix, x) in row_after_horse.drain(..).enumerate() {
             assert_eq!(engine.datum(horse, ix).unwrap(), x);
@@ -2557,10 +2574,12 @@ mod remove_data {
         // the table
         assert_eq!(engine.n_rows(), 49);
 
-        assert!(row_before_horse
-            .drain(..)
-            .enumerate()
-            .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x }));
+        assert!(
+            row_before_horse
+                .drain(..)
+                .enumerate()
+                .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x })
+        );
 
         for (ix, x) in row_after_horse.drain(..).enumerate() {
             assert_eq!(engine.datum(horse, ix).unwrap(), x);
@@ -2589,10 +2608,12 @@ mod remove_data {
 
         assert_eq!(engine.n_cols(), 84);
 
-        assert!(col_before_flys
-            .drain(..)
-            .enumerate()
-            .all(|(ix, x)| { engine.datum(ix, flys - 1).unwrap() == x }));
+        assert!(
+            col_before_flys
+                .drain(..)
+                .enumerate()
+                .all(|(ix, x)| { engine.datum(ix, flys - 1).unwrap() == x })
+        );
 
         for (ix, x) in col_after_flys.drain(..).enumerate() {
             assert_eq!(engine.datum(ix, flys).unwrap(), x);
@@ -2765,6 +2786,7 @@ mod prior_in_codebook {
     }
 
     fn run_test(n_rows: usize, codebook: Codebook) {
+        use rv::traits::Sampleable;
         let mut csvfile = tempfile::NamedTempFile::new().unwrap();
         let mut rng = Xoshiro256Plus::from_os_rng();
         let gauss = rv::dist::Gaussian::standard();
