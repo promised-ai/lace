@@ -992,7 +992,7 @@ impl Engine {
 
         let checkpoint_iters = config.checkpoint.unwrap_or(config.n_iters);
 
-        let n_checkpoints = if config.n_iters % checkpoint_iters == 0 {
+        let n_checkpoints = if config.n_iters.is_multiple_of(checkpoint_iters) {
             config.n_iters / checkpoint_iters
         } else {
             config.n_iters / checkpoint_iters + 1

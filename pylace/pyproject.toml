@@ -123,9 +123,6 @@ ban-relative-imports = "all"
 [lint.ruff.flake8-type-checking]
 strict = true
 
-[tool.black]
-line-length = 80
-
 [tool.uv]
 cache-keys = [
   { file = "pyproject.toml" },
@@ -143,8 +140,6 @@ dev = [
   "pytest ~= 8.2",
   "pytest-cov ~= 5.0",
   "pytest-xdist ~= 3.6",
-  "black ~= 23.1",
-  "blackdoc ~= 0.3",
   "mypy ~= 1.0",
   "ruff ~= 0.0",
   "vermin ~= 1.8",

@@ -19,7 +19,7 @@ jobs:
   features:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -43,7 +43,7 @@ jobs:
         working-directory: cli
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -78,7 +78,7 @@ jobs:
         working-directory: cli
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -97,32 +97,3 @@ jobs:
         env:
           RUSTFLAGS: -C debuginfo=0
         run: cargo test 
-
-  # semver-checks:
-  #   runs-on: ubuntu-latest
-  #   needs: ["features", "lint", "test"]
-  #   steps:
-  #     - name: Checkout branch
-  #       uses: actions/checkout@v4
-  #       with:
-  #         path: branch
-
-  #     - name: Checkout master
-  #       uses: actions/checkout@v4
-  #       with:
-  #         ref: master
-  #         path: master
-
-  #     - name: Set up Rust
-  #       uses: dtolnay/rust-toolchain@stable
-
-  #     - name: Cache Rust
-  #       uses: Swatinem/rust-cache@v2
-  #       with:
-  #         workspaces: . -> lace/target
-
-  #     - name: Install extra cargo tools
-  #       run: cargo install cargo-semver-checks --locked
-
-  #     - name: Check for semver-incompatibilities
-  #       run: cargo semver-checks check-release --manifest-path branch/lace/Cargo.toml --baseline-root master/lace --verbose

@@ -104,4 +104,4 @@ harness = false
 
 [[bench]]
 name = "massflip"
-hequired-features = ["examples"]
+required-features = ["examples"]

@@ -11,10 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      - name: Setup JBang
+        uses: jbangdev/setup-jbang@main
 
       - run: |
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install nbbrd/tap/heylogs
-          heylogs check CHANGELOG.md | tee heylogs.log
-          grep -i "No problem" heylogs.log
+          jbang trust add https://github.com/nbbrd/jbang-catalog/
+          jbang heylogs@nbbrd check --format github-actions --rule=duplicate-items:OFF CHANGELOG.md

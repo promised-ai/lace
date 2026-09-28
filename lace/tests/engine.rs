@@ -18,7 +18,6 @@ use lace::examples::Example;
 use lace::metadata::SerializedType;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::traits::Sampleable;
 
 fn animals_data_path() -> PathBuf {
     Path::new("resources")
@@ -2787,6 +2786,7 @@ mod prior_in_codebook {
     }
 
     fn run_test(n_rows: usize, codebook: Codebook) {
+        use rv::traits::Sampleable;
         let mut csvfile = tempfile::NamedTempFile::new().unwrap();
         let mut rng = Xoshiro256Plus::from_os_rng();
         let gauss = rv::dist::Gaussian::standard();

@@ -39,4 +39,4 @@ criterion = "0.5"
 indoc = "2.0.3"
 plotly = "0.14"
 polars-arrow = "0.55.2"
-pyo3 = { version = "0.27", features = ["extension-module"] }
+pyo3 = { version = "0.27" }
