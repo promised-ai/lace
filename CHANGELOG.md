@@ -11,12 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable `Engine.mean` method
 - Add `set_value_map` method to `Codebook` so you can set the support for
   Categorical features.
+- `impute_missing` option in case you want to impute a missing value when
+  missing is most likely--for example if you are generating synthetic data.
 
 ## [rust-0.10.0] - 2026-08-28
 
-### Changed
+### Added
 - Add `mean` method to `OracleT`, which works like `variability` but returns--
   wait for it--the mean.
+- Added and `impute_missing` argument to `OracleT::impute` so people can impute
+  missing for missing-not-at-random columns if they want
+
+### Changed
 - Use fixed point iteration to compute argmax/predict for Gaussian features.
   Faster and more accurate.
 - Bump Polars

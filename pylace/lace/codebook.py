@@ -9,6 +9,8 @@ import lace.core as _lc
 
 
 class _ColumnMetadataIndexer:
+    codebook: _lc.Codebook
+
     def __init__(self, codebook):
         self.codebook = codebook
 

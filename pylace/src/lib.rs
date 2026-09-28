@@ -896,18 +896,22 @@ impl CoreEngine {
     ///     cells will be selected.
     /// with_uncertainty: bool, optional
     ///     If true (default), compute and return uncertainty
+    /// impute_missing: bool, optional
+    ///     If true (default), return missing values if they're most likley
+    ///     for missing-not-at-random columns
     ///
     /// Returns
     /// -------
     /// df: polars.DataFrame
     ///     A data frame with columns for row names, values, and optional
     ///     uncertainty
-    #[pyo3(signature=(col, rows=None, with_uncertainty=true))]
+    #[pyo3(signature=(col, rows=None, with_uncertainty=true, impute_missing=true))]
     fn impute(
         &mut self,
         col: &Bound<PyAny>,
         rows: Option<&Bound<PyAny>>,
         with_uncertainty: bool,
+        impute_missing: bool,
     ) -> PyResult<PyDataFrame> {
         use lace::cc::feature::Feature;
 
@@ -929,7 +933,7 @@ impl CoreEngine {
 
         row_ixs.into_iter().try_for_each(|row_ix| {
             self.engine
-                .impute(row_ix, col_ix, with_uncertainty)
+                .impute(row_ix, col_ix, with_uncertainty, impute_missing)
                 .map(|(val, unc)| {
                     values.push(val);
                     row_names.push(self.row_indexer.to_name[row_ix].clone());

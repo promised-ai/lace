@@ -33,6 +33,7 @@ use crate::interface::oracle::ConditionalEntropyType;
 use crate::interface::oracle::MiComponents;
 use crate::interface::oracle::MiType;
 use crate::interface::oracle::error::SurprisalError;
+use crate::interface::oracle::utils::impute_missing;
 use crate::stats::MixtureType;
 use crate::stats::SampleError;
 
@@ -1841,11 +1842,28 @@ pub trait OracleT: CanOracle {
         row_ix: RIx,
         col_ix: CIx,
         with_uncertainty: bool,
+        impute_missing_mnar: bool,
     ) -> Result<(Datum, Option<f64>), IndexError> {
         let row_ix = row_ix.row_ix(self.codebook())?;
         let col_ix = col_ix.col_ix(self.codebook())?;
 
         let states: Vec<&State> = self.states().iter().collect();
+
+        let unc_opt = if with_uncertainty {
+            Some(self._impute_uncertainty(row_ix, col_ix))
+        } else {
+            None
+        };
+
+        if impute_missing_mnar
+            && self.codebook().col_metadata[col_ix].missing_not_at_random
+        {
+            // If the value is most likely missing return missing
+            if impute_missing(&states, row_ix, col_ix) {
+                return Ok((Datum::Missing, unc_opt));
+            }
+        }
+
         let val: Datum = match self.ftype(col_ix).unwrap() {
             FType::Binary => unimplemented!(),
             FType::Continuous => {
@@ -1865,12 +1883,6 @@ pub trait OracleT: CanOracle {
         };
 
         let val = utils::post_process_datum(val, col_ix, self.codebook());
-
-        let unc_opt = if with_uncertainty {
-            Some(self._impute_uncertainty(row_ix, col_ix))
-        } else {
-            None
-        };
 
         Ok((val, unc_opt))
     }

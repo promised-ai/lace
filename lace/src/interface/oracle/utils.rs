@@ -683,6 +683,29 @@ fn impute_bounds(states: &[&State], col_ix: usize) -> (f64, f64) {
         )
 }
 
+/// Imputes whether the value is missing. Will always return true for non-
+/// MNAR columns
+pub fn impute_missing(states: &[&State], row_ix: usize, col_ix: usize) -> bool {
+    let n_states = states.len() as f64;
+    let p = states
+        .iter()
+        .map(|state| {
+            let view_ix = state.prior_process.asgn.asgn[col_ix];
+            let cat_ix = state.views[view_ix].prior_process.asgn.asgn[row_ix];
+            if let ColModel::MissingNotAtRandom(ref ftr) =
+                state.views[view_ix].ftrs[&col_ix]
+            {
+                ftr.present.components[cat_ix].fx.p()
+            } else {
+                1.0
+            }
+        })
+        .sum::<f64>()
+        / n_states;
+
+    p < 0.5
+}
+
 pub fn continuous_impute(
     states: &[&State],
     row_ix: usize,

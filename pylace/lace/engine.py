@@ -1893,6 +1893,7 @@ class Engine:
         col: Union[str, int],
         rows: Optional[List[Union[str, int]]] = None,
         with_uncertainty: bool = True,
+        impute_missing: bool = True,
     ):
         r"""
         Impute (predict) the value of a cell(s) in the lace table.
@@ -1921,6 +1922,9 @@ class Engine:
             with missing values will be imputed
         with_uncertainty: bool, default: True
             If True, compute and return the impute uncertainty
+        impute_missing: bool, default: True
+            If True, return missing values for missing-not-at-random columns
+            rather than forcing the data to be present
 
         Returns
         -------
@@ -1997,7 +2001,7 @@ class Engine:
         └─────────────────────────────────┴─────────────────┘
 
         """
-        return self.engine.impute(col, rows, with_uncertainty)
+        return self.engine.impute(col, rows, with_uncertainty, impute_missing)
 
     def depprob(self, col_pairs: list):
         """
