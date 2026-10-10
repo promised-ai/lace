@@ -1689,7 +1689,7 @@ macro_rules! impunc_arm {
 }
 
 pub fn impute_uncertainty(
-    states: &[State],
+    states: &[&State],
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {

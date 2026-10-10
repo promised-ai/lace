@@ -1843,14 +1843,24 @@ pub trait OracleT: CanOracle {
         col_ix: CIx,
         with_uncertainty: bool,
         impute_missing_mnar: bool,
+        state_ixs_opt: Option<&[usize]>,
     ) -> Result<(Datum, Option<f64>), IndexError> {
         let row_ix = row_ix.row_ix(self.codebook())?;
         let col_ix = col_ix.col_ix(self.codebook())?;
 
-        let states: Vec<&State> = self.states().iter().collect();
+        let states: Vec<&State> = state_ixs_opt.map_or_else(
+            || self.states().iter().collect(),
+            |ixs| {
+                let mut states = Vec::new();
+                for &ix in ixs {
+                    states.push(&self.states()[ix]);
+                }
+                states
+            },
+        );
 
         let unc_opt = if with_uncertainty {
-            Some(self._impute_uncertainty(row_ix, col_ix))
+            Some(utils::impute_uncertainty(&states, row_ix, col_ix))
         } else {
             None
         };
@@ -2536,22 +2546,6 @@ pub trait OracleT: CanOracle {
                 self._mc_joint_entropy(col_ixs, n, &mut rng)
             }
         }
-    }
-
-    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
-    /// as mean the pairwise KL divergence between the components to which the
-    /// datum is assigned.
-    ///
-    /// # Notes
-    /// Impute uncertainty applies only to impute operations where we want to
-    /// recover a specific missing (or not missing) entry. There is no special
-    /// handling of non-missing entries.
-    ///
-    /// # Arguments
-    /// - row_ix: the row index
-    /// - col_ix: the column index
-    fn _impute_uncertainty(&self, row_ix: usize, col_ix: usize) -> f64 {
-        utils::impute_uncertainty(self.states(), row_ix, col_ix)
     }
 
     /// Computes the uncertainty associated with predicting the value of a

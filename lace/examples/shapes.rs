@@ -118,6 +118,7 @@ mod requires_formats {
             None,
             None,
             false,
+            false,
         )
         .unwrap();
 

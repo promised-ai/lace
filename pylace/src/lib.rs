@@ -899,19 +899,22 @@ impl CoreEngine {
     /// impute_missing: bool, optional
     ///     If true (default), return missing values if they're most likley
     ///     for missing-not-at-random columns
-    ///
+    /// state_ixs: list(int), optional
+    ///     If defines, use only the provided states (by index) to compute the
+    ///     imputation, otherwise use all states (default)
     /// Returns
     /// -------
     /// df: polars.DataFrame
     ///     A data frame with columns for row names, values, and optional
     ///     uncertainty
-    #[pyo3(signature=(col, rows=None, with_uncertainty=true, impute_missing=true))]
+    #[pyo3(signature=(col, rows=None, with_uncertainty=true, impute_missing=true, state_ixs=None))]
     fn impute(
         &mut self,
         col: &Bound<PyAny>,
         rows: Option<&Bound<PyAny>>,
         with_uncertainty: bool,
         impute_missing: bool,
+        state_ixs: Option<Vec<usize>>,
     ) -> PyResult<PyDataFrame> {
         use lace::cc::feature::Feature;
 
@@ -933,7 +936,13 @@ impl CoreEngine {
 
         row_ixs.into_iter().try_for_each(|row_ix| {
             self.engine
-                .impute(row_ix, col_ix, with_uncertainty, impute_missing)
+                .impute(
+                    row_ix,
+                    col_ix,
+                    with_uncertainty,
+                    impute_missing,
+                    state_ixs.as_deref(),
+                )
                 .map(|(val, unc)| {
                     values.push(val);
                     row_names.push(self.row_indexer.to_name[row_ix].clone());
@@ -1500,21 +1509,29 @@ impl CoreEngine {
 /// Infer `ColumnMetadata` from a `Series`
 ///
 /// # Parameters
-/// `srs` - Pandas Series
-/// `cat_cutoff` - Limit on categorical assignments, where continuous is the fallback.
-/// `no_hypers` - Disable hyper-priors
+/// - `srs`: Pandas Series
+/// - `cat_cutoff`: Limit on categorical assignments, where continuous is the
+///   fallback.
+/// - `no_hypers`: Disable hyper-priors
 ///
 /// # Errors
-/// This will fail if the `Series` type is unsupported or invalid values are seen.
+/// This will fail if the `Series` type is unsupported or invalid values are
+/// seen.
 #[pyfunction]
 pub fn infer_srs_metadata(
     srs: PySeries,
     cat_cutoff: u32,
     no_hypers: bool,
+    all_mnar: bool,
 ) -> PyResult<metadata::ColumnMetadata> {
-    lace::codebook::data::series_to_colmd(&srs.0, Some(cat_cutoff), no_hypers)
-        .map_err(to_pyerr)
-        .map(metadata::ColumnMetadata)
+    lace::codebook::data::series_to_colmd(
+        &srs.0,
+        Some(cat_cutoff),
+        no_hypers,
+        all_mnar,
+    )
+    .map_err(to_pyerr)
+    .map(metadata::ColumnMetadata)
 }
 
 create_exception!(lace, EngineLoadError, pyo3::exceptions::PyException);

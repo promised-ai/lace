@@ -389,14 +389,6 @@ mod tests {
     }
 
     #[test]
-    fn impute_uncertainty_smoke() {
-        let oracle = get_oracle_from_yaml();
-        let u = oracle._impute_uncertainty(0, 1);
-        assert!(u > 0.0);
-        assert!(u < 1.0);
-    }
-
-    #[test]
     fn predict_uncertainty_smoke_no_given() {
         let oracle = get_oracle_from_yaml();
         let u = oracle._predict_uncertainty(0, &Given::Nothing, None);

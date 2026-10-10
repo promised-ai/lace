@@ -386,6 +386,7 @@ pub fn series_to_colmd(
     srs: &Series,
     cat_cutoff: Option<u32>,
     no_hypers: bool,
+    mnar: bool,
 ) -> Result<ColMetadata, CodebookError> {
     let name = srs.name().to_string();
     let dtype = srs.dtype();
@@ -417,7 +418,7 @@ pub fn series_to_colmd(
         name,
         coltype,
         notes: None,
-        missing_not_at_random: false,
+        missing_not_at_random: mnar && srs.null_count() > 0,
     })
 }
 
@@ -440,6 +441,7 @@ pub fn df_to_codebook(
     state_prior_process: Option<PriorProcess>,
     view_prior_process: Option<PriorProcess>,
     no_hypers: bool,
+    all_mnar: bool,
 ) -> Result<Codebook, CodebookError> {
     let (col_metadata, row_names) = {
         let mut row_names_opt: Option<RowNameList> = None;
@@ -457,7 +459,8 @@ pub fn df_to_codebook(
                         srs.name().to_string(),
                     ));
                 }
-                let colmd = series_to_colmd(srs, cat_cutoff, no_hypers)?;
+                let colmd =
+                    series_to_colmd(srs, cat_cutoff, no_hypers, all_mnar)?;
                 col_metadata.push(colmd);
             }
         }
@@ -493,6 +496,7 @@ pub fn codebook_from_csv<P: AsRef<Path>>(
     state_prior_process: Option<PriorProcess>,
     view_prior_process: Option<PriorProcess>,
     no_hypers: bool,
+    all_mnar: bool,
 ) -> Result<crate::codebook::Codebook, crate::codebook::CodebookError> {
     let df = read_csv(path).unwrap();
     df_to_codebook(
@@ -501,6 +505,7 @@ pub fn codebook_from_csv<P: AsRef<Path>>(
         state_prior_process,
         view_prior_process,
         no_hypers,
+        all_mnar,
     )
 }
 
@@ -539,7 +544,8 @@ mod test {
         let file = write_to_tempfile(&data);
 
         let codebook =
-            codebook_from_csv(file.path(), None, None, None, false).unwrap();
+            codebook_from_csv(file.path(), None, None, None, false, false)
+                .unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);
@@ -627,8 +633,8 @@ mod test {
                         "a".into(),
                         ($int_min..$int_max).collect::<Vec<_>>(),
                     );
-                    let colmd =
-                        series_to_colmd(&srs, $cat_cutoff, true).unwrap();
+                    let colmd = series_to_colmd(&srs, $cat_cutoff, true, false)
+                        .unwrap();
                     match colmd.coltype {
                         ColType::Categorical { k, .. } => {
                             if $should_be_categorical {
@@ -685,7 +691,7 @@ mod test {
                 "A".into(),
                 (0..255).map(|x| format!("{x}")).collect::<Vec<_>>(),
             );
-            assert!(series_to_colmd(&srs, None, false).is_ok());
+            assert!(series_to_colmd(&srs, None, false, false).is_ok());
         }
 
         #[test]
@@ -698,7 +704,7 @@ mod test {
                     .map(|x| format!("{x}"))
                     .collect::<Vec<_>>(),
             );
-            assert!(series_to_colmd(&srs, None, false).is_ok());
+            assert!(series_to_colmd(&srs, None, false, false).is_ok());
         }
 
         macro_rules! count_or_continuous {
@@ -709,7 +715,8 @@ mod test {
                         "A".into(),
                         ($min_val..$max_val).collect::<Vec<_>>(),
                     );
-                    let colmd = series_to_colmd(&srs, None, false).unwrap();
+                    let colmd =
+                        series_to_colmd(&srs, None, false, false).unwrap();
                     match colmd.coltype {
                         ColType::Continuous { .. } => assert!(!$is_count),
                         ColType::Count { .. } => assert!($is_count),
@@ -740,7 +747,7 @@ mod test {
                 "A".into(),
                 (0..100).map(|x| x % 2 == 1).collect::<Vec<bool>>(),
             );
-            let colmd = series_to_colmd(&srs, None, true).unwrap();
+            let colmd = series_to_colmd(&srs, None, true, false).unwrap();
             match colmd.coltype {
                 ColType::Categorical {
                     value_map: ValueMap::Bool,

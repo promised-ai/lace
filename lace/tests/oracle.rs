@@ -1606,7 +1606,7 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.impute(4, 1, false),
+                    oracle.impute(4, 1, false, false, None),
                     Err(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
                         row_ix: 4,
@@ -1619,7 +1619,7 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.impute(1, 3, false),
+                    oracle.impute(1, 3, false, false, None),
                     Err(IndexError::ColumnIndexOutOfBounds {
                         n_cols: 3,
                         col_ix: 3,

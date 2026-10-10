@@ -520,12 +520,15 @@ impl Codebook {
     /// - state_prior_process: The prior process on the column partition
     /// - view_prior_process: The prior process on the row partitions
     /// - no_hypers: if `true` do not do prior parameter inference
+    /// - all_mnar: if `true` all columns with missing values witll be modeled
+    ///   as missing-not-at-random (MNAR).
     pub fn from_df(
         df: &DataFrame,
         cat_cutoff: Option<u32>,
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         no_hypers: bool,
+        all_mnar: bool,
     ) -> Result<Self, CodebookError> {
         df_to_codebook(
             df,
@@ -533,6 +536,7 @@ impl Codebook {
             state_prior_process,
             view_prior_process,
             no_hypers,
+            all_mnar,
         )
     }
 

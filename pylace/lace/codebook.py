@@ -76,6 +76,7 @@ class Codebook:
         df: pd.DataFrame | pl.DataFrame,
         cat_cutoff: int = 20,
         no_hypers: bool = False,
+        all_mnar: bool = False,
     ):
         """
         Infer a codebook from a DataFrame.
@@ -87,19 +88,22 @@ class Codebook:
         df: pandas.DataFrame or polars.DataFrame
             The data that will be used to create the engine. Note that polars
             DataFrame must have an `ID` or `Index` column.
-        cat_cutoff: int, optional
+        cat_cutoff: int, optional (default: 20)
             The maximum value an unsigned integer may take on before its column
             is considered `Count` type. Default is 20.
-        no_hypers: bool, optional
+        no_hypers: bool, optional (default: True)
             If `True`, disable hyper prior inference. Priors will be derived
             from the data and will remain static.
+        all_mnar: bool, optional (default: True)
+            If `True` all columns with missing values will be modeled as
+            missing-not-at-random (MNAR)
 
         """
 
         if isinstance(df, pd.DataFrame):
             df = pl.DataFrame(df.reset_index())
 
-        codebook = _lc.codebook_from_df(df, cat_cutoff, no_hypers)
+        codebook = _lc.codebook_from_df(df, cat_cutoff, no_hypers, all_mnar)
         codebook.rename(name)
         obj = cls(codebook)
 

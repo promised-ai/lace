@@ -1879,6 +1879,7 @@ class Engine:
         rows: list[str | int] | None = None,
         with_uncertainty: bool = True,
         impute_missing: bool = True,
+        state_ixs: Optional[List[int]] = None,
     ):
         r"""
         Impute (predict) the value of a cell(s) in the lace table.
@@ -1910,6 +1911,9 @@ class Engine:
         impute_missing: bool, default: True
             If True, return missing values for missing-not-at-random columns
             rather than forcing the data to be present
+        state_ixs: List[int], optional
+            If defined, will use the provided states (by index) to impute,
+            otherwise it will use all states (default)
 
         Returns
         -------
@@ -1986,7 +1990,9 @@ class Engine:
         └─────────────────────────────────┴─────────────────┘
 
         """
-        return self.engine.impute(col, rows, with_uncertainty, impute_missing)
+        return self.engine.impute(
+            col, rows, with_uncertainty, impute_missing, state_ixs
+        )
 
     def depprob(self, col_pairs: list):
         """

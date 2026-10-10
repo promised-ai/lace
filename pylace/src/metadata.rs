@@ -499,6 +499,7 @@ enum CodebookMethod {
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         no_hypers: bool,
+        all_mnar: bool,
     },
     Codebook(Codebook),
 }
@@ -510,6 +511,7 @@ impl Default for CodebookMethod {
             state_prior_process: None,
             view_prior_process: None,
             no_hypers: false,
+            all_mnar: false,
         }
     }
 }
@@ -710,11 +712,12 @@ impl Codebook {
 
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-#[pyo3(signature = (df, cat_cutoff=None, no_hypers=false))]
+#[pyo3(signature = (df, cat_cutoff=None, no_hypers=false, all_mnar=false))]
 pub fn codebook_from_df(
     df: PyDataFrame,
     cat_cutoff: Option<u32>,
     no_hypers: bool,
+    all_mnar: bool,
 ) -> PyResult<Codebook> {
     CodebookBuilder {
         method: CodebookMethod::Inferred {
@@ -722,6 +725,7 @@ pub fn codebook_from_df(
             state_prior_process: None,
             view_prior_process: None,
             no_hypers,
+            all_mnar,
         },
     }
     .build(&df.0)
@@ -745,13 +749,14 @@ impl CodebookBuilder {
     }
 
     #[classmethod]
-    #[pyo3(signature = (cat_cutoff=None, state_prior_process=None, view_prior_process=None, use_hypers=true))]
+    #[pyo3(signature = (cat_cutoff=None, state_prior_process=None, view_prior_process=None, use_hypers=true, all_mnar=false))]
     const fn infer(
         _cls: &Bound<PyType>,
         cat_cutoff: Option<u32>,
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         use_hypers: bool,
+        all_mnar: bool,
     ) -> Self {
         Self {
             method: CodebookMethod::Inferred {
@@ -759,6 +764,7 @@ impl CodebookBuilder {
                 state_prior_process,
                 view_prior_process,
                 no_hypers: !use_hypers,
+                all_mnar,
             },
         }
     }
@@ -798,12 +804,14 @@ impl CodebookBuilder {
                 state_prior_process,
                 view_prior_process,
                 no_hypers,
+                all_mnar,
             } => df_to_codebook(
                 df,
                 cat_cutoff,
                 state_prior_process.map(|p| p.0),
                 view_prior_process.map(|p| p.0),
                 no_hypers,
+                all_mnar,
             )
             .map_err(|e| {
                 PyValueError::new_err(format!(
@@ -824,9 +832,10 @@ impl CodebookBuilder {
                 state_prior_process,
                 view_prior_process,
                 no_hypers,
+                all_mnar,
             } => format!(
-                "CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, state_prior_process={state_prior_process:?}, view_prior_process={view_prior_process:?}, use_hypers={})",
-                !no_hypers
+                "CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, state_prior_process={state_prior_process:?}, view_prior_process={view_prior_process:?}, use_hypers={}, all)mnar={}",
+                !no_hypers, all_mnar,
             ),
             CodebookMethod::Codebook(_) => {
                 String::from("Codebook (fully specified)")
