@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Categorical features.
 - `impute_missing` option in case you want to impute a missing value when
   missing is most likely--for example if you are generating synthetic data.
+- `Engine.impute` takes optional `state_ixs` argument so users can specify
+  which states to impute from
 
 ## [rust-0.10.0] - 2026-08-28
 
@@ -21,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wait for it--the mean.
 - Added and `impute_missing` argument to `OracleT::impute` so people can impute
   missing for missing-not-at-random columns if they want
+- `OracleT::impute` takes optional `state_ixs` argument so users can specify
+  which states to impute from
 
 ### Changed
 - Use fixed point iteration to compute argmax/predict for Gaussian features.

@@ -1790,12 +1790,16 @@ pub trait OracleT: CanOracle {
     ///     "dolphin",
     ///     "swims",
     ///     true,
+    ///     false,
+    ///     None,
     /// ).unwrap();
     ///
     /// let bear_swims = oracle.impute(
     ///     "polar+bear",
     ///     "swims",
     ///     true,
+    ///     false,
+    ///     None,
     /// ).unwrap();
     ///
     /// assert_eq!(dolphin_swims.0, Datum::Categorical(1_u32.into()));
@@ -1821,6 +1825,8 @@ pub trait OracleT: CanOracle {
     ///     "X-Sat",
     ///     "Type_of_Orbit",
     ///     true,
+    ///     false,
+    ///     None,
     /// ).unwrap();
     ///
     /// assert_eq!(imp, Datum::Categorical("Sun-Synchronous".into()));
@@ -1835,6 +1841,8 @@ pub trait OracleT: CanOracle {
     ///     "X-Sat",
     ///     "longitude_radians_of_geo",
     ///     true,
+    ///     false,
+    ///     None,
     /// ).unwrap();
     /// ```
     fn impute<RIx: RowIndex, CIx: ColumnIndex>(
