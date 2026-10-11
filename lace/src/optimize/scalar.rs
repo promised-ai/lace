@@ -195,11 +195,7 @@ where
 
                 if ((x - a) < tol2) || ((b - x) < tol2) {
                     let si = sign(xm - xf) + {
-                        if (xm - xf) == 0.0 {
-                            1.0
-                        } else {
-                            0.0
-                        }
+                        if (xm - xf) == 0.0 { 1.0 } else { 0.0 }
                     };
                     rat = tol1 * si;
                 }
@@ -219,13 +215,7 @@ where
             rat = golden_mean * e;
         }
 
-        let si = sign(rat) + {
-            if rat == 0.0 {
-                1.0
-            } else {
-                0.0
-            }
-        };
+        let si = sign(rat) + { if rat == 0.0 { 1.0 } else { 0.0 } };
         x = si.mul_add(rat.abs().max(tol1), xf);
         let fu = f(x);
         num += 1;

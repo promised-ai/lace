@@ -41,7 +41,7 @@ engine = lace.Engine.from_df(df, codebook="codebook.yaml")
 engine.update(10_000)
 
 # Predict the orbit's class based on the orbit's period.
-engine.predict('Class_of_Orbit', given={'Period_minutes': 1436.0})
+engine.predict("Class_of_Orbit", given={"Period_minutes": 1436.0})
 # ('GEO', 0.13583714831550336)
 ```
 

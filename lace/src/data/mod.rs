@@ -25,3 +25,13 @@ pub use traits::AccumScore;
 pub use traits::Container;
 pub use traits::TranslateContainer;
 pub use traits::TranslateDatum;
+
+pub(crate) trait DataFrameAdapter {
+    fn is_empty(&self) -> bool;
+}
+
+impl DataFrameAdapter for polars::frame::DataFrame {
+    fn is_empty(&self) -> bool {
+        self.shape().0 == 0
+    }
+}

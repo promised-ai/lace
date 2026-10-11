@@ -1,7 +1,7 @@
+use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
 use criterion::criterion_main;
-use criterion::Criterion;
 use lace::stats::UpdatePrior;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;

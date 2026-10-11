@@ -336,8 +336,8 @@ impl TryInto<Column> for usize {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::examples::Example;
     use crate::HasStates;
+    use crate::examples::Example;
 
     #[test]
     fn rows_convert_properly() {

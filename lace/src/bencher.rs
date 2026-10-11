@@ -94,33 +94,35 @@ impl BencherSetup {
         mut rng: &mut impl Rng,
     ) -> Result<State, GenerateStateError> {
         match self {
-            BencherSetup::Csv {
-                ref mut codebook,
-                path,
-            } => crate::codebook::data::read_csv(path)
-                .map_err(GenerateStateError::Read)
-                .and_then(|df| {
-                    let state_prior_process = {
-                        let prior_process = codebook
-                            .state_prior_process
-                            .clone()
-                            .unwrap_or_default();
-                        emit_prior_process(prior_process, rng)
-                    };
+            BencherSetup::Csv { codebook, path } => {
+                crate::codebook::data::read_csv(path)
+                    .map_err(GenerateStateError::Read)
+                    .and_then(|df| {
+                        let state_prior_process = {
+                            let prior_process = codebook
+                                .state_prior_process
+                                .clone()
+                                .unwrap_or_default();
+                            emit_prior_process(prior_process, rng)
+                        };
 
-                    let view_prior_process = {
-                        let prior_process = codebook
-                            .view_prior_process
-                            .clone()
-                            .unwrap_or_default();
-                        emit_prior_process(prior_process, rng)
-                    };
+                        let view_prior_process = {
+                            let prior_process = codebook
+                                .view_prior_process
+                                .clone()
+                                .unwrap_or_default();
+                            emit_prior_process(prior_process, rng)
+                        };
 
-                    let mut codebook_tmp = Box::<Codebook>::default();
+                        let mut codebook_tmp = Box::<Codebook>::default();
 
-                    // swap codebook into something we can take ownership of
-                    std::mem::swap(codebook, &mut codebook_tmp);
-                    crate::data::df_to_col_models(*codebook_tmp, df, &mut rng)
+                        // swap codebook into something we can take ownership of
+                        std::mem::swap(codebook, &mut codebook_tmp);
+                        crate::data::df_to_col_models(
+                            *codebook_tmp,
+                            df,
+                            &mut rng,
+                        )
                         .map(|(cb, features)| {
                             // put the codeboko back where it should go
                             std::mem::swap(codebook, &mut Box::new(cb));
@@ -133,7 +135,8 @@ impl BencherSetup {
                             )
                         })
                         .map_err(GenerateStateError::Parse)
-                }),
+                    })
+            }
             BencherSetup::Builder(state_builder) => state_builder
                 .clone()
                 .seed_from_u64(rng.next_u64())

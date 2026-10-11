@@ -1,12 +1,12 @@
+use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
 use criterion::criterion_main;
-use criterion::Criterion;
-use lace::data::Datum;
-use lace::examples::Example;
 use lace::Given;
 use lace::Oracle;
 use lace::OracleT;
+use lace::data::Datum;
+use lace::examples::Example;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -20,8 +20,8 @@ fn get_satellites_oracle() -> Oracle {
 }
 
 fn bench_categorical_mi(c: &mut Criterion) {
-    use lace::examples::satellites::Column;
     use lace::MiType;
+    use lace::examples::satellites::Column;
     c.bench_function("oracle mi categorical", |b| {
         let oracle = get_oracle();
         b.iter(|| {
@@ -36,8 +36,8 @@ fn bench_categorical_mi(c: &mut Criterion) {
 }
 
 fn bench_continuous_mi(c: &mut Criterion) {
-    use lace::examples::satellites::Column;
     use lace::MiType;
+    use lace::examples::satellites::Column;
     c.bench_function("oracle mi continuous", |b| {
         let oracle = get_satellites_oracle();
         b.iter(|| {
@@ -52,8 +52,8 @@ fn bench_continuous_mi(c: &mut Criterion) {
 }
 
 fn bench_catcon_mi(c: &mut Criterion) {
-    use lace::examples::satellites::Column;
     use lace::MiType;
+    use lace::examples::satellites::Column;
     c.bench_function("oracle mi categorical-continuous", |b| {
         let oracle = get_satellites_oracle();
         b.iter(|| {

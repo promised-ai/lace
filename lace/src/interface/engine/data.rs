@@ -11,6 +11,11 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::error::InsertDataError;
+use crate::ColumnIndex;
+use crate::Engine;
+use crate::HasStates;
+use crate::OracleT;
+use crate::RowIndex;
 use crate::cc::feature::ColModel;
 use crate::cc::feature::Column;
 use crate::cc::feature::FType;
@@ -24,11 +29,6 @@ use crate::data::Category;
 use crate::data::Datum;
 use crate::data::SparseContainer;
 use crate::interface::HasCodebook;
-use crate::ColumnIndex;
-use crate::Engine;
-use crate::HasStates;
-use crate::OracleT;
-use crate::RowIndex;
 
 /// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -1742,14 +1742,16 @@ mod tests {
         // Insert once with specific metadata.
         engine
             .insert_data(
-                vec![(
-                    "abc",
-                    vec![(
-                        "bool_col",
-                        Datum::Categorical(Category::Bool(false)),
-                    )],
-                )
-                    .into()],
+                vec![
+                    (
+                        "abc",
+                        vec![(
+                            "bool_col",
+                            Datum::Categorical(Category::Bool(false)),
+                        )],
+                    )
+                        .into(),
+                ],
                 Some(ColMetadataList::new(vec![md0]).unwrap()),
                 WriteMode::unrestricted(),
             )
@@ -1758,14 +1760,16 @@ mod tests {
         // Insert again without metadata for the bool column.
         engine
             .insert_data(
-                vec![(
-                    "def",
-                    vec![(
-                        "bool_col",
-                        Datum::Categorical(Category::Bool(false)),
-                    )],
-                )
-                    .into()],
+                vec![
+                    (
+                        "def",
+                        vec![(
+                            "bool_col",
+                            Datum::Categorical(Category::Bool(false)),
+                        )],
+                    )
+                        .into(),
+                ],
                 None,
                 WriteMode::unrestricted(),
             )

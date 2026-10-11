@@ -1,15 +1,15 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::HasData;
+use crate::HasStates;
+use crate::Oracle;
 use crate::cc::state::State;
 use crate::codebook::Codebook;
 use crate::data::Datum;
 use crate::data::SummaryStatistics;
 use crate::interface::HasCodebook;
 use crate::metadata::latest::Metadata;
-use crate::HasData;
-use crate::HasStates;
-use crate::Oracle;
 
 /// An oracle without data for sensitive data applications
 #[derive(Clone, Debug, Serialize, Deserialize)]
