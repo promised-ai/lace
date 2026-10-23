@@ -63,6 +63,7 @@ macro_rules! codebook_from_fn {
             state_prior_process: Option<$crate::codebook::PriorProcess>,
             view_prior_process: Option<$crate::codebook::PriorProcess>,
             no_hypers: bool,
+            all_mnar: bool,
         ) -> Result<
             $crate::codebook::Codebook,
             $crate::codebook::error::CodebookError,
@@ -74,6 +75,7 @@ macro_rules! codebook_from_fn {
                 state_prior_process,
                 view_prior_process,
                 no_hypers,
+                all_mnar,
             )
         }
     };

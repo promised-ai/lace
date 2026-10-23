@@ -1,8 +1,10 @@
 """The main interface to Lace models."""
 
+from __future__ import annotations
+
 import itertools as it
 from os import PathLike
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, Set
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import plotly.express as px
@@ -34,7 +36,7 @@ class ClusterMap:
 
     """
 
-    def __init__(self, df: pl.DataFrame, linkage: "np.ndarray", figure=None):
+    def __init__(self, df: pl.DataFrame, linkage: np.ndarray, figure=None):
         self.df = df
         self.figure = figure
         self.linkage = linkage
@@ -57,15 +59,13 @@ class Engine:
     @classmethod
     def from_df(
         cls,
-        df: Union[pd.DataFrame, pl.DataFrame],
-        codebook: Optional[
-            Union[CodebookBuilder, PathLike, str, Codebook]
-        ] = None,
+        df: pd.DataFrame | pl.DataFrame,
+        codebook: CodebookBuilder | PathLike | str | Codebook | None = None,
         n_states: int = 8,
         id_offset: int = 0,
-        rng_seed: Optional[int] = None,
+        rng_seed: int | None = None,
         flat_columns: bool = False,
-    ) -> "Engine":
+    ) -> Engine:
         """
         Create a new ``Engine`` from a DataFrame.
 
@@ -148,7 +148,7 @@ class Engine:
         )
 
     @classmethod
-    def load(cls, path: Union[str, bytes, PathLike]) -> "Engine":
+    def load(cls, path: str | bytes | PathLike) -> Engine:
         """
         Load an Engine from a path.
 
@@ -167,7 +167,7 @@ class Engine:
         """
         return cls(core.CoreEngine.load(path))
 
-    def save(self, path: Union[str, bytes, PathLike]):
+    def save(self, path: str | bytes | PathLike):
         """
         Save the Engine metadata to ``path``.
 
@@ -374,7 +374,7 @@ class Engine:
         """
         return Codebook(self.engine.codebook)
 
-    def ftype(self, col: Union[str, int]):
+    def ftype(self, col: str | int):
         """
         Get the feature type of a column.
 
@@ -425,7 +425,15 @@ class Engine:
         """
         self.engine.flatten_columns()
 
-    def column_assignment(self, state_ix: int) -> List[int]:
+    def flatten_colums_with(self, asgn: list[int]):
+        """
+        Flatten the column assignment forcing the single view to have the given
+        row assignment.
+        """
+        assert len(asgn) == self.shape[0]
+        self.engine.flatten_columns_with(asgn)
+
+    def column_assignment(self, state_ix: int) -> list[int]:
         """
         Return the assignment of columns to views.
 
@@ -479,8 +487,8 @@ class Engine:
         return self.engine.row_assignments(state_ix)
 
     def feature_params(
-        self, col: Union[int, str], state_ixs: Optional[List[int]] = None
-    ) -> Dict:
+        self, col: int | str, state_ixs: list[int] | None = None
+    ) -> dict:
         """
         Get the component parameters for a given column.
 
@@ -600,7 +608,7 @@ class Engine:
 
         return pl.DataFrame(srss)
 
-    def edit_cell(self, row: Union[str, int], col: Union[str, int], value):
+    def edit_cell(self, row: str | int, col: str | int, value):
         r"""
         Edit the value of a cell in the table.
 
@@ -672,9 +680,10 @@ class Engine:
 
     def append_rows(
         self,
-        rows: Union[
-            pd.Series, pd.DataFrame, pl.DataFrame, Dict[str, Dict[str, object]]
-        ],
+        rows: pd.Series
+        | pd.DataFrame
+        | pl.DataFrame
+        | dict[str, dict[str, object]],
     ):
         """
         Append new rows to the table.
@@ -770,8 +779,8 @@ class Engine:
 
     def append_columns(
         self,
-        cols: Union[pd.DataFrame, pl.DataFrame],
-        metadata: Optional[List[core.ColumnMetadata]] = None,
+        cols: pd.DataFrame | pl.DataFrame,
+        metadata: list[core.ColumnMetadata] | None = None,
         cat_cutoff: int = 20,
         no_hypers: bool = False,
     ):
@@ -940,7 +949,7 @@ class Engine:
 
         self.engine.append_columns(cols, metadata)
 
-    def del_column(self, col: Union[str, int]) -> None:
+    def del_column(self, col: str | int) -> None:
         """
         Delete a given column.
 
@@ -979,10 +988,10 @@ class Engine:
         self,
         n_iters: int,
         *,
-        timeout: Optional[int] = None,
-        checkpoint: Optional[int] = None,
-        transitions: Optional[Union[str, List[core.StateTransition]]] = None,
-        save_path: Optional[Union[str, bytes, PathLike]] = None,
+        timeout: int | None = None,
+        checkpoint: int | None = None,
+        transitions: str | list[core.StateTransition] | None = None,
+        save_path: str | bytes | PathLike | None = None,
         quiet: bool = False,
     ):
         """
@@ -1128,9 +1137,9 @@ class Engine:
         values,
         given=None,
         *,
-        state_ixs: Optional[List[int]] = None,
+        state_ixs: list[int] | None = None,
         scaled: bool = False,
-    ) -> Union[None, float, pl.Series]:
+    ) -> None | float | pl.Series:
         r"""
         Compute the log likelihood.
 
@@ -1433,7 +1442,7 @@ class Engine:
         return out
 
     def surprisal(
-        self, col: Union[int, str], *, rows=None, values=None, state_ixs=None
+        self, col: int | str, *, rows=None, values=None, state_ixs=None
     ):
         r"""
         Compute the surprisal of a values in specific cells.
@@ -1689,7 +1698,7 @@ class Engine:
 
         return df
 
-    def draw(self, row: Union[int, str], col: Union[int, str], n: int = 1):
+    def draw(self, row: int | str, col: int | str, n: int = 1):
         """
         Draw data from the distribution of a specific cell in the table.
 
@@ -1732,9 +1741,9 @@ class Engine:
 
     def predict(
         self,
-        target: Union[str, int],
-        given: Optional[Dict[Union[str, int], object]] = None,
-        state_ixs: Optional[List[int]] = None,
+        target: str | int,
+        given: dict[str | int, object] | None = None,
+        state_ixs: list[int] | None = None,
         with_uncertainty: bool = True,
     ):
         """
@@ -1793,11 +1802,54 @@ class Engine:
         """
         return self.engine.predict(target, given, state_ixs, with_uncertainty)
 
+    def mean(
+        self,
+        target: str | int,
+        given: dict[str | int, object] | None = None,
+        state_ixs: list[int] | None = None,
+    ):
+        """
+        Return the mean of a conditional distribution if it exists. Will return
+        `None` for categorical targets.
+
+        Parameters
+        ----------
+        target: column index
+            The column for which to return the mean
+        given: Dict[column index, value], optional
+            Column -> Value dictionary describing observations. Note that
+            columns can either be indices (int) or names (str)
+        state_ixs: List[int], optional
+            An optional list specifying which states should be used in the
+            computation. If `None` (default), use all states.
+
+        Returns
+        -------
+        Optiona[float]
+            The mean of the distribution. Will always return `None` for
+            categorical targets.
+
+        Examples
+        --------
+        Compute the mean of the Period_minutes column unconditioned
+
+        >>> from lace.examples import Satellites
+        >>> sats = Satellites()
+        >>> sats.mean("Period_minutes")
+        705.1385827784865
+
+        Compute the mean of Period_minutes for geosynchronous satellite
+
+        >>> sats.mean("Period_minutes", given={"Class_of_Orbit": "GEO"})
+        1412.4609593922153
+        """
+        return self.engine.mean(target, given, state_ixs)
+
     def variability(
         self,
-        target: Union[str, int],
-        given: Optional[Dict[Union[str, int], object]] = None,
-        state_ixs: Optional[List[int]] = None,
+        target: str | int,
+        given: dict[str | int, object] | None = None,
+        state_ixs: list[int] | None = None,
     ):
         """
         Return the variability of a conditional distribution.
@@ -1847,9 +1899,11 @@ class Engine:
 
     def impute(
         self,
-        col: Union[str, int],
-        rows: Optional[List[Union[str, int]]] = None,
+        col: str | int,
+        rows: list[str | int] | None = None,
         with_uncertainty: bool = True,
+        impute_missing: bool = True,
+        state_ixs: Optional[List[int]] = None,
     ):
         r"""
         Impute (predict) the value of a cell(s) in the lace table.
@@ -1878,6 +1932,12 @@ class Engine:
             with missing values will be imputed
         with_uncertainty: bool, default: True
             If True, compute and return the impute uncertainty
+        impute_missing: bool, default: True
+            If True, return missing values for missing-not-at-random columns
+            rather than forcing the data to be present
+        state_ixs: List[int], optional
+            If defined, will use the provided states (by index) to impute,
+            otherwise it will use all states (default)
 
         Returns
         -------
@@ -1954,7 +2014,9 @@ class Engine:
         └─────────────────────────────────┴─────────────────┘
 
         """
-        return self.engine.impute(col, rows, with_uncertainty)
+        return self.engine.impute(
+            col, rows, with_uncertainty, impute_missing, state_ixs
+        )
 
     def depprob(self, col_pairs: list):
         """
@@ -2119,7 +2181,7 @@ class Engine:
     def rowsim(
         self,
         row_pairs: list,
-        wrt: Optional[list] = None,
+        wrt: list | None = None,
         col_weighted: bool = False,
     ):
         """
@@ -2211,7 +2273,7 @@ class Engine:
         """Compute the novelty of a row."""
         return self.engine.novelty(row, wrt)
 
-    def pairwise_fn(self, fn_name, indices: Optional[list] = None, **kwargs):
+    def pairwise_fn(self, fn_name, indices: list | None = None, **kwargs):
         """
         Compute a function for a set of pairs of rows or columns.
 
@@ -2392,7 +2454,7 @@ class Engine:
 
     def remove_rows(
         self,
-        indices: Union[pd.Series, List[str], pd.Series, Set[str]],
+        indices: pd.Series | list[str] | set[str],
     ) -> pl.DataFrame:
         """
         Remove rows from the table.
@@ -2422,6 +2484,40 @@ class Engine:
 
         """
         return self.engine.remove_rows(indices)
+
+    def extend_states(self, other):
+        """Extend the states in this engine with the states in another Engine"""
+        if self.shape != other.shape:
+            raise ValueError(
+                f"Shapes are not equal. self: `{self.shape}`, other `{other.shape}`"
+            )
+
+        if self.index != other.index:
+            raise IndexError("`other` Engine.index does not align with `self`")
+
+        if self.columns != other.columns:
+            raise IndexError(
+                "`other` Engine.columns does not align with `self`"
+            )
+
+        ftypes_self = self.ftypes
+        ftypes_other = other.ftypes
+        for column, ftype in ftypes_self.items():
+            other_ftype = ftypes_other[column]
+            if ftype != other_ftype:
+                raise ValueError(
+                    f"Mismatched FType for column {column}. Should be {ftype}, but is {other_ftype}"
+                )
+
+            if ftype.lower() == "categorical":
+                vmap_self = self.codebook.value_map(column)
+                vmap_other = other.codebook.value_map(column)
+                if vmap_self != vmap_other:
+                    raise ValueError(
+                        f"Incompatible value maps for column `{column}`."
+                    )
+
+        self.engine.extend_states_unchecked(other.engine)
 
 
 class _TqdmUpdateHandler:

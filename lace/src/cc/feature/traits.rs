@@ -14,11 +14,11 @@ use crate::cc::feature::Column;
 use crate::cc::feature::FType;
 use crate::data::Datum;
 use crate::data::FeatureData;
+use crate::stats::MixtureType;
 use crate::stats::assignment::Assignment;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
-use crate::stats::MixtureType;
 
 /// A Cross-Categorization feature/column
 #[enum_dispatch(ColModel)]

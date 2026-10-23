@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import copy
-from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -9,6 +10,8 @@ import lace.core as _lc
 
 
 class _ColumnMetadataIndexer:
+    codebook: _lc.Codebook
+
     def __init__(self, codebook):
         self.codebook = codebook
 
@@ -28,7 +31,7 @@ class _ColumnMetadataIndexer:
         """Remove and return the column metadata with ``name``."""
         return self.codebook.remove_column_metadata(name)
 
-    def extend(self, column_metadatas: List[_lc.ColumnMetadata]):
+    def extend(self, column_metadatas: list[_lc.ColumnMetadata]):
         """Append a number of column metadatas to the end of codebook."""
         self.codebook.append_column_metadata(column_metadatas)
 
@@ -70,9 +73,10 @@ class Codebook:
     def from_df(
         cls,
         name: str,
-        df: Union[pd.DataFrame, pl.DataFrame],
+        df: pd.DataFrame | pl.DataFrame,
         cat_cutoff: int = 20,
         no_hypers: bool = False,
+        all_mnar: bool = False,
     ):
         """
         Infer a codebook from a DataFrame.
@@ -84,19 +88,22 @@ class Codebook:
         df: pandas.DataFrame or polars.DataFrame
             The data that will be used to create the engine. Note that polars
             DataFrame must have an `ID` or `Index` column.
-        cat_cutoff: int, optional
+        cat_cutoff: int, optional (default: 20)
             The maximum value an unsigned integer may take on before its column
             is considered `Count` type. Default is 20.
-        no_hypers: bool, optional
+        no_hypers: bool, optional (default: True)
             If `True`, disable hyper prior inference. Priors will be derived
             from the data and will remain static.
+        all_mnar: bool, optional (default: True)
+            If `True` all columns with missing values will be modeled as
+            missing-not-at-random (MNAR)
 
         """
 
         if isinstance(df, pd.DataFrame):
             df = pl.DataFrame(df.reset_index())
 
-        codebook = _lc.codebook_from_df(df, cat_cutoff, no_hypers)
+        codebook = _lc.codebook_from_df(df, cat_cutoff, no_hypers, all_mnar)
         codebook.rename(name)
         obj = cls(codebook)
 
@@ -221,7 +228,7 @@ class Codebook:
         return _ColumnMetadataIndexer(self.codebook)
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         """
         A (n_rows, n_cols) tuple.
 
@@ -236,7 +243,7 @@ class Codebook:
         return self.codebook.shape
 
     @property
-    def row_names(self) -> List[str]:
+    def row_names(self) -> list[str]:
         """
         Contains the name of each row.
 
@@ -251,7 +258,7 @@ class Codebook:
         return self.codebook.row_names
 
     @property
-    def column_names(self) -> List[str]:
+    def column_names(self) -> list[str]:
         """
         Contains the name of each column.
 
@@ -360,15 +367,13 @@ class Codebook:
         codebook.codebook.set_view_prior_process(prior_process)
         return codebook
 
-    def append_column_metadata(self, col_metadata: List[_lc.ColumnMetadata]):
+    def append_column_metadata(self, col_metadata: list[_lc.ColumnMetadata]):
         """Append new columns to the codebook."""
         codebook = copy.copy(self)
         codebook.codebook.append_column_metadata(col_metadata)
         return codebook
 
-    def set_row_names(
-        self, row_names: Union[List[str], pd.Series, pl.Series, np.ndarray]
-    ):
+    def set_row_names(self, row_names: list[str] | pd.Series | pl.Series | np.ndarray):
         """
         Return a copy of the codebook with new row_names.
 
@@ -440,6 +445,19 @@ class Codebook:
 
         """
         return self.column_metadata[col].value_map
+
+    def set_value_map(self, col: str, value_map):
+        """
+        Set the value map for a Categorical column.
+
+        Parameters
+        ----------
+        col: str
+            The column name
+        value_map: ValueMap
+            The new value map
+        """
+        self.codebook.set_value_map(col, value_map)
 
     def json(self) -> str:
         """Return the codebook as a JSON string."""

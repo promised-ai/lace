@@ -56,7 +56,7 @@ impl EmpiricalCdf {
         for i in 1..fxs.len() {
             let step = fxs[i] - fxs[i - 1];
             let trap = diff[i] + diff[i - 1];
-            q += step * trap
+            q = step.mul_add(trap, q);
         }
         q / 2.0
     }

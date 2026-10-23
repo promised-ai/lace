@@ -104,11 +104,7 @@ mod tests {
             };
             let err = relerr(truth, est);
 
-            if err > 1e-3 {
-                acc
-            } else {
-                acc + 1
-            }
+            if err > 1e-3 { acc } else { acc + 1 }
         });
 
         assert!(n_passes > 2);
@@ -146,11 +142,7 @@ mod tests {
             };
             let err = relerr(truth, est);
 
-            if err > 1e-3 {
-                acc
-            } else {
-                acc + 1
-            }
+            if err > 1e-3 { acc } else { acc + 1 }
         });
 
         assert!(n_passes > 2);

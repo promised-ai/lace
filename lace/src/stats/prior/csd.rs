@@ -7,8 +7,8 @@ use rv::traits::*;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::stats::mh::mh_prior;
 use crate::stats::UpdatePrior;
+use crate::stats::mh::mh_prior;
 
 /// Default `Csd` for Geweke testing
 pub fn geweke(k: usize) -> SymmetricDirichlet {

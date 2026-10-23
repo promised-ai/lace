@@ -95,7 +95,7 @@ impl FeatureData {
     /// Get the summary statistic for a column
     pub fn summarize(&self) -> SummaryStatistics {
         match self {
-            FeatureData::Binary(ref container) => SummaryStatistics::Binary {
+            FeatureData::Binary(container) => SummaryStatistics::Binary {
                 n: container.n_present(),
                 pos: container
                     .get_slices()
@@ -103,13 +103,13 @@ impl FeatureData {
                     .map(|(_, xs)| xs.len())
                     .sum::<usize>(),
             },
-            FeatureData::Continuous(ref container) => {
+            FeatureData::Continuous(container) => {
                 summarize_continuous(container)
             }
-            FeatureData::Categorical(ref container) => {
+            FeatureData::Categorical(container) => {
                 summarize_categorical(container)
             }
-            FeatureData::Count(ref container) => summarize_count(container),
+            FeatureData::Count(container) => summarize_count(container),
         }
     }
 }
@@ -129,7 +129,7 @@ pub fn summarize_continuous(
         max: xs[n - 1],
         mean: mean(&xs),
         variance: var(&xs),
-        median: if n % 2 == 0 {
+        median: if n.is_multiple_of(2) {
             (xs[n / 2] + xs[n / 2 - 1]) / 2.0
         } else {
             xs[n / 2]
@@ -156,7 +156,7 @@ pub fn summarize_categorical(
     let mode = counts
         .iter()
         .enumerate()
-        .filter(|(_, &ct)| ct == max_ct)
+        .filter(|(_, ct)| **ct == max_ct)
         .map(|(ix, _)| ix as u32)
         .collect();
 
@@ -194,13 +194,13 @@ pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {
     let mode = counts
         .iter()
         .enumerate()
-        .filter(|(_, &ct)| ct == max_ct)
+        .filter(|(_, ct)| **ct == max_ct)
         .map(|(ix, _)| ix as u32)
         .collect();
 
     let mean = xs.iter().sum::<usize>() as f64 / nf;
 
-    let median = if n % 2 == 0 {
+    let median = if n.is_multiple_of(2) {
         (xs[n / 2] + xs[n / 2 - 1]) as f64 / 2.0
     } else {
         xs[n / 2] as f64

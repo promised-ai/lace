@@ -18,16 +18,16 @@ use rv::traits::Mean;
 use rv::traits::QuadBounds;
 use rv::traits::Sampleable;
 use rv::traits::SuffStat;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use super::Component;
 use super::MissingNotAtRandom;
 use crate::cc::component::ConjugateComponent;
+use crate::cc::feature::FType;
 use crate::cc::feature::traits::Feature;
 use crate::cc::feature::traits::FeatureHelper;
-use crate::cc::feature::FType;
 use crate::cc::traits::AccumScore;
 use crate::cc::traits::LaceDatum;
 use crate::cc::traits::LaceLikelihood;
@@ -38,12 +38,12 @@ use crate::data::Container;
 use crate::data::Datum;
 use crate::data::FeatureData;
 use crate::data::SparseContainer;
+use crate::stats::MixtureType;
+use crate::stats::QmcEntropy;
 use crate::stats::assignment::Assignment;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
-use crate::stats::MixtureType;
-use crate::stats::QmcEntropy;
 use crate::utils::MinMax;
 
 /// A partitioned columns of data
