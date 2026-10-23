@@ -375,6 +375,10 @@ impl CoreEngine {
         self.engine.flatten_cols();
     }
 
+    fn flatten_columns_with(&mut self, asgn: Vec<usize>) {
+        self.engine.flatten_cols_with(asgn);
+    }
+
     /// Dependence probability
     ///
     /// Parameters

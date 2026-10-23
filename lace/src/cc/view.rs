@@ -740,7 +740,7 @@ impl View {
     }
 
     // Cleanup functions
-    fn integrate_finite_asgn(
+    pub(crate) fn integrate_finite_asgn(
         &mut self,
         mut new_asgn_vec: Vec<usize>,
         n_cats: usize,
