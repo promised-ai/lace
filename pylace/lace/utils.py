@@ -97,6 +97,7 @@ def infer_column_metadata(
     df: pl.DataFrame | pd.DataFrame,
     cat_cutoff: int = 20,
     no_hypers: bool = False,
+    all_mnar: bool = False,
 ) -> list[ColumnMetadata]:
     """
     Infer the column metadata from data.
@@ -116,7 +117,9 @@ def infer_column_metadata(
     for column in df.columns:
         if column.lower() in ("id", "index"):
             continue
-        md = infer_srs_metadata(pl.Series(df[column]), cat_cutoff, no_hypers).rename(column)
+        md = infer_srs_metadata(pl.Series(df[column]), cat_cutoff, no_hypers, all_mnar).rename(
+            column
+        )
         mds.append(md)
     return mds
 

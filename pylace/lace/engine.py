@@ -775,6 +775,7 @@ class Engine:
         metadata: list[core.ColumnMetadata] | None = None,
         cat_cutoff: int = 20,
         no_hypers: bool = False,
+        all_mnars: bool = False,
     ):
         """
         Append new columns to the Engine.
@@ -794,6 +795,9 @@ class Engine:
             ``col_metadata`` is None.
         no_hypers: bool, optional
             If True, the prior will be fixed and hyper priors will be ignored.
+            Used only if ``col_metadata`` is None.
+        all_mnar: bool, optional
+            If True, all new columns are specified to be missing not at random (mnar).
             Used only if ``col_metadata`` is None.
 
         Examples

@@ -2193,7 +2193,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=16,<23" },
     { name = "scipy", specifier = ">=1.12,<2" },
     { name = "seaborn", specifier = ">=0.5,<1" },
-    { name = "setuptools", specifier = ">=2" },
+    { name = "setuptools", specifier = ">=77" },
     { name = "tqdm", specifier = ">=4.27,<5" },
 ]
 
