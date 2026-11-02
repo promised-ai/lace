@@ -94,7 +94,7 @@ jobs:
         run: uv run --project pylace maturin --version
 
       - name: Build Wheel
-        run: uv run --project pylace maturin build --release --out dist --manifest-path pylace/Cargo.toml
+        run: uv run --project pylace maturin build --release --out dist --manifest-path pylace/Cargo.toml --config pylace/.cargo/config.toml
 
       - name: Upload wheel
         uses: actions/upload-artifact@v4
