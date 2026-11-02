@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=1.0,<2", "setuptools >= 77"]
+requires = ["maturin>=1.9.4,<2", "setuptools >= 77", "setuptools-rust >= 1.12"]
 build-backend = "maturin"
 
 [project]
@@ -42,7 +42,7 @@ dependencies = [
   'plotly >= 5, < 7',
   'tqdm >= 4.27, < 5',
   'pyarrow >= 16, < 23',
-  'setuptools >= 2',
+  'setuptools >= 77',
 ]
 
 [project.urls]

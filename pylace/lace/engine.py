@@ -486,9 +486,7 @@ class Engine:
         """
         return self.engine.row_assignments(state_ix)
 
-    def feature_params(
-        self, col: int | str, state_ixs: list[int] | None = None
-    ) -> dict:
+    def feature_params(self, col: int | str, state_ixs: list[int] | None = None) -> dict:
         """
         Get the component parameters for a given column.
 
@@ -539,10 +537,7 @@ class Engine:
         if state_ixs is None:
             state_ixs = list(range(self.n_states))
 
-        return {
-            state_ix: self.engine.feature_params(col, state_ix)
-            for state_ix in state_ixs
-        }
+        return {state_ix: self.engine.feature_params(col, state_ix) for state_ix in state_ixs}
 
     def __getitem__(self, ix):
         df = self.engine[ix]
@@ -680,10 +675,7 @@ class Engine:
 
     def append_rows(
         self,
-        rows: pd.Series
-        | pd.DataFrame
-        | pl.DataFrame
-        | dict[str, dict[str, object]],
+        rows: pd.Series | pd.DataFrame | pl.DataFrame | dict[str, dict[str, object]],
     ):
         """
         Append new rows to the table.
@@ -943,9 +935,7 @@ class Engine:
 
         """
         if metadata is None:
-            metadata = utils.infer_column_metadata(
-                cols, cat_cutoff=cat_cutoff, no_hypers=no_hypers
-            )
+            metadata = utils.infer_column_metadata(cols, cat_cutoff=cat_cutoff, no_hypers=no_hypers)
 
         self.engine.append_columns(cols, metadata)
 
@@ -1441,9 +1431,7 @@ class Engine:
 
         return out
 
-    def surprisal(
-        self, col: int | str, *, rows=None, values=None, state_ixs=None
-    ):
+    def surprisal(self, col: int | str, *, rows=None, values=None, state_ixs=None):
         r"""
         Compute the surprisal of a values in specific cells.
 
@@ -1561,18 +1549,14 @@ class Engine:
         └──────────────┴───────────────────┴───────────┘
 
         """
-        out = self.engine.surprisal(
-            col, rows=rows, values=values, state_ixs=state_ixs
-        )
+        out = self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
 
         if out.shape[1] == 1:
             return out["surprisal"]
         else:
             return out
 
-    def simulate(
-        self, cols, given=None, n: int = 1, include_given: bool = False
-    ):
+    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
         """
         Simulate data from a conditional distribution.
 
@@ -2014,9 +1998,7 @@ class Engine:
         └─────────────────────────────────┴─────────────────┘
 
         """
-        return self.engine.impute(
-            col, rows, with_uncertainty, impute_missing, state_ixs
-        )
+        return self.engine.impute(col, rows, with_uncertainty, impute_missing, state_ixs)
 
     def depprob(self, col_pairs: list):
         """
@@ -2091,9 +2073,7 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(
-        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
-    ):
+    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
         """
         Compute the mutual information between pairs of columns.
 
@@ -2173,9 +2153,7 @@ class Engine:
         ]
 
         """
-        srs = self.engine.mi(
-            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
-        )
+        srs = self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
         return utils.return_srs(srs)
 
     def rowsim(
@@ -2488,17 +2466,13 @@ class Engine:
     def extend_states(self, other):
         """Extend the states in this engine with the states in another Engine"""
         if self.shape != other.shape:
-            raise ValueError(
-                f"Shapes are not equal. self: `{self.shape}`, other `{other.shape}`"
-            )
+            raise ValueError(f"Shapes are not equal. self: `{self.shape}`, other `{other.shape}`")
 
         if self.index != other.index:
             raise IndexError("`other` Engine.index does not align with `self`")
 
         if self.columns != other.columns:
-            raise IndexError(
-                "`other` Engine.columns does not align with `self`"
-            )
+            raise IndexError("`other` Engine.columns does not align with `self`")
 
         ftypes_self = self.ftypes
         ftypes_other = other.ftypes
@@ -2513,9 +2487,7 @@ class Engine:
                 vmap_self = self.codebook.value_map(column)
                 vmap_other = other.codebook.value_map(column)
                 if vmap_self != vmap_other:
-                    raise ValueError(
-                        f"Incompatible value maps for column `{column}`."
-                    )
+                    raise ValueError(f"Incompatible value maps for column `{column}`.")
 
         self.engine.extend_states_unchecked(other.engine)
 

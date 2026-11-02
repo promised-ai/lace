@@ -1750,6 +1750,7 @@ mod tests {
         load_states(filenames)
     }
 
+    #[allow(unused)]
     pub fn old_categorical_entropy_single(
         col_ix: usize,
         states: &[State],

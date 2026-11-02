@@ -210,7 +210,6 @@ impl HasCodebook for Oracle {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
     use std::path::Path;
 
     use approx::*;
@@ -219,14 +218,12 @@ mod tests {
     use rv::dist::Gaussian;
     use rv::dist::Mixture;
     use rv::traits::HasDensity;
-    use rv::traits::Sampleable;
 
     use super::*;
     use crate::Given;
     use crate::Oracle;
     use crate::OracleT;
     use crate::cc::feature::FType;
-    use crate::cc::feature::Feature;
     use crate::codebook::ColMetadata;
     use crate::codebook::ColType;
     use crate::stats::MixtureType;
@@ -620,6 +617,10 @@ mod tests {
             states_ixs_opt: Option<Vec<usize>>,
             rng: &mut impl Rng,
         ) -> Vec<Vec<Datum>> {
+            use crate::cc::feature::Feature;
+            use rv::traits::Sampleable;
+            use std::collections::BTreeMap;
+
             let state_ixs: Vec<usize> = match states_ixs_opt {
                 Some(state_ixs) => state_ixs,
                 None => (0..oracle.n_states()).collect(),

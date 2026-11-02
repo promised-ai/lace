@@ -235,7 +235,7 @@ fn bench_impute(c: &mut Criterion) {
     c.bench_function("oracle impute", |b| {
         let oracle = get_oracle();
         b.iter(|| {
-            let _res = black_box(oracle.impute(13, 12, true));
+            let _res = black_box(oracle.impute(13, 12, true, false, None));
         })
     });
 }

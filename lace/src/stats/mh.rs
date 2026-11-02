@@ -1,4 +1,3 @@
-use std::f64;
 use std::ops::Mul;
 
 use rand::Rng;

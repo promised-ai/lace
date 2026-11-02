@@ -1971,15 +1971,12 @@ mod insert_data {
         };
     }
 
-    bad_data_test_existing!(
-        insert_bad_data_existing_pos_inf,
-        std::f64::INFINITY
-    );
+    bad_data_test_existing!(insert_bad_data_existing_pos_inf, f64::INFINITY);
     bad_data_test_existing!(
         insert_bad_data_existing_neg_inf,
-        std::f64::NEG_INFINITY
+        f64::NEG_INFINITY
     );
-    bad_data_test_existing!(insert_bad_data_existing_nan, std::f64::NAN);
+    bad_data_test_existing!(insert_bad_data_existing_nan, f64::NAN);
 
     macro_rules! bad_data_test_new {
         ($fn_name:ident, $value:expr) => {
@@ -2057,9 +2054,9 @@ mod insert_data {
         };
     }
 
-    bad_data_test_new!(insert_bad_data_new_pos_inf, std::f64::INFINITY);
-    bad_data_test_new!(insert_bad_data_new_neg_inf, std::f64::NEG_INFINITY);
-    bad_data_test_new!(insert_bad_data_new_nan, std::f64::NAN);
+    bad_data_test_new!(insert_bad_data_new_pos_inf, f64::INFINITY);
+    bad_data_test_new!(insert_bad_data_new_neg_inf, f64::NEG_INFINITY);
+    bad_data_test_new!(insert_bad_data_new_nan, f64::NAN);
 
     #[test]
     fn append_single_with_maintain_n_rows() {
