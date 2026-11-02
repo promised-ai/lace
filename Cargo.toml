@@ -1,6 +1,7 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = ["lace", "pylace", "cli"]
+exclude = ["book/lace_preprocess_mdbook_yaml"]
 
 [workspace.dependencies]
 lace = { path = "lace" }
