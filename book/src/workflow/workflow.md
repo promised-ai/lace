@@ -39,7 +39,7 @@ let df = CsvReader::from_path("mydata.csv")
   .unwrap();
 
 // 1. Create a codebook (optional)
-let codebook = Codebook::from_df(&df, None, None, False).unwrap();
+let codebook = Codebook::from_df(&df, None, None, false, false).unwrap();
 
 // 2. Build an engine
 let mut engine = EngineBuilder::new(DataSource::Polars(df))

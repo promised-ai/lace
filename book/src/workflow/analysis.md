@@ -77,7 +77,7 @@ animals with flippers, or a tail. Any animal.
 <div class=tabbed-blocks>
 
 ```python
-animals.predict("swims")
+animals.predict("swims").unwrap()
 ```
 
 ```rust,noplayground
@@ -86,7 +86,7 @@ animals.predict(
     &Given::<usize>::Nothing,
     true,
     None,
-);
+).unwrap();
 ```
 
 </div>

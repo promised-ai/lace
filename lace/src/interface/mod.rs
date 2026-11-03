@@ -4,7 +4,6 @@ mod given;
 mod metadata;
 mod oracle;
 
-pub use engine::update_handler;
 pub use engine::AppendStrategy;
 pub use engine::BuildEngineError;
 pub use engine::Engine;
@@ -16,6 +15,7 @@ pub use engine::Row;
 pub use engine::SupportExtension;
 pub use engine::Value;
 pub use engine::WriteMode;
+pub use engine::update_handler;
 pub use given::Given;
 pub use oracle::ConditionalEntropyType;
 pub use oracle::DatalessOracle;

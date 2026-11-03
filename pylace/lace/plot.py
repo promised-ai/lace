@@ -1,7 +1,9 @@
 """Plotting utilities."""
 
+from __future__ import annotations
+
 from math import ceil
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -88,9 +90,9 @@ def diagnostics(
 
 def prediction_uncertainty(
     engine: Engine,
-    target: Union[str, int],
-    given: Optional[Dict[Union[str, int], object]] = None,
-    xs: Optional[Union[pl.Series, pd.Series]] = None,
+    target: str | int,
+    given: dict[str | int, object] | None = None,
+    xs: pl.Series | pd.Series | None = None,
     n_points: int = 1_000,
     mass: float = 0.99,
 ):
@@ -166,9 +168,7 @@ def prediction_uncertainty(
 
     title = f"{target} uncertainty: {unc}"
 
-    fig = px.line(title=title).update_layout(
-        xaxis_title=target, yaxis_title="Likelihood"
-    )
+    fig = px.line(title=title).update_layout(xaxis_title=target, yaxis_title="Likelihood")
 
     for state_ix in range(n_states):
         ys = engine.logp(xs, given, state_ixs=[state_ix]).exp()
@@ -297,10 +297,10 @@ def state(
     engine: Engine,
     state_ix: int,
     *,
-    cmap: Optional[str] = None,
+    cmap: str | None = None,
     missing_color=None,
-    cat_gap: Union[float, int] = 0.1,
-    view_gap: Union[float, int] = 0.2,
+    cat_gap: float = 0.1,
+    view_gap: float = 0.2,
     show_index: bool = True,
     show_columns: bool = True,
     min_height: int = 0,
@@ -522,11 +522,11 @@ def _colors_from_values(values, cmap):
 
 
 def prediction_explanation(
-    engine: "Engine",
-    target: Union[int, str],
-    given: dict[Union[str, int], Any],
+    engine: Engine,
+    target: int | str,
+    given: dict[str | int, Any],
     *,
-    method: Optional[str] = None,
+    method: str | None = None,
     cmap=None,
 ):
     r"""
@@ -595,9 +595,7 @@ def prediction_explanation(
     if cmap is None:
         cmap = "picnic"
 
-    cols, imps = analysis.explain_prediction(
-        engine, target, given, method=method
-    )
+    cols, imps = analysis.explain_prediction(engine, target, given, method=method)
 
     srs = pd.Series(imps, index=cols, name=method)
 

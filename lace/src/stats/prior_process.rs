@@ -574,8 +574,8 @@ impl Builder {
 
     /// Build the assignment and consume the builder
     pub fn build(self) -> Result<PriorProcess, BuildPriorProcessError> {
-        use rand::rngs::StdRng;
         use rand::SeedableRng;
+        use rand::rngs::StdRng;
 
         let mut rng = self
             .seed

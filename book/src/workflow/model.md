@@ -126,7 +126,7 @@ let df = CsvReadOptions::default()
   .unwrap();
 
 // Create the default codebook
-let codebook = Codebook::from_df(&df, None, None, None, false).unwrap();
+let codebook = Codebook::from_df(&df, None, None, None, false, false).unwrap();
 
 // Build an rng
 let rng = Xoshiro256Plus::from_os_rng();
@@ -145,7 +145,7 @@ Now we have two options for fitting. We can use the `Engine::run` method, which
 uses a default set of transition operations that prioritizes speed.
 
 ```rust,noplayground
-engine.run(1_000);
+engine.run(1_000).unwrap();
 ```
 
 We can also tell lace exactly which transitions to run.

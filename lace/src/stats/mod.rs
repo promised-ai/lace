@@ -41,8 +41,8 @@ pub use simplex::*;
 
 pub mod test {
     pub use chi_square::chi_square_test;
-    pub use ks::ks2sample;
     pub use ks::ks_test;
+    pub use ks::ks2sample;
     pub use perm::gauss_kernel;
     pub use perm::gauss_perm_test;
     pub use perm::perm_test;

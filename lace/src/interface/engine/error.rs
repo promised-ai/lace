@@ -35,10 +35,14 @@ pub enum DataParseError {
     MultipleIdColumns(Vec<String>),
     /// There is a column type in the codebook that is not supported for loading
     /// externally
-    #[error("Column `{col_name}` has type `{col_type}`, which is unsupported for external data sources")]
+    #[error(
+        "Column `{col_name}` has type `{col_type}`, which is unsupported for external data sources"
+    )]
     UnsupportedColumnType { col_name: String, col_type: String },
     /// The codebook and the data have a different number of rows
-    #[error("The codebook contains {n_codebook_rows} rows, but the data contain {n_data_rows} rows")]
+    #[error(
+        "The codebook contains {n_codebook_rows} rows, but the data contain {n_data_rows} rows"
+    )]
     CodebookAndDataRowsMismatch {
         n_codebook_rows: usize,
         n_data_rows: usize,
@@ -95,9 +99,7 @@ pub enum InsertDataError {
     ModeForbidsNewRowsOrColumns,
     /// the insert mode does not allow the extension of categorical column
     /// cardinalities.
-    #[error(
-        "Categorical column support extension forbidden by requested mode"
-    )]
+    #[error("Categorical column support extension forbidden by requested mode")]
     ModeForbidsCategoryExtension,
     /// There was no hyper prior supplied for the Gaussian column
     #[error("No Gaussian hyper prior for new column '{0}'")]
@@ -180,7 +182,9 @@ pub enum InsertDataError {
     ExtendBooleanColumn(String),
     #[error("Could not find value in categorical value map")]
     CategoryNotInValueMap(Category),
-    #[error("Attempted to add a category '{1}' to a column of type '{0}' for column '{2}'")]
+    #[error(
+        "Attempted to add a category '{1}' to a column of type '{0}' for column '{2}'"
+    )]
     WrongCategoryAndType(String, String, String),
 }
 

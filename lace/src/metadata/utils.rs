@@ -12,12 +12,12 @@ use rand_xoshiro::Xoshiro256Plus;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::metadata::latest::Codebook;
-use crate::metadata::latest::DataStore;
-use crate::metadata::latest::DatalessStateAndDiagnostics;
 use crate::metadata::Error;
 use crate::metadata::FileConfig;
 use crate::metadata::SerializedType;
+use crate::metadata::latest::Codebook;
+use crate::metadata::latest::DataStore;
+use crate::metadata::latest::DatalessStateAndDiagnostics;
 
 fn extension_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {
     path.as_ref()

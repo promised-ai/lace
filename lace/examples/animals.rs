@@ -4,8 +4,8 @@ use std::convert::TryInto;
 use std::io;
 use std::io::prelude::*;
 
-use lace::examples::animals::Column;
 use lace::examples::Example;
+use lace::examples::animals::Column;
 use lace::prelude::*;
 
 // Get this many predictors

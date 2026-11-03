@@ -51,6 +51,7 @@ use rv::dist::Gamma;
 use rv::dist::NormalInvChiSquared;
 use rv::dist::SymmetricDirichlet;
 
+use super::DataFrameAdapter;
 use crate::cc::feature::ColModel;
 use crate::cc::feature::Column;
 use crate::cc::feature::Feature;
@@ -162,7 +163,7 @@ fn categorical_col_model<R: rand::Rng>(
         }
         (ValueMap::Bool, DataType::Boolean) => srs
             .bool()?
-            .into_iter()
+            .iter()
             .map(|maybe_bool| {
                 maybe_bool.map(|b| ValueMap::Bool.ix(&b.into()).unwrap() as u32)
             })
@@ -171,7 +172,7 @@ fn categorical_col_model<R: rand::Rng>(
             return Err(CodebookError::UnsupportedDataType {
                 col_name: srs.name().to_string(),
                 dtype: srs.dtype().clone(),
-            })
+            });
         }
     };
     let data = SparseContainer::from(xs);
@@ -232,7 +233,7 @@ pub fn df_to_col_models<R: rand::Rng>(
 
     let srss = {
         let mut srss: HashMap<&str, &Series> = df
-            .get_columns()
+            .columns()
             .iter()
             .map(|col| (col.name().as_str(), col.as_materialized_series()))
             .collect();

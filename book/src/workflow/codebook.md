@@ -50,7 +50,7 @@ let df = CsvReadOptions::default()
   .unwrap();
 
 // Create the default codebook
-let codebook = Codebook::from_df(&df, None, None, None, false).unwrap();
+let codebook = Codebook::from_df(&df, None, None, None, false, false).unwrap();
 ```
 
 </div>

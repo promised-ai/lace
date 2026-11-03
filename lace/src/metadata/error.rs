@@ -28,7 +28,9 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     #[error("BincodeError: {0}")]
     Bincode(#[from] bincode::Error),
-    #[error("Unsupported metadata version `{requested}`. Max supported version: {max_supported}")]
+    #[error(
+        "Unsupported metadata version `{requested}`. Max supported version: {max_supported}"
+    )]
     UnsupportedMetadataVersion { requested: i32, max_supported: i32 },
     #[error("Failure parsing float in diagnostics: {0}")]
     DiagnosticsParseInt(#[from] std::num::ParseIntError),

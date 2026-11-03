@@ -4,12 +4,12 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
-use crate::cc::state::State;
-use crate::data::DataStore;
-use crate::metadata::latest;
 use crate::DatalessOracle;
 use crate::Engine;
 use crate::Oracle;
+use crate::cc::state::State;
+use crate::data::DataStore;
+use crate::metadata::latest;
 
 impl From<Engine> for latest::Metadata {
     fn from(mut engine: Engine) -> Self {
@@ -42,7 +42,9 @@ impl From<&Engine> for latest::Metadata {
 }
 
 #[derive(Clone, Copy, Debug, Error)]
-#[error("Failed to convert metadata to Engine/Oracle because `data` field is `None`")]
+#[error(
+    "Failed to convert metadata to Engine/Oracle because `data` field is `None`"
+)]
 pub struct DataFieldNoneError;
 
 impl From<Oracle> for latest::Metadata {
@@ -158,8 +160,8 @@ impl From<latest::Metadata> for DatalessOracle {
 #[cfg(all(test, feature = "examples"))]
 mod tests {
     use super::*;
-    use crate::examples::Example;
     use crate::AppendStrategy;
+    use crate::examples::Example;
 
     #[test]
     fn serde_engine() {
@@ -184,12 +186,12 @@ mod tests {
 
     #[test]
     fn engine_can_update_data_after() {
-        use crate::data::Datum;
         use crate::InsertMode;
         use crate::OverwriteMode;
         use crate::Row;
         use crate::Value;
         use crate::WriteMode;
+        use crate::data::Datum;
 
         let engine_1 = Example::Animals.engine().unwrap();
         let serialized_1 = serde_yaml::to_string(&engine_1).unwrap();

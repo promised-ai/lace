@@ -37,11 +37,7 @@ where
             let maxval = (1..n_cols).fold(logp0, |max, j| {
                 let logp = logps[(i, j)];
                 ps.push(logp);
-                if logp > max {
-                    logp
-                } else {
-                    max
-                }
+                if logp > max { logp } else { max }
             });
 
             ps[0] = (logp0 - maxval).exp();
@@ -81,11 +77,7 @@ where
             let maxval = (1..n_cols).fold(logp0, |max, j| {
                 let logp = logps[(i, j)];
                 ps.push(logp);
-                if logp > max {
-                    logp
-                } else {
-                    max
-                }
+                if logp > max { logp } else { max }
             });
 
             // There should always be at least two columns
@@ -115,11 +107,7 @@ where
         .map(|i| {
             let maxval = (1..n_cols).fold(logps[(i, 0)], |max, j| {
                 let val = logps[(i, j)];
-                if val > max {
-                    val
-                } else {
-                    max
-                }
+                if val > max { val } else { max }
             });
 
             // XXX: using is lps[i] != NEG_INFINITY saves 2 EQ comparisons, two ORs,
@@ -162,11 +150,7 @@ where
         .map(|(i, &u)| {
             let maxval = (1..n_cols).fold(logps[(i, 0)], |max, j| {
                 let val = logps[(i, j)];
-                if val > max {
-                    val
-                } else {
-                    max
-                }
+                if val > max { val } else { max }
             });
 
             // XXX: using is lps[i] != NEG_INFINITY saves 2 EQ comparisons, two ORs,
@@ -239,7 +223,7 @@ mod tests {
                 ps.iter_mut().for_each(|p| *p /= z);
 
                 let u: f64 = rng.random();
-                ps.iter().enumerate().find(|(_, &p)| p > u).unwrap().0
+                ps.iter().enumerate().find(|(_, p)| **p > u).unwrap().0
             })
             .collect()
     }

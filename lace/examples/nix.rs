@@ -1,10 +1,10 @@
 use lace::utils::mean_var;
+use plotly::Histogram;
+use plotly::Plot;
 use plotly::layout::Axis;
 use plotly::layout::GridPattern;
 use plotly::layout::Layout;
 use plotly::layout::LayoutGrid;
-use plotly::Histogram;
-use plotly::Plot;
 use rv::dist::Gamma;
 use rv::dist::Gaussian;
 use rv::dist::InvGamma;

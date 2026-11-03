@@ -11,9 +11,7 @@ def animals():
     return animals
 
 
-@pytest.mark.parametrize(
-    "index_name", ["ID", "Id", "id", "Index", "index", "INDEX"]
-)
+@pytest.mark.parametrize("index_name", ["ID", "Id", "id", "Index", "index", "INDEX"])
 def test_polars_with_index(animals, index_name):
     rows = pl.DataFrame(
         {

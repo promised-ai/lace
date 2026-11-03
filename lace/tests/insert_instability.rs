@@ -2,11 +2,11 @@
 // running an Engine update leaves the metadata in an invalid state.
 use std::convert::TryInto;
 
+use lace::Given;
+use lace::Row;
 use lace::codebook::ColMetadata;
 use lace::codebook::ColMetadataList;
 use lace::metadata::SerializedType;
-use lace::Given;
-use lace::Row;
 use rv::traits::Sampleable;
 
 fn empty_engine() -> lace::Engine {

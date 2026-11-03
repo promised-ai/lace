@@ -5,10 +5,10 @@ mod enum_test;
 
 use std::collections::BTreeMap;
 
+use enum_test::Partition;
 use enum_test::build_features;
 use enum_test::normalize_assignment;
 use enum_test::partition_to_ix;
-use enum_test::Partition;
 use lace::cc::alg::RowAssignAlg;
 use lace::cc::feature::ColModel;
 use lace::cc::feature::FType;

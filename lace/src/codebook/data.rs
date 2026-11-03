@@ -6,8 +6,6 @@ use polars::prelude::DataType;
 use polars::prelude::SerReader;
 use polars::prelude::Series;
 
-use crate::codebook::error::CodebookError;
-use crate::codebook::error::ReadError;
 use crate::codebook::Codebook;
 use crate::codebook::ColMetadata;
 use crate::codebook::ColMetadataList;
@@ -15,6 +13,8 @@ use crate::codebook::ColType;
 use crate::codebook::PriorProcess;
 use crate::codebook::RowNameList;
 use crate::codebook::ValueMap;
+use crate::codebook::error::CodebookError;
+use crate::codebook::error::ReadError;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
@@ -26,10 +26,7 @@ macro_rules! series_to_opt_vec {
     ($srs: ident, $X: ty) => {{
         macro_rules! stv_arm {
             ($srsi: ident, $method: ident, $Xi: ty) => {{
-                $srsi
-                    .$method()?
-                    .into_iter()
-                    .map(|x_opt| x_opt.map(|x| x as $Xi))
+                $srsi.$method()?.iter().map(|x_opt| x_opt.map(|x| x as $Xi))
             }};
         }
         match $srs.dtype() {
@@ -79,10 +76,7 @@ macro_rules! series_to_vec {
     ($srs: ident, $X: ty) => {{
         macro_rules! stv_arm {
             ($srsi: ident, $method: ident, $Xi: ty) => {{
-                $srsi
-                    .$method()?
-                    .into_iter()
-                    .map(|x_opt| x_opt.map(|x| x as $Xi))
+                $srsi.$method()?.iter().map(|x_opt| x_opt.map(|x| x as $Xi))
             }};
         }
         match $srs.dtype() {
@@ -134,7 +128,7 @@ macro_rules! series_to_opt_strings {
             ($srsi: ident, $method: ident) => {{
                 $srsi
                     .$method()?
-                    .into_iter()
+                    .iter()
                     .map(|x_opt| x_opt.map(|x| format!("{}", x)))
             }};
         }
@@ -177,7 +171,7 @@ macro_rules! series_to_opt_strings {
                     $crate::codebook::CodebookError::UnableToInferColumnType {
                         col_name: $srs.name().to_string(),
                     },
-                )
+                );
             }
         }
     }};
@@ -190,7 +184,7 @@ macro_rules! series_to_strings {
             ($srsi: ident, $method: ident) => {{
                 $srsi
                     .$method()?
-                    .into_iter()
+                    .iter()
                     .map(|x_opt| x_opt.map(|x| format!("{}", x)))
             }};
         }
@@ -233,7 +227,7 @@ macro_rules! series_to_strings {
                     $crate::codebook::CodebookError::UnableToInferColumnType {
                         col_name: $srs.name().to_string(),
                     },
-                )
+                );
             }
         }
     }};
@@ -357,7 +351,7 @@ fn string_categorical_coltype(
         let unique: BTreeSet<String> = srs
             .unique()?
             .str()?
-            .into_iter()
+            .iter()
             .filter_map(|x| x.map(String::from))
             .collect();
 
@@ -392,6 +386,7 @@ pub fn series_to_colmd(
     srs: &Series,
     cat_cutoff: Option<u32>,
     no_hypers: bool,
+    mnar: bool,
 ) -> Result<ColMetadata, CodebookError> {
     let name = srs.name().to_string();
     let dtype = srs.dtype();
@@ -423,7 +418,7 @@ pub fn series_to_colmd(
         name,
         coltype,
         notes: None,
-        missing_not_at_random: false,
+        missing_not_at_random: mnar && srs.null_count() > 0,
     })
 }
 
@@ -446,11 +441,12 @@ pub fn df_to_codebook(
     state_prior_process: Option<PriorProcess>,
     view_prior_process: Option<PriorProcess>,
     no_hypers: bool,
+    all_mnar: bool,
 ) -> Result<Codebook, CodebookError> {
     let (col_metadata, row_names) = {
         let mut row_names_opt: Option<RowNameList> = None;
         let mut col_metadata = Vec::with_capacity(df.shape().1);
-        for col in df.get_columns().iter() {
+        for col in df.columns().iter() {
             let srs = col.as_materialized_series();
             if crate::utils::is_index_col(srs.name()) {
                 if row_names_opt.is_some() {
@@ -463,7 +459,8 @@ pub fn df_to_codebook(
                         srs.name().to_string(),
                     ));
                 }
-                let colmd = series_to_colmd(srs, cat_cutoff, no_hypers)?;
+                let colmd =
+                    series_to_colmd(srs, cat_cutoff, no_hypers, all_mnar)?;
                 col_metadata.push(colmd);
             }
         }
@@ -499,6 +496,7 @@ pub fn codebook_from_csv<P: AsRef<Path>>(
     state_prior_process: Option<PriorProcess>,
     view_prior_process: Option<PriorProcess>,
     no_hypers: bool,
+    all_mnar: bool,
 ) -> Result<crate::codebook::Codebook, crate::codebook::CodebookError> {
     let df = read_csv(path).unwrap();
     df_to_codebook(
@@ -507,6 +505,7 @@ pub fn codebook_from_csv<P: AsRef<Path>>(
         state_prior_process,
         view_prior_process,
         no_hypers,
+        all_mnar,
     )
 }
 
@@ -545,7 +544,8 @@ mod test {
         let file = write_to_tempfile(&data);
 
         let codebook =
-            codebook_from_csv(file.path(), None, None, None, false).unwrap();
+            codebook_from_csv(file.path(), None, None, None, false, false)
+                .unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);
@@ -633,8 +633,8 @@ mod test {
                         "a".into(),
                         ($int_min..$int_max).collect::<Vec<_>>(),
                     );
-                    let colmd =
-                        series_to_colmd(&srs, $cat_cutoff, true).unwrap();
+                    let colmd = series_to_colmd(&srs, $cat_cutoff, true, false)
+                        .unwrap();
                     match colmd.coltype {
                         ColType::Categorical { k, .. } => {
                             if $should_be_categorical {
@@ -691,7 +691,7 @@ mod test {
                 "A".into(),
                 (0..255).map(|x| format!("{x}")).collect::<Vec<_>>(),
             );
-            assert!(series_to_colmd(&srs, None, false).is_ok());
+            assert!(series_to_colmd(&srs, None, false, false).is_ok());
         }
 
         #[test]
@@ -704,7 +704,7 @@ mod test {
                     .map(|x| format!("{x}"))
                     .collect::<Vec<_>>(),
             );
-            assert!(series_to_colmd(&srs, None, false).is_ok());
+            assert!(series_to_colmd(&srs, None, false, false).is_ok());
         }
 
         macro_rules! count_or_continuous {
@@ -715,7 +715,8 @@ mod test {
                         "A".into(),
                         ($min_val..$max_val).collect::<Vec<_>>(),
                     );
-                    let colmd = series_to_colmd(&srs, None, false).unwrap();
+                    let colmd =
+                        series_to_colmd(&srs, None, false, false).unwrap();
                     match colmd.coltype {
                         ColType::Continuous { .. } => assert!(!$is_count),
                         ColType::Count { .. } => assert!($is_count),
@@ -746,7 +747,7 @@ mod test {
                 "A".into(),
                 (0..100).map(|x| x % 2 == 1).collect::<Vec<bool>>(),
             );
-            let colmd = series_to_colmd(&srs, None, true).unwrap();
+            let colmd = series_to_colmd(&srs, None, true, false).unwrap();
             match colmd.coltype {
                 ColType::Categorical {
                     value_map: ValueMap::Bool,

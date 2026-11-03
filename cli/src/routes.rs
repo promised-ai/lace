@@ -210,6 +210,7 @@ macro_rules! codebook_from {
             None,
             None,
             $cmd.no_hyper,
+            $cmd.all_mnar,
         ) {
             Ok(codebook) => codebook,
             Err(err) => {

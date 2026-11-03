@@ -2,8 +2,8 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
 
-use super::error::NewEngineError;
 use super::Engine;
+use super::error::NewEngineError;
 use crate::codebook::Codebook;
 use crate::data::DataSource;
 use crate::data::DefaultCodebookError;
