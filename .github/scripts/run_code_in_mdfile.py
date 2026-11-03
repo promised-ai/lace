@@ -47,6 +47,12 @@ def process_file(file, language, version):
         //! polars = {{ version = "0.55.2", default_features=false, features=["csv", "dtype-i8", "dtype-i16", "dtype-u8", "dtype-u16"] }}
         //! rand = {{version="0.9", features=["serde"]}}
         //! rand_xoshiro = {{ version="0.7", features = ["serde"] }}
+        //!
+        //! [lints.rust]
+        //! dead_code = "allow"
+        //! unused_variables = "allow"
+        //! unused_imports = "allow"
+        //! unused_must_use = "allow"
         //! ```
         fn main() {{
         {code}
