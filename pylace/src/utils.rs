@@ -1,18 +1,20 @@
 use std::collections::HashMap;
 
-use lace::codebook::Codebook;
-use lace::codebook::ValueMap;
-use lace::prelude::ColType;
-use lace::utils::is_index_col;
 use lace::ColumnIndex;
 use lace::Datum;
 use lace::FType;
 use lace::Given;
 use lace::OracleT;
 use lace::RowIndex;
+use lace::codebook::Codebook;
+use lace::codebook::ValueMap;
+use lace::prelude::ColType;
+use lace::utils::is_index_col;
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
+use pyo3::BoundObject;
+use pyo3::IntoPyObjectExt;
 use pyo3::exceptions::PyIndexError;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::exceptions::PyTypeError;
@@ -25,8 +27,6 @@ use pyo3::types::PySlice;
 use pyo3::types::PySliceMethods;
 use pyo3::types::PyString;
 use pyo3::types::PyTuple;
-use pyo3::BoundObject;
-use pyo3::IntoPyObjectExt;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -374,7 +374,7 @@ pub fn simulate_to_df(
             }
             FType::Count => Ok(srs_from_simulate!(values, i, name, u32, Count)),
         }?;
-        df.with_column(srs).map_err(|err| {
+        df.with_column(srs.into()).map_err(|err| {
             PyErr::new::<PyRuntimeError, _>(format!(
                 "Failed to append column tp df: {err}"
             ))

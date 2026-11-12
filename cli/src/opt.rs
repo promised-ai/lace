@@ -234,6 +234,10 @@ pub struct CodebookArgs {
     /// from the data.
     #[clap(long)]
     pub no_hyper: bool,
+    /// Model any features with one or more missing values as missing-not-at-
+    /// random (MNAR)
+    #[clap(long)]
+    pub all_mnar: bool,
 }
 
 #[derive(Parser, Debug, Clone)]

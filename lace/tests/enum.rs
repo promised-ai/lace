@@ -6,8 +6,8 @@ mod partition {
     use lace::stats::assignment::Assignment;
     use lace::stats::prior_process::Dirichlet;
     use lace::stats::prior_process::PriorProcessT;
-    use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
     use rv::dist::Gamma;
 
     use super::*;

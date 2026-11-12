@@ -1,9 +1,11 @@
 """Tools for analysis of probabilistic cross-categorization results in Lace."""
 
+from __future__ import annotations
+
 import enum
 import itertools as it
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any
 
 import polars as pl
 from tqdm import tqdm
@@ -55,11 +57,11 @@ class HoldOutFunc(enum.Enum):
 
 
 def _held_out_compute(
-    engine: "Engine",
+    engine: Engine,
     fn: HoldOutFunc,
     values,
-    given: dict[Union[str, int], Any],
-) -> Optional[float]:
+    given: dict[str | int, Any],
+) -> float | None:
     if fn == HoldOutFunc.NegLogp:
         logp = engine.logp(values, given=given)
         if logp is not None:
@@ -75,12 +77,12 @@ def _held_out_compute(
 
 
 def _held_out_inner_enum(
-    engine: "Engine",
+    engine: Engine,
     fn: HoldOutFunc,
     n,
     values,
-    given: dict[Union[str, int], Any],
-    pbar: Optional[tqdm],
+    given: dict[str | int, Any],
+    pbar: tqdm | None,
 ) -> tuple[float, set[str]]:
     all_keys = list(given.keys())
     all_keys.sort()
@@ -110,11 +112,11 @@ def _held_out_inner_enum(
 
 
 def _held_out_inner_greedy(
-    engine: "Engine",
+    engine: Engine,
     fn: HoldOutFunc,
     values,
-    given: dict[Union[str, int], Any],
-    pbar: Optional[tqdm],
+    given: dict[str | int, Any],
+    pbar: tqdm | None,
 ) -> tuple[float, set[str]]:
     all_keys = list(given.keys())
     all_keys.sort()
@@ -141,13 +143,13 @@ def _held_out_inner_greedy(
 
 
 def _held_out_inner(
-    engine: "Engine",
+    engine: Engine,
     fn: HoldOutFunc,
     search: HoldOutSearchMethod,
     n: int,
     values,
-    given: dict[Union[str, int], Any],
-    pbar: Optional[tqdm],
+    given: dict[str | int, Any],
+    pbar: tqdm | None,
 ):
     if search == HoldOutSearchMethod.Greedy:
         return _held_out_inner_greedy(engine, fn, values, given, pbar)
@@ -158,11 +160,11 @@ def _held_out_inner(
 
 
 def _held_out_base(
-    engine: "Engine",
+    engine: Engine,
     fn: HoldOutFunc,
     search: HoldOutSearchMethod,
     values,
-    given: dict[Union[str, int], Any],
+    given: dict[str | int, Any],
     quiet: bool = False,
 ) -> pl.DataFrame:
     if quiet:
@@ -186,9 +188,7 @@ def _held_out_base(
         pbar.update(1)
 
     for i in range(n):
-        f_opt, keys = _held_out_inner(
-            engine, fn, search, i + 1, values, given, pbar
-        )
+        f_opt, keys = _held_out_inner(engine, fn, search, i + 1, values, given, pbar)
 
         keys_removed.append(i + 1)
 
@@ -211,9 +211,9 @@ def _held_out_base(
 
 
 def held_out_neglogp(
-    engine: "Engine",
+    engine: Engine,
     values,
-    given: dict[Union[str, int], Any],
+    given: dict[str | int, Any],
     quiet: bool = False,
     greedy: bool = True,
 ) -> pl.DataFrame:
@@ -309,9 +309,7 @@ def held_out_neglogp(
     └─────────────────────────────────┴─────────────────────┴───────────┘
 
     """
-    search = (
-        HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
-    )
+    search = HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
 
     res = _held_out_base(
         engine,
@@ -325,9 +323,9 @@ def held_out_neglogp(
 
 
 def held_out_inconsistency(
-    engine: "Engine",
+    engine: Engine,
     values,
-    given: dict[Union[str, int], Any],
+    given: dict[str | int, Any],
     quiet: bool = False,
     greedy: bool = True,
 ) -> pl.DataFrame:
@@ -423,9 +421,7 @@ def held_out_inconsistency(
     └─────────────────────────────────┴───────────────────────────┴───────────┘
 
     """
-    search = (
-        HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
-    )
+    search = HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
 
     res = _held_out_base(
         engine,
@@ -439,9 +435,9 @@ def held_out_inconsistency(
 
 
 def held_out_uncertainty(
-    engine: "Engine",
-    target: Union[str, int],
-    given: dict[Union[str, int], Any],
+    engine: Engine,
+    target: str | int,
+    given: dict[str | int, Any],
     quiet: bool = False,
     greedy: bool = True,
 ) -> pl.DataFrame:
@@ -534,9 +530,7 @@ def held_out_uncertainty(
     └─────────────────────────────────┴─────────────────────────┴───────────┘
 
     """
-    search = (
-        HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
-    )
+    search = HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
 
     res = _held_out_base(
         engine,
@@ -550,22 +544,18 @@ def held_out_uncertainty(
 
 
 def _attributable_holdout(
-    engine: "Engine",
+    engine: Engine,
     fn: HoldOutFunc,
     values,
-    given: dict[Union[str, int], Any],
+    given: dict[str | int, Any],
     quiet: bool = False,
     greedy: bool = True,
 ):
-    search = (
-        HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
-    )
+    search = HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
 
     fn_str = str(fn)
 
-    res = _held_out_base(
-        engine, fn, search, values, deepcopy(given), quiet=quiet
-    )
+    res = _held_out_base(engine, fn, search, values, deepcopy(given), quiet=quiet)
 
     n_holdouts = res.shape[0]
 
@@ -597,12 +587,12 @@ def _attributable_holdout(
 
 
 def attributable_inconsistency(
-    engine: "Engine",
+    engine: Engine,
     values,
-    given: dict[Union[str, int], Any],
+    given: dict[str | int, Any],
     quiet: bool = False,
     greedy: bool = True,
-) -> Tuple[float, pl.DataFrame]:
+) -> tuple[float, pl.DataFrame]:
     r"""
     Determine what fraction of inconsistency is attributable.
 
@@ -671,12 +661,12 @@ def attributable_inconsistency(
 
 
 def attributable_neglogp(
-    engine: "Engine",
+    engine: Engine,
     values,
-    given: dict[Union[str, int], Any],
+    given: dict[str | int, Any],
     quiet: bool = False,
     greedy: bool = True,
-) -> Tuple[float, pl.DataFrame]:
+) -> tuple[float, pl.DataFrame]:
     r"""
     Determine what fraction of surprisal (-log p) is attributable.
 
@@ -745,12 +735,12 @@ def attributable_neglogp(
 
 
 def attributable_uncertainty(
-    engine: "Engine",
-    target: Union[str, int],
-    given: dict[Union[str, int], Any],
+    engine: Engine,
+    target: str | int,
+    given: dict[str | int, Any],
     quiet: bool = False,
     greedy: bool = True,
-) -> Tuple[float, pl.DataFrame]:
+) -> tuple[float, pl.DataFrame]:
     r"""
     Determine what fraction of uncertainty is attributable.
 
@@ -816,9 +806,9 @@ def attributable_uncertainty(
 
 
 def _explain_ablative_err(
-    engine: "Engine",
-    target: Union[int, str],
-    given: dict[Union[str, int], Any],
+    engine: Engine,
+    target: int | str,
+    given: dict[str | int, Any],
 ):
     xs = utils.predict_xs(engine, target, None, mass=0.995)
 
@@ -851,9 +841,9 @@ def _explain_ablative_err(
 
 
 def _explain_ablative_dist(
-    engine: "Engine",
-    target: Union[int, str],
-    given: dict[Union[str, int], Any],
+    engine: Engine,
+    target: int | str,
+    given: dict[str | int, Any],
 ):
     ftype = engine.ftype(target)
     if ftype != "Continuous":
@@ -883,11 +873,11 @@ def _explain_ablative_dist(
 
 
 def explain_prediction(
-    engine: "Engine",
-    target: Union[int, str],
-    given: dict[Union[str, int], Any],
+    engine: Engine,
+    target: int | str,
+    given: dict[str | int, Any],
     *,
-    method: Optional[str] = None,
+    method: str | None = None,
 ):
     """
     Explain the relevance of each predictor when predicting a target.
@@ -997,6 +987,4 @@ def explain_prediction(
     elif method == ABLATIVE_DIST:
         return _explain_ablative_dist(engine, target, given)
     else:
-        raise ValueError(
-            f"Invalid method `{method}`, valid methods are {PRED_EXPLAIN_METHODS}"
-        )
+        raise ValueError(f"Invalid method `{method}`, valid methods are {PRED_EXPLAIN_METHODS}")

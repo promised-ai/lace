@@ -1,11 +1,11 @@
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use lace::codebook::data::df_to_codebook;
 use lace::codebook::ColMetadata;
 use lace::codebook::ColMetadataList;
 use lace::codebook::ColType;
 use lace::codebook::RowNameList;
+use lace::codebook::data::df_to_codebook;
 use lace::rv::dist::Beta;
 use lace::rv::dist::Gamma;
 use lace::rv::dist::Gaussian;
@@ -16,27 +16,23 @@ use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
 use lace::stats::prior::pg::PgHyper;
 use polars::prelude::DataFrame;
+use pyo3::IntoPyObjectExt;
 use pyo3::exceptions::PyIOError;
 use pyo3::exceptions::PyIndexError;
 use pyo3::exceptions::PyKeyError;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use pyo3::IntoPyObjectExt;
 
 use crate::df::PyDataFrame;
 use crate::utils::to_pyerr;
 
 macro_rules! newtype_json_repr {
-    ($self: ident) => {{
-        serde_json::to_string_pretty(&$self.0).map_err(to_pyerr)
-    }};
+    ($self: ident) => {{ serde_json::to_string_pretty(&$self.0).map_err(to_pyerr) }};
 }
 
 macro_rules! newtype_string_repr {
-    ($self: ident) => {{
-        Ok($self.0.to_string())
-    }};
+    ($self: ident) => {{ Ok($self.0.to_string()) }};
 }
 
 /// Column metadata
@@ -503,6 +499,7 @@ enum CodebookMethod {
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         no_hypers: bool,
+        all_mnar: bool,
     },
     Codebook(Codebook),
 }
@@ -514,6 +511,7 @@ impl Default for CodebookMethod {
             state_prior_process: None,
             view_prior_process: None,
             no_hypers: false,
+            all_mnar: false,
         }
     }
 }
@@ -666,6 +664,27 @@ impl Codebook {
             .map(|(_, md)| ColumnMetadata(md.clone()))
     }
 
+    fn set_value_map(
+        &mut self,
+        name: &str,
+        valuemap: ValueMap,
+    ) -> PyResult<()> {
+        let Some((_, md)) = self.0.col_metadata.get_mut(name) else {
+            return Err(PyIndexError::new_err(format!("No column '{name}'")));
+        };
+        match md.coltype {
+            ColType::Categorical {
+                ref mut value_map, ..
+            } => {
+                *value_map = valuemap.0;
+                Ok(())
+            }
+            _ => Err(PyValueError::new_err(
+                "Cannot set value_map for non-categorical features",
+            )),
+        }
+    }
+
     fn set_column_metadata(
         &mut self,
         name: &str,
@@ -693,11 +712,12 @@ impl Codebook {
 
 #[allow(clippy::needless_pass_by_value)]
 #[pyfunction]
-#[pyo3(signature = (df, cat_cutoff=None, no_hypers=false))]
+#[pyo3(signature = (df, cat_cutoff=None, no_hypers=false, all_mnar=false))]
 pub fn codebook_from_df(
     df: PyDataFrame,
     cat_cutoff: Option<u32>,
     no_hypers: bool,
+    all_mnar: bool,
 ) -> PyResult<Codebook> {
     CodebookBuilder {
         method: CodebookMethod::Inferred {
@@ -705,6 +725,7 @@ pub fn codebook_from_df(
             state_prior_process: None,
             view_prior_process: None,
             no_hypers,
+            all_mnar,
         },
     }
     .build(&df.0)
@@ -728,13 +749,14 @@ impl CodebookBuilder {
     }
 
     #[classmethod]
-    #[pyo3(signature = (cat_cutoff=None, state_prior_process=None, view_prior_process=None, use_hypers=true))]
+    #[pyo3(signature = (cat_cutoff=None, state_prior_process=None, view_prior_process=None, use_hypers=true, all_mnar=false))]
     const fn infer(
         _cls: &Bound<PyType>,
         cat_cutoff: Option<u32>,
         state_prior_process: Option<PriorProcess>,
         view_prior_process: Option<PriorProcess>,
         use_hypers: bool,
+        all_mnar: bool,
     ) -> Self {
         Self {
             method: CodebookMethod::Inferred {
@@ -742,6 +764,7 @@ impl CodebookBuilder {
                 state_prior_process,
                 view_prior_process,
                 no_hypers: !use_hypers,
+                all_mnar,
             },
         }
     }
@@ -781,12 +804,14 @@ impl CodebookBuilder {
                 state_prior_process,
                 view_prior_process,
                 no_hypers,
+                all_mnar,
             } => df_to_codebook(
                 df,
                 cat_cutoff,
                 state_prior_process.map(|p| p.0),
                 view_prior_process.map(|p| p.0),
                 no_hypers,
+                all_mnar,
             )
             .map_err(|e| {
                 PyValueError::new_err(format!(
@@ -799,9 +824,22 @@ impl CodebookBuilder {
 
     fn __repr__(&self) -> String {
         match &self.method {
-            CodebookMethod::Path(path) => format!("<CodebookBuilder path='{}'>", path.display()),
-            CodebookMethod::Inferred { cat_cutoff, state_prior_process, view_prior_process, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, state_prior_process={state_prior_process:?}, view_prior_process={view_prior_process:?}, use_hypers={})", !no_hypers),
-            CodebookMethod::Codebook(_) => String::from("Codebook (fully specified)"),
+            CodebookMethod::Path(path) => {
+                format!("<CodebookBuilder path='{}'>", path.display())
+            }
+            CodebookMethod::Inferred {
+                cat_cutoff,
+                state_prior_process,
+                view_prior_process,
+                no_hypers,
+                all_mnar,
+            } => format!(
+                "CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, state_prior_process={state_prior_process:?}, view_prior_process={view_prior_process:?}, use_hypers={}, all)mnar={}",
+                !no_hypers, all_mnar,
+            ),
+            CodebookMethod::Codebook(_) => {
+                String::from("Codebook (fully specified)")
+            }
         }
     }
 }

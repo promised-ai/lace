@@ -1,8 +1,8 @@
+use criterion::BatchSize;
+use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
 use criterion::criterion_main;
-use criterion::BatchSize;
-use criterion::Criterion;
 use lace::cc::alg::ColAssignAlg;
 use lace::cc::alg::RowAssignAlg;
 use lace::cc::config::StateUpdateConfig;

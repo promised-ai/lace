@@ -86,7 +86,7 @@ animals.predict(
     &Given::<usize>::Nothing,
     true,
     None,
-);
+).unwrap();
 ```
 
 </div>

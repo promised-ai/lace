@@ -153,7 +153,12 @@ impl TotalVariationDistance for Mixture<Poisson> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::Bernoulli;
+    use super::Categorical;
+    use super::Gaussian;
+    use super::Mixture;
+    use super::Poisson;
+    use super::mixture_normed_tvd;
 
     #[test]
     fn gauss_moving_means_away_increases_tvd() {
@@ -200,7 +205,7 @@ mod test {
 
     #[test]
     fn bernoulli_moving_means_away_increases_tvd() {
-        let mut last_tvd = std::f64::NEG_INFINITY;
+        let mut last_tvd = f64::NEG_INFINITY;
         (0..10).for_each(|i| {
             let p = 0.5 / (i + 1) as f64;
             let b1 = Bernoulli::new(p).unwrap();
@@ -222,7 +227,7 @@ mod test {
 
     #[test]
     fn categorical_moving_means_away_increases_tvd() {
-        let mut last_tvd = std::f64::NEG_INFINITY;
+        let mut last_tvd = f64::NEG_INFINITY;
         (0..10).for_each(|i| {
             let p = 0.5 / (i + 1) as f64;
             let c1 = Categorical::new(&[p, 1.0 - p]).unwrap();

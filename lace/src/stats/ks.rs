@@ -9,11 +9,7 @@ pub fn ks_test<F: Fn(f64) -> f64>(xs: &[f64], cdf: F) -> f64 {
     let n: f64 = xs_r.len() as f64;
     xs_r.iter().enumerate().fold(0.0, |acc, (i, &x)| {
         let diff = ((i as f64 + 1.0) / n - cdf(x)).abs();
-        if diff > acc {
-            diff
-        } else {
-            acc
-        }
+        if diff > acc { diff } else { acc }
     })
 }
 
@@ -47,11 +43,7 @@ pub fn ks2sample(mut xs: Vec<f64>, mut ys: Vec<f64>) -> f64 {
 
     cdf_x.iter().zip(cdf_y).fold(0.0, |acc, (px, py)| {
         let diff = (px - py).abs();
-        if diff > acc {
-            diff
-        } else {
-            acc
-        }
+        if diff > acc { diff } else { acc }
     })
 }
 

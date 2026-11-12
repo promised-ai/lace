@@ -9,10 +9,10 @@ use lace::cc::state::StateGewekeSettings;
 use lace::cc::transition::StateTransition;
 use lace::geweke::GewekeTester;
 use lace::stats::prior_process::PriorProcessType;
-use plotly::common::Mode;
-use plotly::layout::Layout;
 use plotly::Plot;
 use plotly::Scatter;
+use plotly::common::Mode;
+use plotly::layout::Layout;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 

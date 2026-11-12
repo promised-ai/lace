@@ -4,7 +4,7 @@ use rand::Rng;
 pub trait GewekeModel: GewekeResampleData + GewekeSummarize {
     /// Draw a new object from the prior
     fn geweke_from_prior(settings: &Self::Settings, rng: &mut impl Rng)
-        -> Self;
+    -> Self;
 
     /// Update the state of the object by performing 1 MCMC transition
     fn geweke_step(&mut self, settings: &Self::Settings, rng: &mut impl Rng);

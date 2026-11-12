@@ -13,15 +13,15 @@ pub use traits::OracleT;
 pub use traits::Variability;
 
 use super::HasCodebook;
+use crate::Engine;
+use crate::HasData;
+use crate::HasStates;
 use crate::cc::state::State;
 use crate::codebook::Codebook;
 use crate::data::DataStore;
 use crate::data::Datum;
 use crate::data::SummaryStatistics;
 use crate::metadata::latest::Metadata;
-use crate::Engine;
-use crate::HasData;
-use crate::HasStates;
 
 /// Mutual Information Type
 #[derive(
@@ -210,7 +210,6 @@ impl HasCodebook for Oracle {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
     use std::path::Path;
 
     use approx::*;
@@ -219,17 +218,15 @@ mod tests {
     use rv::dist::Gaussian;
     use rv::dist::Mixture;
     use rv::traits::HasDensity;
-    use rv::traits::Sampleable;
 
     use super::*;
-    use crate::cc::feature::FType;
-    use crate::cc::feature::Feature;
-    use crate::codebook::ColMetadata;
-    use crate::codebook::ColType;
-    use crate::stats::MixtureType;
     use crate::Given;
     use crate::Oracle;
     use crate::OracleT;
+    use crate::cc::feature::FType;
+    use crate::codebook::ColMetadata;
+    use crate::codebook::ColType;
+    use crate::stats::MixtureType;
 
     fn dummy_codebook_from_state(state: &State) -> Codebook {
         Codebook {
@@ -389,14 +386,6 @@ mod tests {
     }
 
     #[test]
-    fn impute_uncertainty_smoke() {
-        let oracle = get_oracle_from_yaml();
-        let u = oracle._impute_uncertainty(0, 1);
-        assert!(u > 0.0);
-        assert!(u < 1.0);
-    }
-
-    #[test]
     fn predict_uncertainty_smoke_no_given() {
         let oracle = get_oracle_from_yaml();
         let u = oracle._predict_uncertainty(0, &Given::Nothing, None);
@@ -475,8 +464,8 @@ mod tests {
         use super::*;
         #[test]
         fn recreate_doctest_mi_failure() {
-            use crate::examples::Example;
             use crate::MiType;
+            use crate::examples::Example;
 
             let oracle = Example::Animals.oracle().unwrap();
 
@@ -628,6 +617,10 @@ mod tests {
             states_ixs_opt: Option<Vec<usize>>,
             rng: &mut impl Rng,
         ) -> Vec<Vec<Datum>> {
+            use crate::cc::feature::Feature;
+            use rv::traits::Sampleable;
+            use std::collections::BTreeMap;
+
             let state_ixs: Vec<usize> = match states_ixs_opt {
                 Some(state_ixs) => state_ixs,
                 None => (0..oracle.n_states()).collect(),

@@ -11,9 +11,9 @@ use rv::dist::Mixture;
 use rv::dist::NormalInvChiSquared;
 use rv::dist::Poisson;
 use rv::dist::SymmetricDirichlet;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::cc::component::ConjugateComponent;
 use crate::cc::feature::ColModel;
@@ -31,11 +31,11 @@ use crate::data::FeatureData;
 use crate::data::SparseContainer;
 use crate::impl_metadata_version;
 use crate::metadata::MetadataVersion;
+use crate::stats::MixtureType;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
 use crate::stats::prior_process::PriorProcess;
-use crate::stats::MixtureType;
 use crate::to_from_newtype;
 
 pub const METADATA_VERSION: i32 = 2;

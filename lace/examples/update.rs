@@ -1,10 +1,10 @@
 //! Update and engine and show a progress bar
 use std::time::Duration;
 
+use lace::EngineUpdateConfig;
 use lace::examples::Example;
 use lace::update_handler::ProgressBar;
 use lace::update_handler::Timeout;
-use lace::EngineUpdateConfig;
 
 fn main() {
     let mut engine = Example::Animals.engine().unwrap();

@@ -19,18 +19,18 @@ use rv::traits::HasSuffStat;
 use rv::traits::Mode;
 use rv::traits::Rv;
 use rv::traits::Sampleable;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::cc::feature::Component;
 use crate::cc::feature::FType;
 use crate::data::SparseContainer;
 use crate::data::TranslateContainer;
 use crate::data::TranslateDatum;
+use crate::stats::UpdatePrior;
 use crate::stats::prior::csd::CsdHyper;
 use crate::stats::prior::nix::NixHyper;
 use crate::stats::prior::pg::PgHyper;
-use crate::stats::UpdatePrior;
 
 /// Score accumulation for `finite_cpu` and `slice` row transition kernels.
 ///

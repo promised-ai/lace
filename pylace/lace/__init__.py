@@ -22,22 +22,22 @@ from lace.core import (
 from lace.engine import Engine
 
 __all__ = [
-    "core",
+    "CategoricalHyper",
+    "CategoricalPrior",
     "Codebook",
-    "ColumnKernel",
-    "RowKernel",
-    "StateTransition",
-    "Engine",
     "CodebookBuilder",
+    "ColumnKernel",
     "ColumnMetadata",
     "ContinuousHyper",
     "ContinuousPrior",
-    "CategoricalHyper",
-    "CategoricalPrior",
     "CountHyper",
     "CountPrior",
-    "ValueMap",
+    "Engine",
     "PriorProcess",
+    "RowKernel",
+    "StateTransition",
+    "ValueMap",
+    "core",
 ]
 
 __version__ = metadata.version("pylace")

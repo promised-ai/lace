@@ -9,12 +9,12 @@ use rv::traits::Sampleable;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::RowSimilarityVariant;
 use super::error::IndexError;
 use super::error::{self};
 use super::utils;
 use super::validation::find_given_errors;
 use super::validation::find_value_conflicts;
-use super::RowSimilarityVariant;
 use crate::cc::feature::FType;
 use crate::cc::feature::Feature;
 use crate::cc::state::State;
@@ -22,17 +22,19 @@ use crate::cc::state::StateDiagnostics;
 use crate::consts::rv::misc::LogSumExp;
 use crate::data::Datum;
 use crate::data::SummaryStatistics;
+use crate::index::ColumnIndex;
+use crate::index::RowIndex;
 use crate::index::extract_col_pair;
 use crate::index::extract_colixs;
 use crate::index::extract_row_pair;
-use crate::index::ColumnIndex;
-use crate::index::RowIndex;
-use crate::interface::oracle::error::SurprisalError;
+use crate::interface::CanOracle;
+use crate::interface::Given;
 use crate::interface::oracle::ConditionalEntropyType;
 use crate::interface::oracle::MiComponents;
 use crate::interface::oracle::MiType;
-use crate::interface::CanOracle;
-use crate::interface::Given;
+use crate::interface::oracle::error::SurprisalError;
+use crate::interface::oracle::utils::impute_missing;
+use crate::stats::MixtureType;
 use crate::stats::SampleError;
 
 macro_rules! col_indices_ok  {
@@ -283,10 +285,10 @@ pub trait OracleT: CanOracle {
             ));
         }
 
-        if let Some(col_ixs) = wrt {
-            if col_ixs.is_empty() {
-                return Err(error::RowSimError::EmptyWrt);
-            }
+        if let Some(col_ixs) = wrt
+            && col_ixs.is_empty()
+        {
+            return Err(error::RowSimError::EmptyWrt);
         }
 
         Ok(())
@@ -1788,12 +1790,16 @@ pub trait OracleT: CanOracle {
     ///     "dolphin",
     ///     "swims",
     ///     true,
+    ///     false,
+    ///     None,
     /// ).unwrap();
     ///
     /// let bear_swims = oracle.impute(
     ///     "polar+bear",
     ///     "swims",
     ///     true,
+    ///     false,
+    ///     None,
     /// ).unwrap();
     ///
     /// assert_eq!(dolphin_swims.0, Datum::Categorical(1_u32.into()));
@@ -1819,6 +1825,8 @@ pub trait OracleT: CanOracle {
     ///     "X-Sat",
     ///     "Type_of_Orbit",
     ///     true,
+    ///     false,
+    ///     None,
     /// ).unwrap();
     ///
     /// assert_eq!(imp, Datum::Categorical("Sun-Synchronous".into()));
@@ -1833,6 +1841,8 @@ pub trait OracleT: CanOracle {
     ///     "X-Sat",
     ///     "longitude_radians_of_geo",
     ///     true,
+    ///     false,
+    ///     None,
     /// ).unwrap();
     /// ```
     fn impute<RIx: RowIndex, CIx: ColumnIndex>(
@@ -1840,11 +1850,38 @@ pub trait OracleT: CanOracle {
         row_ix: RIx,
         col_ix: CIx,
         with_uncertainty: bool,
+        impute_missing_mnar: bool,
+        state_ixs_opt: Option<&[usize]>,
     ) -> Result<(Datum, Option<f64>), IndexError> {
         let row_ix = row_ix.row_ix(self.codebook())?;
         let col_ix = col_ix.col_ix(self.codebook())?;
 
-        let states: Vec<&State> = self.states().iter().collect();
+        let states: Vec<&State> = state_ixs_opt.map_or_else(
+            || self.states().iter().collect(),
+            |ixs| {
+                let mut states = Vec::new();
+                for &ix in ixs {
+                    states.push(&self.states()[ix]);
+                }
+                states
+            },
+        );
+
+        let unc_opt = if with_uncertainty {
+            Some(utils::impute_uncertainty(&states, row_ix, col_ix))
+        } else {
+            None
+        };
+
+        if impute_missing_mnar
+            && self.codebook().col_metadata[col_ix].missing_not_at_random
+        {
+            // If the value is most likely missing return missing
+            if impute_missing(&states, row_ix, col_ix) {
+                return Ok((Datum::Missing, unc_opt));
+            }
+        }
+
         let val: Datum = match self.ftype(col_ix).unwrap() {
             FType::Binary => unimplemented!(),
             FType::Continuous => {
@@ -1864,12 +1901,6 @@ pub trait OracleT: CanOracle {
         };
 
         let val = utils::post_process_datum(val, col_ix, self.codebook());
-
-        let unc_opt = if with_uncertainty {
-            Some(self._impute_uncertainty(row_ix, col_ix))
-        } else {
-            None
-        };
 
         Ok((val, unc_opt))
     }
@@ -2076,28 +2107,12 @@ pub trait OracleT: CanOracle {
         }
     }
 
-    /// Compute the variability of a conditional distribution
-    ///
-    /// # Notes
-    /// - Returns variance for Continuous and Count columns
-    /// - Returns Entropy for Categorical columns
-    ///
-    /// # Arguments
-    /// - col_ix: the index of the column for which to compute the variability
-    /// - given: optional observations by which to constrain the prediction
-    /// - state_ixs_opt: Optional vector of state indices from which to compute,
-    ///   if None, use all states.
-    fn variability<Ix: ColumnIndex, GIx: ColumnIndex>(
+    fn feature_as_mixture<Ix: ColumnIndex, GIx: ColumnIndex>(
         &self,
         col_ix: Ix,
         given: &Given<GIx>,
         state_ixs_opt: Option<&[usize]>,
-    ) -> Result<Variability, error::VariabilityError> {
-        use rv::traits::Entropy;
-        use rv::traits::Variance;
-
-        use crate::stats::MixtureType;
-
+    ) -> Result<MixtureType, error::MixtureError> {
         let states: Vec<&State> = if let Some(state_ixs) = state_ixs_opt {
             state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
         } else {
@@ -2106,9 +2121,9 @@ pub trait OracleT: CanOracle {
 
         let given =
             given.clone().canonical(self.codebook()).map_err(|err| {
-                error::VariabilityError::GivenError(
-                    error::GivenError::IndexError(err),
-                )
+                error::MixtureError::GivenError(error::GivenError::IndexError(
+                    err,
+                ))
             })?;
 
         let col_ix = col_ix.col_ix(self.codebook())?;
@@ -2140,14 +2155,14 @@ pub trait OracleT: CanOracle {
             Gaussian,
             Categorical,
             Count,
-            Unsupported,
+            Bernoulli,
         }
 
         let mtype = match mixture_types[0] {
             MixtureType::Gaussian(_) => MType::Gaussian,
             MixtureType::Poisson(_) => MType::Count,
             MixtureType::Categorical(_) => MType::Categorical,
-            _ => MType::Unsupported,
+            MixtureType::Bernoulli(_) => MType::Bernoulli,
         };
 
         match mtype {
@@ -2162,8 +2177,7 @@ pub trait OracleT: CanOracle {
                         }
                     })
                     .collect();
-                let mm = Mixture::combine(mms);
-                Ok(Variability::Variance(mm.variance().unwrap()))
+                Ok(MixtureType::Gaussian(Mixture::combine(mms)))
             }
             MType::Count => {
                 let mms: Vec<_> = mixture_types
@@ -2176,8 +2190,7 @@ pub trait OracleT: CanOracle {
                         }
                     })
                     .collect();
-                let mm = Mixture::combine(mms);
-                Ok(Variability::Variance(mm.variance().unwrap()))
+                Ok(MixtureType::Poisson(Mixture::combine(mms)))
             }
             MType::Categorical => {
                 let mms: Vec<_> = mixture_types
@@ -2190,11 +2203,86 @@ pub trait OracleT: CanOracle {
                         }
                     })
                     .collect();
-                let mm = Mixture::combine(mms);
-                Ok(Variability::Entropy(mm.entropy()))
+                Ok(MixtureType::Categorical(Mixture::combine(mms)))
             }
-            _ => panic!("Unsupported MType"),
+            MType::Bernoulli => {
+                let mms: Vec<_> = mixture_types
+                    .drain(..)
+                    .map(|mt| {
+                        if let MixtureType::Bernoulli(mm) = mt {
+                            mm
+                        } else {
+                            panic!("Expected Categorical Mixture Type")
+                        }
+                    })
+                    .collect();
+                Ok(MixtureType::Bernoulli(Mixture::combine(mms)))
+            }
         }
+    }
+
+    /// Compute the mean of a conditional distribution if it exists
+    ///
+    /// # Notes
+    /// Does not support Categorical columns--you'll always get `None`.
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column for which to compute the mean
+    /// - given: optional observations by which to constrain the distribution
+    /// - state_ixs_opt: Optional vector of state indices from which to compute,
+    ///   if None, use all states.
+    fn mean<Ix: ColumnIndex, GIx: ColumnIndex>(
+        &self,
+        col_ix: Ix,
+        given: &Given<GIx>,
+        state_ixs_opt: Option<&[usize]>,
+    ) -> Result<Option<f64>, error::MixtureError> {
+        use rv::traits::Mean;
+
+        let mixture_model =
+            self.feature_as_mixture(col_ix, given, state_ixs_opt)?;
+
+        Ok(match mixture_model {
+            MixtureType::Gaussian(mm) => mm.mean(),
+            MixtureType::Poisson(mm) => mm.mean(),
+            MixtureType::Bernoulli(mm) => mm.mean(),
+            _ => None,
+        })
+    }
+
+    /// Compute the variability of a conditional distribution
+    ///
+    /// # Notes
+    /// - Returns variance for Continuous and Count columns
+    /// - Returns Entropy for Categorical or Bernoulli columns
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column for which to compute the variability
+    /// - given: optional observations by which to constrain the prediction
+    /// - state_ixs_opt: Optional vector of state indices from which to compute,
+    ///   if None, use all states.
+    fn variability<Ix: ColumnIndex, GIx: ColumnIndex>(
+        &self,
+        col_ix: Ix,
+        given: &Given<GIx>,
+        state_ixs_opt: Option<&[usize]>,
+    ) -> Result<Variability, error::MixtureError> {
+        use rv::traits::Entropy;
+        use rv::traits::Variance;
+
+        let mixture_model =
+            self.feature_as_mixture(col_ix, given, state_ixs_opt)?;
+
+        Ok(match mixture_model {
+            MixtureType::Gaussian(mm) => {
+                Variability::Variance(mm.variance().unwrap())
+            }
+            MixtureType::Poisson(mm) => {
+                Variability::Variance(mm.variance().unwrap())
+            }
+            MixtureType::Bernoulli(mm) => Variability::Entropy(mm.entropy()),
+            MixtureType::Categorical(mm) => Variability::Entropy(mm.entropy()),
+        })
     }
 
     /// Compute the error between the observed data in a feature and the feature
@@ -2466,22 +2554,6 @@ pub trait OracleT: CanOracle {
                 self._mc_joint_entropy(col_ixs, n, &mut rng)
             }
         }
-    }
-
-    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
-    /// as mean the pairwise KL divergence between the components to which the
-    /// datum is assigned.
-    ///
-    /// # Notes
-    /// Impute uncertainty applies only to impute operations where we want to
-    /// recover a specific missing (or not missing) entry. There is no special
-    /// handling of non-missing entries.
-    ///
-    /// # Arguments
-    /// - row_ix: the row index
-    /// - col_ix: the column index
-    fn _impute_uncertainty(&self, row_ix: usize, col_ix: usize) -> f64 {
-        utils::impute_uncertainty(self.states(), row_ix, col_ix)
     }
 
     /// Computes the uncertainty associated with predicting the value of a

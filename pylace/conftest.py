@@ -1,7 +1,8 @@
-import matplotlib
-from plotly import io
-import polars as pl
 import os
+
+import matplotlib
+import polars as pl
+from plotly import io
 
 # Disable logging that might interfere with tests
 os.environ["TQDM_DISABLE"] = "1"

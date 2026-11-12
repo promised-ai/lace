@@ -1,0 +1,6 @@
+[advisories]
+ignore = [
+  "RUSTSEC-2026-0009", # this comes from a dev dependency in plotly
+  "RUSTSEC-2026-0195", # Unbounded namespace allocation in quick-xml
+  "RUSTSEC-2026-0194", # Quadratic runtime check in quick-xml
+]
